@@ -54,7 +54,7 @@ bool App::begin() {
         return false;
     }
 
-    ui_.begin();
+    ui_.begin(config_, registry_, config_store_);
     ui_.update(legacyVehicleState(), board_.diagnostics(), telemetryRuntimeStatus());
     board_.unlock();
 
