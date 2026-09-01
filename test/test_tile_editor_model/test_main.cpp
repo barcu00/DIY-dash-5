@@ -1,3 +1,4 @@
+#include <cstring>
 #include <unity.h>
 
 #include "ui/tile_editor_model.h"
@@ -49,10 +50,23 @@ void test_afr_mode_is_allowed_only_for_lambda_parameters() {
     TEST_ASSERT_TRUE(TileEditorModel::setAfrMode(lambda, true));
     TEST_ASSERT_EQUAL(static_cast<int>(ValueFormatMode::Afr), static_cast<int>(lambda.value_format));
 
+    TileConfig target{};
+    target.parameter = ParameterId::LambdaTarget;
+    TEST_ASSERT_TRUE(TileEditorModel::setAfrMode(target, true));
+    TEST_ASSERT_EQUAL(static_cast<int>(ValueFormatMode::Afr), static_cast<int>(target.value_format));
+
     TileConfig speed{};
     speed.parameter = ParameterId::VehicleSpeed;
     TEST_ASSERT_FALSE(TileEditorModel::setAfrMode(speed, true));
     TEST_ASSERT_EQUAL(static_cast<int>(ValueFormatMode::Native), static_cast<int>(speed.value_format));
+}
+
+void test_changing_away_from_lambda_resets_afr_mode() {
+    TileConfig tile{};
+    tile.parameter = ParameterId::Lambda;
+    TEST_ASSERT_TRUE(TileEditorModel::setAfrMode(tile, true));
+    TileEditorModel::setParameter(tile, ParameterId::OilTemperature);
+    TEST_ASSERT_EQUAL(static_cast<int>(ValueFormatMode::Native), static_cast<int>(tile.value_format));
 }
 
 void test_label_is_truncated_and_null_terminated() {
@@ -71,6 +85,7 @@ int main(int, char**) {
     RUN_TEST(test_custom_label_can_be_set_and_cleared);
     RUN_TEST(test_icon_modes_default_custom_and_none);
     RUN_TEST(test_afr_mode_is_allowed_only_for_lambda_parameters);
+    RUN_TEST(test_changing_away_from_lambda_resets_afr_mode);
     RUN_TEST(test_label_is_truncated_and_null_terminated);
     return UNITY_END();
 }
