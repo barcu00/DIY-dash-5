@@ -44,6 +44,7 @@ struct AppConfig {
     std::array<WarningConfig, kParameterCount> warnings{};
 
     static AppConfig defaults();
+    static void resetToDefaults(AppConfig& config);
     static bool schemaCompatible(uint32_t version);
 
     bool validSchema() const;
