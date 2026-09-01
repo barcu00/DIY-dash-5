@@ -23,3 +23,38 @@ jobs:
 
       - name: Run native unit tests
         run: pio test -e native
+
+  firmware:
+    needs: native-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PlatformIO
+        run: pip install --upgrade platformio
+
+      - name: Build Waveshare ESP32-S3 firmware
+        run: pio run -e waveshare_5
+
+      - name: Collect firmware binaries
+        run: |
+          mkdir -p artifacts
+          for f in firmware.bin bootloader.bin partitions.bin; do
+            if [ -f ".pio/build/waveshare_5/$f" ]; then
+              cp ".pio/build/waveshare_5/$f" artifacts/
+            fi
+          done
+          ls -lah artifacts
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: BartzDash-v0.1-waveshare-5
+          path: artifacts/*
+          if-no-files-found: error
