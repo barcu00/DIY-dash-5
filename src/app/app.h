@@ -28,7 +28,7 @@ private:
     AlarmManager alarm_manager_;
     AlarmRuntime alarm_runtime_;
     Ui ui_;
-    AppConfig config_ = AppConfig::defaults();
+    AppConfig config_{};
     NvsConfigStore config_store_;
     bool ready_ = false;
     uint32_t last_ui_update_ms_ = 0;
