@@ -16,14 +16,54 @@ const char* sourceName(DataSource source) {
     }
     return "UNKNOWN";
 }
+
+lv_obj_t* createBootScreen() {
+    lv_obj_t* screen = lv_obj_create(nullptr);
+    lv_obj_set_style_bg_color(screen, lv_color_hex(0x07090D), 0);
+    lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
+    lv_obj_clear_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t* title = lv_label_create(screen);
+    lv_label_set_text(title, "OPENDASH");
+    lv_obj_set_style_text_color(title, lv_color_hex(0xF2F5F7), 0);
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_28, 0);
+    lv_obj_align(title, LV_ALIGN_CENTER, 0, -22);
+
+    lv_obj_t* state = lv_label_create(screen);
+    lv_label_set_text(state, "BOOT / DISPLAY OK");
+    lv_obj_set_style_text_color(state, lv_color_hex(0x39D353), 0);
+    lv_obj_set_style_text_font(state, &lv_font_montserrat_14, 0);
+    lv_obj_align(state, LV_ALIGN_CENTER, 0, 24);
+
+    return screen;
+}
 }
 
 bool App::begin() {
+    Serial.println("[OpenDash] Stage 1/5: board/display init");
     if (!board_.begin()) {
         Serial.println("[OpenDash] FATAL: display subsystem unavailable");
         return false;
     }
 
+    // Render a minimal frame before touching NVS, data-source setup or CAN.
+    // If a later subsystem fails on real hardware the display remains visibly alive
+    // instead of presenting a completely black screen.
+    Serial.println("[OpenDash] Stage 2/5: rendering boot frame");
+    if (!board_.lock()) {
+        Serial.println("[OpenDash] FATAL: cannot lock LVGL for boot frame");
+        return false;
+    }
+    lv_obj_t* boot_screen = createBootScreen();
+    lv_scr_load(boot_screen);
+    board_.unlock();
+    for (uint8_t i = 0; i < 3U; ++i) {
+        board_.service();
+        delay(10);
+    }
+    Serial.println("[OpenDash] Boot frame flushed");
+
+    Serial.println("[OpenDash] Stage 3/5: loading persistent configuration");
     if (config_store_.load(config_)) {
         Serial.println("[OpenDash] Configuration loaded from NVS");
     } else {
@@ -33,6 +73,29 @@ bool App::begin() {
     config_.validate();
     applyConfig();
 
+    Serial.printf("[OpenDash] Data source: %s, EMU base ID 0x%03X, timeout %u ms\n",
+                  sourceName(config_.data_source),
+                  static_cast<unsigned>(config_.ecumaster_base_id),
+                  static_cast<unsigned>(config_.can_timeout_ms));
+
+    Serial.println("[OpenDash] Stage 4/5: creating full UI");
+    if (!board_.lock()) {
+        Serial.println("[OpenDash] FATAL: cannot lock LVGL for full UI");
+        return false;
+    }
+
+    ui_.begin(config_, registry_, config_store_);
+    ui_.update(legacyVehicleState(), board_.diagnostics(), telemetryRuntimeStatus());
+    board_.unlock();
+
+    // Force the first complete dashboard frame to the LCD before CAN starts.
+    for (uint8_t i = 0; i < 3U; ++i) {
+        board_.service();
+        delay(10);
+    }
+    Serial.println("[OpenDash] Full UI first frame flushed");
+
+    Serial.println("[OpenDash] Stage 5/5: starting CAN");
     if (config_.data_source != DataSource::Mock) {
         if (can_.begin(config_.can_bitrate)) {
             Serial.printf("[OpenDash] CAN receiver ready: %u kbit/s, TX GPIO15, RX GPIO16\n",
@@ -43,20 +106,6 @@ bool App::begin() {
     } else {
         Serial.println("[OpenDash] CAN receiver not started in MOCK mode");
     }
-
-    Serial.printf("[OpenDash] Data source: %s, EMU base ID 0x%03X, timeout %u ms\n",
-                  sourceName(config_.data_source),
-                  static_cast<unsigned>(config_.ecumaster_base_id),
-                  static_cast<unsigned>(config_.can_timeout_ms));
-
-    if (!board_.lock()) {
-        Serial.println("[OpenDash] FATAL: cannot lock LVGL");
-        return false;
-    }
-
-    ui_.begin(config_, registry_, config_store_);
-    ui_.update(legacyVehicleState(), board_.diagnostics(), telemetryRuntimeStatus());
-    board_.unlock();
 
     ready_ = true;
     last_ui_update_ms_ = millis();
@@ -78,7 +127,10 @@ void App::applyConfig() {
 
 void App::loop() {
     if (!ready_) {
-        delay(250);
+        // Keep servicing LVGL even after a partial startup failure so a diagnostic
+        // boot frame remains visible instead of going black.
+        board_.service();
+        delay(50);
         return;
     }
 
