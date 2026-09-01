@@ -27,6 +27,8 @@ struct ParameterValue {
 
 class ParameterRegistry {
 public:
+    static constexpr uint16_t kCount = parameterIndex(ParameterId::Count);
+
     ParameterRegistry();
 
     const ParameterDescriptor& descriptor(ParameterId id) const;
@@ -38,10 +40,10 @@ public:
     bool pickerVisible(ParameterId id) const;
 
     static constexpr uint16_t count() {
-        return parameterIndex(ParameterId::Count);
+        return kCount;
     }
 
 private:
-    std::array<ParameterValue, count()> values_{};
-    std::array<bool, count()> picker_visible_{};
+    std::array<ParameterValue, kCount> values_{};
+    std::array<bool, kCount> picker_visible_{};
 };
