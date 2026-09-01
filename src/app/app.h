@@ -1,5 +1,7 @@
 #pragma once
 
+#include "alarms/alarm_manager.h"
+#include "alarms/alarm_runtime.h"
 #include "board/board_display.h"
 #include "can/can_driver.h"
 #include "settings/app_config.h"
@@ -23,6 +25,8 @@ private:
     ParameterRegistry registry_;
     DataSourceManager data_source_{registry_};
     CanDriver can_;
+    AlarmManager alarm_manager_;
+    AlarmRuntime alarm_runtime_;
     Ui ui_;
     AppConfig config_ = AppConfig::defaults();
     NvsConfigStore config_store_;
