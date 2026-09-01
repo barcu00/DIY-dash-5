@@ -30,6 +30,7 @@ private:
     void createDash();
     void createDiag();
     void createTrack();
+    void createSettings();
     void createShiftBar(lv_obj_t* parent, lv_obj_t** segments);
     void load(UiPage page);
     void updateShiftBar(lv_obj_t** segments, uint16_t rpm);
@@ -40,6 +41,7 @@ private:
     lv_obj_t* dash_ = nullptr;
     lv_obj_t* diag_ = nullptr;
     lv_obj_t* track_ = nullptr;
+    lv_obj_t* settings_ = nullptr;
 
     lv_obj_t* dash_rpm_ = nullptr;
     lv_obj_t* dash_gear_ = nullptr;
