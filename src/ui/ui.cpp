@@ -5,15 +5,15 @@
 Ui* Ui::instance_ = nullptr;
 
 namespace {
-constexpr lv_color_t kBg = lv_color_hex(0x07090D);
-constexpr lv_color_t kPanel = lv_color_hex(0x11161D);
-constexpr lv_color_t kText = lv_color_hex(0xF2F5F7);
-constexpr lv_color_t kMuted = lv_color_hex(0x7D8996);
-constexpr lv_color_t kBlue = lv_color_hex(0x20A4F3);
-constexpr lv_color_t kGreen = lv_color_hex(0x39D353);
-constexpr lv_color_t kYellow = lv_color_hex(0xFFCF33);
-constexpr lv_color_t kRed = lv_color_hex(0xFF3B30);
-constexpr lv_color_t kPurple = lv_color_hex(0xB26BFF);
+const lv_color_t kBg = lv_color_hex(0x07090D);
+const lv_color_t kPanel = lv_color_hex(0x11161D);
+const lv_color_t kText = lv_color_hex(0xF2F5F7);
+const lv_color_t kMuted = lv_color_hex(0x7D8996);
+const lv_color_t kBlue = lv_color_hex(0x20A4F3);
+const lv_color_t kGreen = lv_color_hex(0x39D353);
+const lv_color_t kYellow = lv_color_hex(0xFFCF33);
+const lv_color_t kRed = lv_color_hex(0xFF3B30);
+const lv_color_t kPurple = lv_color_hex(0xB26BFF);
 constexpr int kNavY = 420;
 constexpr int kNavH = 60;
 
