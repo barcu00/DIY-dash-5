@@ -2,7 +2,7 @@ name: OpenDash CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, feature/opendash-v0.2 ]
   pull_request:
     branches: [ main ]
 
