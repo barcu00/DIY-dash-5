@@ -2,7 +2,7 @@ name: OpenDash CI
 
 on:
   push:
-    branches: [ main, feature/opendash-v0.2 ]
+    branches: [ main, feature/opendash-v0.2, diagnostic/ui-staged-self-test ]
   pull_request:
     branches: [ main ]
 
@@ -59,6 +59,6 @@ jobs:
       - name: Upload firmware artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: OpenDash-v0.2-waveshare-5
+          name: OpenDash-v0.2-ui-staged-self-test
           path: artifacts/*
           if-no-files-found: error
