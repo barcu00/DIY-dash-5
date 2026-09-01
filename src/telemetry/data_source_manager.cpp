@@ -42,7 +42,7 @@ uint16_t DataSourceManager::ecumasterBaseId() const {
 }
 
 bool DataSourceManager::handleCanFrame(const CanFrame& frame, uint32_t now_ms) {
-    if (source_ != DataSource::Ecumaster) {
+    if (source_ != DataSource::Ecumaster || frame.extended || frame.remote) {
         return false;
     }
 
