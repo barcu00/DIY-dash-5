@@ -46,9 +46,6 @@ bool App::begin() {
         return false;
     }
 
-    // Render a minimal frame before touching NVS, data-source setup or CAN.
-    // If a later subsystem fails on real hardware the display remains visibly alive
-    // instead of presenting a completely black screen.
     Serial.println("[OpenDash] Stage 2/5: rendering boot frame");
     if (!board_.lock()) {
         Serial.println("[OpenDash] FATAL: cannot lock LVGL for boot frame");
@@ -71,6 +68,12 @@ bool App::begin() {
         Serial.println("[OpenDash] Using factory configuration");
     }
     config_.validate();
+
+    // Diagnostic build: force MOCK so TWAI/CAN is never started.
+    // This isolates the full v0.2 UI from the CAN driver while keeping the
+    // same display, NVS, registry, tile engine and LVGL object tree.
+    config_.data_source = DataSource::Mock;
+    Serial.println("[OpenDash] DIAGNOSTIC: forcing MOCK, CAN disabled");
     applyConfig();
 
     Serial.printf("[OpenDash] Data source: %s, EMU base ID 0x%03X, timeout %u ms\n",
@@ -88,28 +91,17 @@ bool App::begin() {
     ui_.update(legacyVehicleState(), board_.diagnostics(), telemetryRuntimeStatus());
     board_.unlock();
 
-    // Force the first complete dashboard frame to the LCD before CAN starts.
     for (uint8_t i = 0; i < 3U; ++i) {
         board_.service();
         delay(10);
     }
     Serial.println("[OpenDash] Full UI first frame flushed");
 
-    Serial.println("[OpenDash] Stage 5/5: starting CAN");
-    if (config_.data_source != DataSource::Mock) {
-        if (can_.begin(config_.can_bitrate)) {
-            Serial.printf("[OpenDash] CAN receiver ready: %u kbit/s, TX GPIO15, RX GPIO16\n",
-                          static_cast<unsigned>(config_.can_bitrate / 1000U));
-        } else {
-            Serial.println("[OpenDash] CAN receiver unavailable; ECU data remains offline");
-        }
-    } else {
-        Serial.println("[OpenDash] CAN receiver not started in MOCK mode");
-    }
+    Serial.println("[OpenDash] Stage 5/5: CAN intentionally disabled for diagnostic build");
 
     ready_ = true;
     last_ui_update_ms_ = millis();
-    Serial.println("[OpenDash] UI ready - persistent configuration active");
+    Serial.println("[OpenDash] UI ready - NO CAN diagnostic build");
     return true;
 }
 
@@ -127,8 +119,6 @@ void App::applyConfig() {
 
 void App::loop() {
     if (!ready_) {
-        // Keep servicing LVGL even after a partial startup failure so a diagnostic
-        // boot frame remains visible instead of going black.
         board_.service();
         delay(50);
         return;
