@@ -1,3 +1,5 @@
+#include <initializer_list>
+
 #include <unity.h>
 
 #include "can/can_frame.h"
@@ -46,6 +48,25 @@ void test_unrelated_frame_is_ignored_without_invalid_count() {
     TEST_ASSERT_FALSE(manager.handleCanFrame(unrelated, 3000U));
     TEST_ASSERT_EQUAL_UINT32(0U, manager.invalidFrameCount());
     TEST_ASSERT_FALSE(manager.canOnline());
+}
+
+void test_extended_and_remote_frames_are_ignored_for_ecumaster() {
+    ParameterRegistry registry;
+    DataSourceManager manager(registry);
+    manager.setSource(DataSource::Ecumaster);
+
+    CanFrame extended = makeFrame(0x600, {0xD2,0x04,0,0,0,0,0,0});
+    extended.extended = true;
+    TEST_ASSERT_FALSE(manager.handleCanFrame(extended, 3000U));
+
+    CanFrame remote = makeFrame(0x600, {});
+    remote.dlc = 8;
+    remote.remote = true;
+    TEST_ASSERT_FALSE(manager.handleCanFrame(remote, 3001U));
+
+    TEST_ASSERT_EQUAL_UINT32(0U, manager.receivedFrameCount());
+    TEST_ASSERT_EQUAL_UINT32(0U, manager.invalidFrameCount());
+    TEST_ASSERT_FALSE(registry.value(ParameterId::Rpm).valid);
 }
 
 void test_bad_dlc_inside_ecumaster_range_counts_invalid() {
@@ -122,6 +143,7 @@ int main(int, char**) {
     RUN_TEST(test_mock_source_publishes_registry_values);
     RUN_TEST(test_ecumaster_valid_frame_sets_online_and_decodes);
     RUN_TEST(test_unrelated_frame_is_ignored_without_invalid_count);
+    RUN_TEST(test_extended_and_remote_frames_are_ignored_for_ecumaster);
     RUN_TEST(test_bad_dlc_inside_ecumaster_range_counts_invalid);
     RUN_TEST(test_timeout_invalidates_stale_can_values);
     RUN_TEST(test_source_switch_invalidates_previous_data_and_mock_recovers);
