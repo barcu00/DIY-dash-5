@@ -45,11 +45,15 @@ jobs:
       - name: Collect firmware binaries
         run: |
           mkdir -p artifacts
-          for f in firmware.bin bootloader.bin partitions.bin; do
+          for f in firmware.bin bootloader.bin partitions.bin BartzDash-v0.1-full.bin; do
             if [ -f ".pio/build/waveshare_5/$f" ]; then
               cp ".pio/build/waveshare_5/$f" artifacts/
             fi
           done
+          test -f artifacts/firmware.bin
+          test -f artifacts/bootloader.bin
+          test -f artifacts/partitions.bin
+          test -f artifacts/BartzDash-v0.1-full.bin
           ls -lah artifacts
 
       - name: Upload firmware artifacts
