@@ -104,6 +104,8 @@ void Ui::begin(AppConfig& config, ParameterRegistry& registry, NvsConfigStore& c
     config_ = &config;
     registry_ = &registry;
     config_store_ = &config_store;
+    settings_overlay_.begin(config, registry, config_store, this,
+                            layoutSettingsHandler, settingsChangedHandler);
 
     createDash();
     createTrack();
@@ -238,6 +240,7 @@ void Ui::createSettings() {
         lv_obj_add_flag(card, LV_OBJ_FLAG_GESTURE_BUBBLE);
         label(card, SettingsScreenModel::sectionLabel(i), 16, 18, &lv_font_montserrat_20,
               i == 0 ? kBlue : kText);
+        settings_overlay_.bindSectionCard(card, i);
     }
 }
 
@@ -397,7 +400,19 @@ void Ui::tileEvent(lv_event_t* event) {
     if (view != nullptr) instance_->openTileEditor(*view);
 }
 
+void Ui::layoutSettingsHandler(void* context, bool track) {
+    auto* self = static_cast<Ui*>(context);
+    if (self == nullptr) return;
+    self->openTileEditor(track ? self->track_tiles_[0] : self->dash_tiles_[0]);
+}
+
+void Ui::settingsChangedHandler(void* context) {
+    auto* self = static_cast<Ui*>(context);
+    if (self != nullptr) self->refreshAllTiles();
+}
+
 void Ui::openTileEditor(TileView& view) {
+    settings_overlay_.close();
     closeTileEditor();
     editing_tile_ = &view;
 
@@ -538,7 +553,7 @@ void Ui::saveConfig() {
 
 void Ui::gestureEvent(lv_event_t* event) {
     if (instance_ == nullptr || lv_event_get_code(event) != LV_EVENT_GESTURE ||
-        instance_->tile_editor_overlay_ != nullptr) return;
+        instance_->tile_editor_overlay_ != nullptr || instance_->settings_overlay_.active()) return;
     lv_indev_t* indev = lv_indev_get_act();
     if (indev == nullptr) return;
     const GestureDirection direction = gestureFromLvgl(lv_indev_get_gesture_dir(indev));
@@ -547,6 +562,7 @@ void Ui::gestureEvent(lv_event_t* event) {
 }
 
 void Ui::load(UiPage page) {
+    settings_overlay_.close();
     closeTileEditor();
     current_page_ = page;
     switch (page) {
