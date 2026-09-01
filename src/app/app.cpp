@@ -67,7 +67,8 @@ bool App::begin() {
     if (config_store_.load(config_)) {
         Serial.println("[OpenDash] Configuration loaded from NVS");
     } else {
-        config_ = AppConfig::defaults();
+        // load() already restores factory defaults in-place on every failure path.
+        // Do not create another full AppConfig temporary on the Arduino task stack.
         Serial.println("[OpenDash] Using factory configuration");
     }
     config_.validate();
