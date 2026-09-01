@@ -8,13 +8,16 @@
 #include "ui/settings_screen_model.h"
 #include "ui/tile_editor_model.h"
 #include "ui/tile_engine.h"
+#include "ui/tile_layout.h"
 #include "ui/tile_slot_navigation.h"
 
 Ui* Ui::instance_ = nullptr;
 
 namespace {
 const lv_color_t kBg = lv_color_hex(0x07090D);
-const lv_color_t kPanel = lv_color_hex(0x11161D);
+const lv_color_t kPanel = lv_color_hex(0x0F151C);
+const lv_color_t kPanelAlt = lv_color_hex(0x121A22);
+const lv_color_t kLine = lv_color_hex(0x2B3540);
 const lv_color_t kText = lv_color_hex(0xF2F5F7);
 const lv_color_t kMuted = lv_color_hex(0x7D8996);
 const lv_color_t kBlue = lv_color_hex(0x20A4F3);
@@ -47,6 +50,22 @@ lv_obj_t* label(lv_obj_t* parent, const char* text, int x, int y,
     lv_obj_set_pos(obj, x, y);
     lv_obj_set_style_text_font(obj, font, 0);
     lv_obj_set_style_text_color(obj, color, 0);
+    lv_obj_add_flag(obj, LV_OBJ_FLAG_GESTURE_BUBBLE);
+    return obj;
+}
+
+lv_obj_t* panel(lv_obj_t* parent, int x, int y, int w, int h,
+                lv_color_t bg = kPanel, lv_color_t border = kLine) {
+    lv_obj_t* obj = lv_obj_create(parent);
+    lv_obj_set_pos(obj, x, y);
+    lv_obj_set_size(obj, w, h);
+    lv_obj_set_style_bg_color(obj, bg, 0);
+    lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_color(obj, border, 0);
+    lv_obj_set_style_border_width(obj, 1, 0);
+    lv_obj_set_style_radius(obj, 9, 0);
+    lv_obj_set_style_pad_all(obj, 0, 0);
+    lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_flag(obj, LV_OBJ_FLAG_GESTURE_BUBBLE);
     return obj;
 }
@@ -84,15 +103,30 @@ lv_color_t tileAccent(ParameterId id) {
             return kPurple;
         case ParameterId::OilPressure:
         case ParameterId::OilTemperature:
+        case ParameterId::IgnitionAngle:
+        case ParameterId::Dwell:
             return kYellow;
         case ParameterId::FuelPressure:
         case ParameterId::EthanolContent:
+        case ParameterId::FuelUsed:
+        case ParameterId::FuelPumpActive:
         case ParameterId::Tps:
         case ParameterId::DbwPosition:
         case ParameterId::DbwTarget:
             return kGreen;
+        case ParameterId::EcuError:
+        case ParameterId::CltSensorError:
+        case ParameterId::IatSensorError:
+        case ParameterId::MapSensorError:
+        case ParameterId::WidebandError:
+        case ParameterId::Egt1SensorError:
+        case ParameterId::Egt2SensorError:
+        case ParameterId::EgtAlarm:
+        case ParameterId::Knocking:
+        case ParameterId::FlexFuelSensorError:
+        case ParameterId::DbwError:
+        case ParameterId::FuelPressureRelativeError:
         case ParameterId::BatteryVoltage:
-        case ParameterId::ErrorFlagRaw:
             return kRed;
         default:
             return kBlue;
@@ -132,28 +166,33 @@ void Ui::createShiftBar(lv_obj_t* parent, lv_obj_t** segments) {
 void Ui::createConfigurableTiles(lv_obj_t* parent,
                                  std::array<TileView, AppConfig::kTileCount>& views,
                                  bool track) {
+    const TilePlacement geometry = TileLayout::placement(0U);
     for (uint8_t i = 0; i < AppConfig::kTileCount; ++i) {
         TileView& view = views[i];
         view.config_index = i;
         view.track = track;
 
         view.container = lv_obj_create(parent);
-        lv_obj_set_size(view.container, 200, 60);
+        lv_obj_set_size(view.container, geometry.width, geometry.height);
         lv_obj_set_style_bg_color(view.container, kPanel, 0);
+        lv_obj_set_style_bg_opa(view.container, LV_OPA_COVER, 0);
         lv_obj_set_style_border_width(view.container, 1, 0);
-        lv_obj_set_style_border_color(view.container, lv_color_hex(0x27313C), 0);
+        lv_obj_set_style_border_color(view.container, kLine, 0);
         lv_obj_set_style_radius(view.container, 8, 0);
-        lv_obj_set_style_pad_all(view.container, 6, 0);
+        lv_obj_set_style_pad_all(view.container, 0, 0);
         lv_obj_clear_flag(view.container, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_add_flag(view.container, LV_OBJ_FLAG_GESTURE_BUBBLE);
         lv_obj_add_event_cb(view.container, tileEvent, LV_EVENT_LONG_PRESSED, &view);
 
-        view.title = label(view.container, "--", 8, 1, &lv_font_montserrat_12, kMuted);
-        view.value = label(view.container, "--", 8, 22, &lv_font_montserrat_20, kText);
+        view.title = label(view.container, "---", 8, 4, &lv_font_montserrat_12, kMuted);
+        view.value = label(view.container, "---", 8, 22, &lv_font_montserrat_22, kText);
+        view.unit = label(view.container, "", 112, 35, &lv_font_montserrat_10, kMuted);
+        lv_obj_set_width(view.unit, 56);
+        lv_obj_set_style_text_align(view.unit, LV_TEXT_ALIGN_RIGHT, 0);
 
         view.icon = lv_canvas_create(view.container);
         lv_canvas_set_buffer(view.icon, view.icon_buffer.data(), 16, 16, LV_IMG_CF_TRUE_COLOR);
-        lv_obj_set_pos(view.icon, 170, 7);
+        lv_obj_set_pos(view.icon, 178, 21);
         lv_obj_add_flag(view.icon, LV_OBJ_FLAG_GESTURE_BUBBLE);
     }
 }
@@ -164,12 +203,23 @@ void Ui::createDash() {
     lv_obj_add_event_cb(dash_, gestureEvent, LV_EVENT_GESTURE, nullptr);
     createShiftBar(dash_, dash_shift_);
 
-    label(dash_, "RPM", 330, 48, &lv_font_montserrat_14, kMuted);
-    dash_rpm_ = label(dash_, "0000", 286, 68, &lv_font_montserrat_48);
-    label(dash_, "GEAR", 412, 48, &lv_font_montserrat_14, kMuted);
-    dash_gear_ = label(dash_, "N", 432, 66, &lv_font_montserrat_48, kYellow);
-    dash_source_ = label(dash_, "DATA SOURCE --", 250, 150, &lv_font_montserrat_14, kMuted);
-    label(dash_, "Long-press a tile to edit", 268, 405, &lv_font_montserrat_12, kMuted);
+    lv_obj_t* center = panel(dash_, 224, 42, 352, 156, kPanelAlt);
+    label(center, "RPM", 66, 14, &lv_font_montserrat_12, kMuted);
+    dash_rpm_ = label(center, "0000", 42, 36, &lv_font_montserrat_48);
+    label(center, "GEAR", 241, 14, &lv_font_montserrat_12, kMuted);
+    dash_gear_ = label(center, "N", 251, 34, &lv_font_montserrat_48, kYellow);
+
+    lv_obj_t* divider = lv_obj_create(center);
+    lv_obj_set_pos(divider, 210, 18);
+    lv_obj_set_size(divider, 1, 78);
+    lv_obj_set_style_bg_color(divider, kLine, 0);
+    lv_obj_set_style_border_width(divider, 0, 0);
+    lv_obj_clear_flag(divider, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(divider, LV_OBJ_FLAG_GESTURE_BUBBLE);
+
+    dash_source_ = label(center, "DATA SOURCE --", 12, 120, &lv_font_montserrat_12, kMuted);
+    lv_obj_set_width(dash_source_, 328);
+    lv_obj_set_style_text_align(dash_source_, LV_TEXT_ALIGN_CENTER, 0);
 
     createConfigurableTiles(dash_, dash_tiles_, false);
 }
@@ -180,16 +230,26 @@ void Ui::createTrack() {
     lv_obj_add_event_cb(track_, gestureEvent, LV_EVENT_GESTURE, nullptr);
     createShiftBar(track_, track_shift_);
 
-    label(track_, "RPM", 330, 44, &lv_font_montserrat_14, kMuted);
-    track_rpm_ = label(track_, "0000", 286, 62, &lv_font_montserrat_48);
-    label(track_, "GEAR", 412, 44, &lv_font_montserrat_14, kMuted);
-    track_gear_ = label(track_, "N", 432, 60, &lv_font_montserrat_48, kYellow);
+    lv_obj_t* center = panel(track_, 224, 42, 352, 280, kPanelAlt);
+    label(center, "RPM", 64, 12, &lv_font_montserrat_12, kMuted);
+    track_rpm_ = label(center, "0000", 40, 31, &lv_font_montserrat_40);
+    label(center, "GEAR", 242, 12, &lv_font_montserrat_12, kMuted);
+    track_gear_ = label(center, "N", 252, 29, &lv_font_montserrat_40, kYellow);
 
-    label(track_, "LAP TIME", 326, 158, &lv_font_montserrat_14, kMuted);
-    label(track_, "00:48.73", 278, 184, &lv_font_montserrat_36);
-    label(track_, "BEST  01:35.42", 304, 244, &lv_font_montserrat_14, kPurple);
-    label(track_, "DELTA -0.38", 323, 270, &lv_font_montserrat_14, kGreen);
-    label(track_, "Timing remains MOCK in v0.2", 278, 405, &lv_font_montserrat_12, kMuted);
+    lv_obj_t* separator = lv_obj_create(center);
+    lv_obj_set_pos(separator, 20, 94);
+    lv_obj_set_size(separator, 312, 1);
+    lv_obj_set_style_bg_color(separator, kLine, 0);
+    lv_obj_set_style_border_width(separator, 0, 0);
+    lv_obj_clear_flag(separator, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(separator, LV_OBJ_FLAG_GESTURE_BUBBLE);
+
+    label(center, "LAP TIME", 137, 112, &lv_font_montserrat_12, kMuted);
+    lv_obj_t* lap = label(center, "--:--.--", 74, 136, &lv_font_montserrat_36, kText);
+    lv_obj_set_width(lap, 204);
+    lv_obj_set_style_text_align(lap, LV_TEXT_ALIGN_CENTER, 0);
+    label(center, "BEST  --:--.--", 94, 202, &lv_font_montserrat_14, kPurple);
+    label(center, "DELTA  --.--", 110, 232, &lv_font_montserrat_14, kGreen);
 
     createConfigurableTiles(track_, track_tiles_, true);
 }
@@ -198,25 +258,29 @@ void Ui::createDiag() {
     diag_ = lv_obj_create(nullptr);
     styleScreen(diag_);
     lv_obj_add_event_cb(diag_, gestureEvent, LV_EVENT_GESTURE, nullptr);
-    label(diag_, "OPENDASH DIAGNOSTICS", 22, 18, &lv_font_montserrat_28);
-    diag_source_ = label(diag_, "v0.2 / DATA SOURCE: --", 24, 56, &lv_font_montserrat_14, kMuted);
+    label(diag_, "OPENDASH DIAGNOSTICS", 24, 16, &lv_font_montserrat_28);
+    diag_source_ = label(diag_, "DATA SOURCE: --", 26, 54, &lv_font_montserrat_12, kMuted);
 
-    diag_status_ = label(diag_, "Display: --\nTouch: --\nResolution: 800x480", 30, 110, &lv_font_montserrat_20);
-    diag_memory_ = label(diag_, "PSRAM: --\nFree heap: --", 315, 110, &lv_font_montserrat_20);
-    diag_runtime_ = label(diag_, "Uptime: --\nUI updates: --", 570, 110, &lv_font_montserrat_20);
+    lv_obj_t* status_panel = panel(diag_, 24, 88, 240, 132);
+    label(status_panel, "DISPLAY / TOUCH", 14, 14, &lv_font_montserrat_12, kBlue);
+    diag_status_ = label(status_panel, "DISPLAY --\nTOUCH --\n800 x 480", 14, 42,
+                         &lv_font_montserrat_16, kText);
 
-    diag_can_box_ = lv_obj_create(diag_);
-    lv_obj_set_pos(diag_can_box_, 30, 265);
-    lv_obj_set_size(diag_can_box_, 740, 105);
-    lv_obj_set_style_bg_color(diag_can_box_, lv_color_hex(0x25120F), 0);
-    lv_obj_set_style_border_color(diag_can_box_, kRed, 0);
-    lv_obj_set_style_border_width(diag_can_box_, 2, 0);
-    lv_obj_set_style_radius(diag_can_box_, 8, 0);
-    lv_obj_clear_flag(diag_can_box_, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_add_flag(diag_can_box_, LV_OBJ_FLAG_GESTURE_BUBBLE);
-    label(diag_can_box_, "CAN / ECU DATA", 20, 12, &lv_font_montserrat_16, kMuted);
-    diag_can_state_ = label(diag_can_box_, "OFFLINE", 20, 38, &lv_font_montserrat_28, kRed);
-    diag_can_stats_ = label(diag_can_box_, "1000 kbit/s  RX: 0  BAD: 0", 300, 45, &lv_font_montserrat_16, kMuted);
+    lv_obj_t* memory_panel = panel(diag_, 280, 88, 240, 132);
+    label(memory_panel, "MEMORY", 14, 14, &lv_font_montserrat_12, kBlue);
+    diag_memory_ = label(memory_panel, "PSRAM --\nHEAP --", 14, 42,
+                         &lv_font_montserrat_16, kText);
+
+    lv_obj_t* runtime_panel = panel(diag_, 536, 88, 240, 132);
+    label(runtime_panel, "RUNTIME", 14, 14, &lv_font_montserrat_12, kBlue);
+    diag_runtime_ = label(runtime_panel, "UPTIME --\nUI UPDATES --", 14, 42,
+                          &lv_font_montserrat_16, kText);
+
+    diag_can_box_ = panel(diag_, 24, 244, 752, 150, lv_color_hex(0x25120F), kRed);
+    label(diag_can_box_, "CAN / ECU DATA", 18, 16, &lv_font_montserrat_12, kMuted);
+    diag_can_state_ = label(diag_can_box_, "OFFLINE", 18, 46, &lv_font_montserrat_28, kRed);
+    diag_can_stats_ = label(diag_can_box_, "1000 kbit/s   RX 0   BAD 0", 322, 54,
+                            &lv_font_montserrat_16, kMuted);
 }
 
 void Ui::createSettings() {
@@ -224,23 +288,45 @@ void Ui::createSettings() {
     styleScreen(settings_);
     lv_obj_add_event_cb(settings_, gestureEvent, LV_EVENT_GESTURE, nullptr);
 
-    label(settings_, "OPENDASH SETTINGS", 24, 18, &lv_font_montserrat_28);
-    label(settings_, "Touch a section to configure", 26, 56, &lv_font_montserrat_14, kMuted);
+    label(settings_, "OPENDASH SETTINGS", 24, 16, &lv_font_montserrat_28);
+    label(settings_, "CONFIGURATION", 26, 54, &lv_font_montserrat_12, kMuted);
+
+    lv_obj_t* body = lv_obj_create(settings_);
+    lv_obj_set_pos(body, 24, 82);
+    lv_obj_set_size(body, 752, 374);
+    lv_obj_set_style_bg_opa(body, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(body, 0, 0);
+    lv_obj_set_style_pad_all(body, 0, 0);
+    lv_obj_set_scroll_dir(body, LV_DIR_VER);
+    lv_obj_set_scrollbar_mode(body, LV_SCROLLBAR_MODE_AUTO);
+    lv_obj_set_style_scrollbar_width(body, 4, LV_PART_SCROLLBAR);
+    lv_obj_set_style_bg_color(body, kBlue, LV_PART_SCROLLBAR);
+    lv_obj_add_flag(body, LV_OBJ_FLAG_GESTURE_BUBBLE);
 
     for (uint8_t i = 0; i < SettingsScreenModel::sectionCount(); ++i) {
-        const int col = i % 2;
-        const int row = i / 2;
-        lv_obj_t* card = lv_obj_create(settings_);
-        lv_obj_set_pos(card, 24 + col * 382, 92 + row * 86);
-        lv_obj_set_size(card, 360, 70);
+        lv_obj_t* card = lv_obj_create(body);
+        lv_obj_set_pos(card, 8, 4 + static_cast<int>(i) * 72);
+        lv_obj_set_size(card, 720, 62);
         lv_obj_set_style_bg_color(card, kPanel, 0);
-        lv_obj_set_style_border_color(card, lv_color_hex(0x27313C), 0);
+        lv_obj_set_style_border_color(card, kLine, 0);
         lv_obj_set_style_border_width(card, 1, 0);
         lv_obj_set_style_radius(card, 8, 0);
+        lv_obj_set_style_pad_all(card, 0, 0);
         lv_obj_clear_flag(card, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_add_flag(card, LV_OBJ_FLAG_GESTURE_BUBBLE);
-        label(card, SettingsScreenModel::sectionLabel(i), 16, 18, &lv_font_montserrat_20,
-              i == 0 ? kBlue : kText);
+
+        lv_obj_t* accent = lv_obj_create(card);
+        lv_obj_set_pos(accent, 0, 11);
+        lv_obj_set_size(accent, 4, 40);
+        lv_obj_set_style_bg_color(accent, i == 0U ? kBlue : kLine, 0);
+        lv_obj_set_style_border_width(accent, 0, 0);
+        lv_obj_set_style_radius(accent, 2, 0);
+        lv_obj_clear_flag(accent, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_add_flag(accent, LV_OBJ_FLAG_GESTURE_BUBBLE);
+
+        label(card, SettingsScreenModel::sectionLabel(i), 22, 18, &lv_font_montserrat_20,
+              i == 0U ? kBlue : kText);
+        label(card, ">", 682, 18, &lv_font_montserrat_20, kMuted);
         settings_overlay_.bindSectionCard(card, i);
     }
 }
@@ -257,10 +343,9 @@ void Ui::refreshTileLayout(std::array<TileView, AppConfig::kTileCount>& views,
     for (uint8_t slot = 0; slot < visible_count; ++slot) {
         const uint8_t tile_index = order[slot];
         TileView& view = views[tile_index];
-        const uint8_t side_slot = static_cast<uint8_t>(slot % 6U);
-        const int x = slot < 6U ? 10 : 590;
-        const int y = 42 + static_cast<int>(side_slot) * 66;
-        lv_obj_set_pos(view.container, x, y);
+        const TilePlacement p = TileLayout::placement(slot);
+        lv_obj_set_pos(view.container, p.x, p.y);
+        lv_obj_set_size(view.container, p.width, p.height);
         lv_obj_clear_flag(view.container, LV_OBJ_FLAG_HIDDEN);
     }
 }
@@ -274,6 +359,10 @@ void Ui::renderTileIcon(TileView& view, const TileConfig& config) {
     IconId icon = config.icon == 0U
                       ? registry_->descriptor(config.parameter).default_icon
                       : static_cast<IconId>(config.icon);
+    if (icon == IconId::Invalid || static_cast<uint16_t>(icon) >= static_cast<uint16_t>(IconId::Count)) {
+        icon = registry_->descriptor(config.parameter).default_icon;
+    }
+
     const IconAsset& asset = IconAssets::get(icon);
     if (asset.rows == nullptr || asset.width != 16U || asset.height != 16U) {
         lv_obj_add_flag(view.icon, LV_OBJ_FLAG_HIDDEN);
@@ -303,15 +392,19 @@ void Ui::refreshTileValues(std::array<TileView, AppConfig::kTileCount>& views,
         if (!tile.visible) continue;
 
         const ParameterDescriptor& descriptor = registry_->descriptor(tile.parameter);
+        const lv_color_t accent = tileAccent(tile.parameter);
         const char* title_text = tile.custom_label_enabled && tile.custom_label[0] != '\0'
                                      ? tile.custom_label.data()
                                      : descriptor.short_name;
         lv_label_set_text(view.title, title_text);
-        lv_obj_set_style_text_color(view.title, tileAccent(tile.parameter), 0);
+        lv_obj_set_style_text_color(view.title, accent, 0);
+        lv_obj_set_style_border_color(view.container, accent, 0);
 
         const ParameterValue& value = registry_->value(tile.parameter);
         if (!value.valid) {
-            lv_label_set_text(view.value, "--");
+            lv_label_set_text(view.value, "---");
+        } else if (descriptor.is_boolean) {
+            lv_label_set_text(view.value, value.value >= 0.5f ? "ON" : "OFF");
         } else {
             const float presented = TileEngine::presentValue(tile, value.value, config_->stoich_afr);
             char value_text[32];
@@ -320,6 +413,12 @@ void Ui::refreshTileValues(std::array<TileView, AppConfig::kTileCount>& views,
             lv_label_set_text(view.value, value_text);
         }
 
+        const char* unit_text = descriptor.is_boolean ? "" : descriptor.unit;
+        if ((tile.parameter == ParameterId::Lambda || tile.parameter == ParameterId::LambdaTarget) &&
+            tile.value_format == ValueFormatMode::Afr) {
+            unit_text = "AFR";
+        }
+        lv_label_set_text(view.unit, unit_text);
         renderTileIcon(view, tile);
     }
 }
@@ -362,18 +461,18 @@ void Ui::update(const VehicleState& s, const RuntimeDiagnostics& d,
     refreshTileValues(dash_tiles_, config_->tiles);
     refreshTileValues(track_tiles_, config_->track_tiles);
 
-    std::snprintf(buf, sizeof(buf), "Display: %s\nTouch: %s\nResolution: 800x480",
+    std::snprintf(buf, sizeof(buf), "DISPLAY %s\nTOUCH %s\n800 x 480",
                   d.display_ok ? "OK" : "FAIL", d.touch_ok ? "OK" : "NO");
     lv_label_set_text(diag_status_, buf);
-    std::snprintf(buf, sizeof(buf), "PSRAM: %.1f MB\nFree heap: %u KB",
+    std::snprintf(buf, sizeof(buf), "PSRAM %.1f MB\nHEAP %u KB",
                   static_cast<double>(d.psram_total) / (1024.0 * 1024.0),
                   static_cast<unsigned>(d.free_heap / 1024U));
     lv_label_set_text(diag_memory_, buf);
-    std::snprintf(buf, sizeof(buf), "Uptime: %u s\nUI updates: %u",
+    std::snprintf(buf, sizeof(buf), "UPTIME %u s\nUI UPDATES %u",
                   static_cast<unsigned>(d.uptime_ms / 1000U),
                   static_cast<unsigned>(d.ui_updates));
     lv_label_set_text(diag_runtime_, buf);
-    std::snprintf(buf, sizeof(buf), "v0.2 / DATA SOURCE: %s", dataSourceName(telemetry.source));
+    std::snprintf(buf, sizeof(buf), "DATA SOURCE: %s", dataSourceName(telemetry.source));
     lv_label_set_text(diag_source_, buf);
 
     const bool online = telemetry.can_driver_running && telemetry.can_online;
@@ -384,7 +483,7 @@ void Ui::update(const VehicleState& s, const RuntimeDiagnostics& d,
     lv_obj_set_style_border_color(diag_can_box_, can_color, 0);
     lv_obj_set_style_bg_color(diag_can_box_, online ? lv_color_hex(0x0D2416) : lv_color_hex(0x25120F), 0);
 
-    std::snprintf(buf, sizeof(buf), "%u kbit/s  RX: %u  BAD: %u",
+    std::snprintf(buf, sizeof(buf), "%u kbit/s   RX %u   BAD %u",
                   static_cast<unsigned>(telemetry.can_bitrate / 1000U),
                   static_cast<unsigned>(telemetry.received_frames),
                   static_cast<unsigned>(telemetry.invalid_frames));
@@ -487,14 +586,13 @@ void Ui::openTileEditor(TileView& view) {
         TileView* view_ptr = ui->editing_tile_;
         auto& profile_ref = view_ptr->track ? ui->config_->track_tiles : ui->config_->tiles;
         TileConfig& cfg = profile_ref[view_ptr->config_index];
+        const uint16_t last_icon = static_cast<uint16_t>(IconId::Count) - 1U;
         if (!cfg.icon_enabled) {
             TileEditorModel::useDefaultIcon(cfg);
-        } else if (cfg.icon == 0U) {
+        } else if (cfg.icon == 0U || cfg.icon >= last_icon) {
             TileEditorModel::useCustomIcon(cfg, IconId::Generic);
-        } else if (cfg.icon < static_cast<uint16_t>(IconId::LapTime)) {
-            TileEditorModel::useCustomIcon(cfg, static_cast<IconId>(cfg.icon + 1U));
         } else {
-            TileEditorModel::disableIcon(cfg);
+            TileEditorModel::useCustomIcon(cfg, static_cast<IconId>(cfg.icon + 1U));
         }
         ui->saveConfig();
         ui->openTileEditor(*view_ptr);
@@ -544,9 +642,6 @@ void Ui::openTileEditor(TileView& view) {
         ui->openTileEditor(target);
     });
 
-    label(tile_editor_overlay_, "Use < TILE / TILE > to edit hidden slots", 24, 232,
-          &lv_font_montserrat_14, kMuted);
-
     actionButton(tile_editor_overlay_, "CLOSE", 448, 258, 144, lv_color_hex(0x153B57), [](lv_event_t*) {
         if (Ui::instance_ != nullptr) Ui::instance_->closeTileEditor();
     });
@@ -554,10 +649,6 @@ void Ui::openTileEditor(TileView& view) {
 
 void Ui::closeTileEditor() {
     if (tile_editor_overlay_ != nullptr) {
-        // The editor rebuilds itself from button callbacks. Deleting its root
-        // synchronously from that same callback invalidates LVGL's current event
-        // target and can corrupt/duplicate the top layer. Let LVGL delete it after
-        // the callback unwinds, then the replacement overlay can be drawn safely.
         lv_obj_t* stale_overlay = tile_editor_overlay_;
         tile_editor_overlay_ = nullptr;
         lv_obj_del_async(stale_overlay);
