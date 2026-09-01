@@ -19,17 +19,20 @@ bool NvsConfigStore::load(AppConfig& config) {
         return false;
     }
 
-    AppConfig loaded{};
-    const size_t read = prefs.getBytes(kBlobKey, &loaded, sizeof(loaded));
+    // AppConfig contains the warning configuration for every parameter and is
+    // intentionally large. Reading into a second local AppConfig used more than
+    // a typical Arduino loop-task stack and could corrupt/reset the ESP32 during
+    // startup after a configuration had been saved. Read directly into the
+    // persistent application object and fall back to defaults if validation fails.
+    const size_t read = prefs.getBytes(kBlobKey, &config, sizeof(config));
     prefs.end();
 
-    if (read != sizeof(loaded) || !loaded.validSchema()) {
+    if (read != sizeof(config) || !config.validSchema()) {
         config = AppConfig::defaults();
         return false;
     }
 
-    loaded.validate();
-    config = loaded;
+    config.validate();
     return true;
 #else
     config = AppConfig::defaults();
@@ -39,17 +42,21 @@ bool NvsConfigStore::load(AppConfig& config) {
 
 bool NvsConfigStore::save(const AppConfig& config) {
 #if defined(ARDUINO_ARCH_ESP32)
-    AppConfig stored = config;
-    stored.schema_version = AppConfig::kSchemaVersion;
-    stored.validate();
+    // Callers validate the live AppConfig before saving. Do not make a complete
+    // stack copy here: the 90 WarningConfig records make AppConfig larger than a
+    // typical ESP32 Arduino task stack budget and the copy happened from LVGL
+    // button callbacks, which manifested as resets/corrupted duplicated graphics.
+    if (!config.validSchema()) {
+        return false;
+    }
 
     Preferences prefs;
     if (!prefs.begin(kNamespace, false)) {
         return false;
     }
-    const size_t written = prefs.putBytes(kBlobKey, &stored, sizeof(stored));
+    const size_t written = prefs.putBytes(kBlobKey, &config, sizeof(config));
     prefs.end();
-    return written == sizeof(stored);
+    return written == sizeof(config);
 #else
     (void)config;
     return false;
