@@ -537,8 +537,13 @@ void Ui::openTileEditor(TileView& view) {
 
 void Ui::closeTileEditor() {
     if (tile_editor_overlay_ != nullptr) {
-        lv_obj_del(tile_editor_overlay_);
+        // The editor rebuilds itself from button callbacks. Deleting its root
+        // synchronously from that same callback invalidates LVGL's current event
+        // target and can corrupt/duplicate the top layer. Let LVGL delete it after
+        // the callback unwinds, then the replacement overlay can be drawn safely.
+        lv_obj_t* stale_overlay = tile_editor_overlay_;
         tile_editor_overlay_ = nullptr;
+        lv_obj_del_async(stale_overlay);
     }
     editing_tile_ = nullptr;
 }
