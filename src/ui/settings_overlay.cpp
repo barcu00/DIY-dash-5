@@ -325,7 +325,7 @@ void SettingsOverlay::openSystem() {
 void SettingsOverlay::factoryResetEvent(lv_event_t* event) {
     auto* self = static_cast<SettingsOverlay*>(lv_event_get_user_data(event));
     if (self == nullptr || self->config_ == nullptr) return;
-    *self->config_ = AppConfig::defaults();
+    AppConfig::resetToDefaults(*self->config_);
     self->refreshRegistryVisibility();
     self->save();
     self->openInfo("SYSTEM", "Factory defaults saved.\nRestart OpenDash to reinitialize CAN hardware.");
