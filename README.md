@@ -1,8 +1,8 @@
-# BartzDash
+# OpenDash
 
 Motorsport dashboard firmware for the **Waveshare ESP32-S3-Touch-LCD-5** non-B variant (800x480), prepared as a foundation for ECUMaster EMU Black CAN integration.
 
-## BartzDash v0.1
+## OpenDash v0.1
 
 Version 0.1 is a hardware/UI bring-up build. It intentionally uses **MOCK telemetry** and does **not** enable CAN yet.
 
@@ -43,10 +43,10 @@ Important files:
 firmware.bin
 bootloader.bin
 partitions.bin
-BartzDash-v0.1-full.bin
+OpenDash-v0.1-full.bin
 ```
 
-GitHub Actions also publishes these files in the `BartzDash-v0.1-waveshare-5` artifact.
+GitHub Actions also publishes these files in the `OpenDash-v0.1-waveshare-5` artifact.
 
 ## Flashing - recommended method
 
@@ -61,7 +61,7 @@ python -m esptool --chip esp32s3 --port COM5 erase_flash
 Then flash the complete image at offset `0x0`:
 
 ```bash
-python -m esptool --chip esp32s3 --port COM5 --baud 921600 write_flash 0x0 BartzDash-v0.1-full.bin
+python -m esptool --chip esp32s3 --port COM5 --baud 921600 write_flash 0x0 OpenDash-v0.1-full.bin
 ```
 
 Replace `COM5` with the actual device port. On Linux it will normally look like `/dev/ttyACM0` or `/dev/ttyUSB0`.
@@ -99,27 +99,36 @@ A successful GitHub Actions build proves compilation only. LCD, GT911 and runtim
 
 ## Next milestone - v0.2
 
-Planned ECUMaster integration:
+Planned live-CAN integration:
 
-- ESP32 TWAI / CAN
+- ESP32 CAN driver
 - TX GPIO15
 - RX GPIO16
-- selectable 500 kbit/s / 1 Mbit/s
-- ECUMaster EMU Black base ID 0x600
-- selectable MOCK / ECUMASTER data source
+- selectable CAN bitrate
+- ECUMaster EMU Black support
+- rusEFI support through the common Parameter Registry
+- selectable MOCK / ECUMASTER / RUSEFI data source
 - CAN ONLINE/OFFLINE timeout
-- RPM, TPS, MAP, lambda, CLT, IAT, oil pressure, oil temperature, fuel pressure, battery, gear, speed and other available EMU stream values
+- configurable telemetry tiles, icons and warnings
+- gesture-only screen navigation
+- Lambda / AFR display selection
 
 ## Project documentation
 
 Design specification:
 
 ```text
-docs/superpowers/specs/2026-09-01-bartzdash-v0.1-design.md
+docs/superpowers/specs/2026-09-01-opendash-v0.1-design.md
 ```
 
 Implementation plan:
 
 ```text
-docs/superpowers/plans/2026-09-01-bartzdash-v0.1.md
+docs/superpowers/plans/2026-09-01-opendash-v0.1.md
+```
+
+v0.2 design:
+
+```text
+docs/superpowers/specs/2026-09-01-opendash-v0.2-ecumaster-configurable-ui-design.md
 ```
