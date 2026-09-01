@@ -24,7 +24,7 @@ struct TileConfig {
 };
 
 struct AppConfig {
-    static constexpr uint32_t kSchemaVersion = 1U;
+    static constexpr uint32_t kSchemaVersion = 2U;
     static constexpr uint8_t kTileCount = 12U;
     static constexpr uint16_t kParameterCount = parameterIndex(ParameterId::Count);
 
@@ -37,7 +37,9 @@ struct AppConfig {
     ValueFormatMode lambda_format = ValueFormatMode::Native;
     float stoich_afr = 14.7f;
 
+    // DASH layout. Kept as `tiles` for persisted v0.2 API compatibility.
     std::array<TileConfig, kTileCount> tiles{};
+    std::array<TileConfig, kTileCount> track_tiles{};
     std::array<bool, kParameterCount> parameter_visible{};
     std::array<WarningConfig, kParameterCount> warnings{};
 
