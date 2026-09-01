@@ -8,6 +8,7 @@
 #include "ui/settings_screen_model.h"
 #include "ui/tile_editor_model.h"
 #include "ui/tile_engine.h"
+#include "ui/tile_slot_navigation.h"
 
 Ui* Ui::instance_ = nullptr;
 
@@ -475,11 +476,9 @@ void Ui::openTileEditor(TileView& view) {
         TileView* view_ptr = ui->editing_tile_;
         auto& profile_ref = view_ptr->track ? ui->config_->track_tiles : ui->config_->tiles;
         TileConfig& cfg = profile_ref[view_ptr->config_index];
-        const bool becoming_visible = !cfg.visible;
-        TileEditorModel::setVisible(cfg, becoming_visible);
+        TileEditorModel::setVisible(cfg, !cfg.visible);
         ui->saveConfig();
-        if (becoming_visible) ui->openTileEditor(*view_ptr);
-        else ui->closeTileEditor();
+        ui->openTileEditor(*view_ptr);
     });
 
     actionButton(tile_editor_overlay_, "ICON >", 384, 116, 96, lv_color_hex(0x3C285C), [](lv_event_t*) {
@@ -527,7 +526,25 @@ void Ui::openTileEditor(TileView& view) {
         ui->openTileEditor(*view_ptr);
     } : nullptr);
 
-    label(tile_editor_overlay_, "Label editor and warning shortcut are next in Task 9", 24, 232,
+    actionButton(tile_editor_overlay_, "< TILE", 192, 170, 112, lv_color_hex(0x153B57), [](lv_event_t*) {
+        Ui* ui = Ui::instance_;
+        if (ui == nullptr || ui->editing_tile_ == nullptr) return;
+        const bool track = ui->editing_tile_->track;
+        const uint8_t slot = TileSlotNavigation::previous(ui->editing_tile_->config_index);
+        TileView& target = track ? ui->track_tiles_[slot] : ui->dash_tiles_[slot];
+        ui->openTileEditor(target);
+    });
+
+    actionButton(tile_editor_overlay_, "TILE >", 312, 170, 112, lv_color_hex(0x153B57), [](lv_event_t*) {
+        Ui* ui = Ui::instance_;
+        if (ui == nullptr || ui->editing_tile_ == nullptr) return;
+        const bool track = ui->editing_tile_->track;
+        const uint8_t slot = TileSlotNavigation::next(ui->editing_tile_->config_index);
+        TileView& target = track ? ui->track_tiles_[slot] : ui->dash_tiles_[slot];
+        ui->openTileEditor(target);
+    });
+
+    label(tile_editor_overlay_, "Use < TILE / TILE > to edit hidden slots", 24, 232,
           &lv_font_montserrat_14, kMuted);
 
     actionButton(tile_editor_overlay_, "CLOSE", 448, 258, 144, lv_color_hex(0x153B57), [](lv_event_t*) {
