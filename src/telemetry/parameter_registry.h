@@ -44,6 +44,7 @@ public:
     }
 
 private:
+    std::array<ParameterDescriptor, kCount> descriptors_{};
     std::array<ParameterValue, kCount> values_{};
     std::array<bool, kCount> picker_visible_{};
 };
