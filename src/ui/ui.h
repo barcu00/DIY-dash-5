@@ -33,6 +33,7 @@ private:
         lv_obj_t* container = nullptr;
         lv_obj_t* title = nullptr;
         lv_obj_t* value = nullptr;
+        lv_obj_t* unit = nullptr;
         lv_obj_t* icon = nullptr;
         std::array<lv_color_t, 16U * 16U> icon_buffer{};
         uint8_t config_index = 0U;
