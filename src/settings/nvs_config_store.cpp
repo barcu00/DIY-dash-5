@@ -8,14 +8,14 @@ bool NvsConfigStore::load(AppConfig& config) {
 #if defined(ARDUINO_ARCH_ESP32)
     Preferences prefs;
     if (!prefs.begin(kNamespace, true)) {
-        config = AppConfig::defaults();
+        AppConfig::resetToDefaults(config);
         return false;
     }
 
     const size_t length = prefs.getBytesLength(kBlobKey);
     if (length != sizeof(AppConfig)) {
         prefs.end();
-        config = AppConfig::defaults();
+        AppConfig::resetToDefaults(config);
         return false;
     }
 
@@ -28,14 +28,14 @@ bool NvsConfigStore::load(AppConfig& config) {
     prefs.end();
 
     if (read != sizeof(config) || !config.validSchema()) {
-        config = AppConfig::defaults();
+        AppConfig::resetToDefaults(config);
         return false;
     }
 
     config.validate();
     return true;
 #else
-    config = AppConfig::defaults();
+    AppConfig::resetToDefaults(config);
     return false;
 #endif
 }
