@@ -4,7 +4,9 @@
 
 #include "ui/icon_assets.h"
 #include "ui/icon_catalog.h"
+#include "ui/parameter_picker_model.h"
 #include "ui/settings_screen_model.h"
+#include "ui/tile_editor_model.h"
 #include "ui/tile_engine.h"
 
 Ui* Ui::instance_ = nullptr;
@@ -46,6 +48,21 @@ lv_obj_t* label(lv_obj_t* parent, const char* text, int x, int y,
     lv_obj_set_style_text_color(obj, color, 0);
     lv_obj_add_flag(obj, LV_OBJ_FLAG_GESTURE_BUBBLE);
     return obj;
+}
+
+lv_obj_t* actionButton(lv_obj_t* parent, const char* text, int x, int y, int w,
+                       lv_color_t color, lv_event_cb_t cb = nullptr) {
+    lv_obj_t* btn = lv_btn_create(parent);
+    lv_obj_set_pos(btn, x, y);
+    lv_obj_set_size(btn, w, 42);
+    lv_obj_set_style_bg_color(btn, color, 0);
+    lv_obj_set_style_radius(btn, 7, 0);
+    if (cb != nullptr) lv_obj_add_event_cb(btn, cb, LV_EVENT_CLICKED, nullptr);
+    lv_obj_t* txt = lv_label_create(btn);
+    lv_label_set_text(txt, text);
+    lv_obj_set_style_text_font(txt, &lv_font_montserrat_14, 0);
+    lv_obj_center(txt);
+    return btn;
 }
 
 GestureDirection gestureFromLvgl(lv_dir_t dir) {
@@ -385,7 +402,7 @@ void Ui::openTileEditor(TileView& view) {
     editing_tile_ = &view;
 
     tile_editor_overlay_ = lv_obj_create(lv_layer_top());
-    lv_obj_set_size(tile_editor_overlay_, 560, 300);
+    lv_obj_set_size(tile_editor_overlay_, 620, 330);
     lv_obj_center(tile_editor_overlay_);
     lv_obj_set_style_bg_color(tile_editor_overlay_, lv_color_hex(0x0C1117), 0);
     lv_obj_set_style_bg_opa(tile_editor_overlay_, LV_OPA_COVER, 0);
@@ -394,31 +411,113 @@ void Ui::openTileEditor(TileView& view) {
     lv_obj_set_style_radius(tile_editor_overlay_, 12, 0);
     lv_obj_clear_flag(tile_editor_overlay_, LV_OBJ_FLAG_SCROLLABLE);
 
-    const auto& profile = view.track ? config_->track_tiles : config_->tiles;
-    const TileConfig& tile = profile[view.config_index];
+    auto& profile = view.track ? config_->track_tiles : config_->tiles;
+    TileConfig& tile = profile[view.config_index];
     const ParameterDescriptor& descriptor = registry_->descriptor(tile.parameter);
 
     char title_text[64];
     std::snprintf(title_text, sizeof(title_text), "%s TILE %u",
                   view.track ? "TRACK" : "DASH",
                   static_cast<unsigned>(view.config_index + 1U));
-    label(tile_editor_overlay_, title_text, 22, 16, &lv_font_montserrat_24);
-    label(tile_editor_overlay_, descriptor.name, 24, 58, &lv_font_montserrat_18, kBlue);
-    label(tile_editor_overlay_, "Editor controls are being enabled in Task 9", 24, 104,
-          &lv_font_montserrat_14, kMuted);
-    label(tile_editor_overlay_, "Parameter / visibility / label / icon / Lambda-AFR / warning", 24, 136,
-          &lv_font_montserrat_14, kText);
+    label(tile_editor_overlay_, title_text, 22, 14, &lv_font_montserrat_24);
+    label(tile_editor_overlay_, descriptor.name, 24, 52, &lv_font_montserrat_18, kBlue);
 
-    lv_obj_t* close = lv_btn_create(tile_editor_overlay_);
-    lv_obj_set_pos(close, 390, 220);
-    lv_obj_set_size(close, 130, 48);
-    lv_obj_set_style_bg_color(close, lv_color_hex(0x153B57), 0);
-    lv_obj_add_event_cb(close, [](lv_event_t*) {
+    char state_text[128];
+    const char* icon_text = !tile.icon_enabled ? "OFF" :
+                            (tile.icon == 0U ? "DEFAULT" : IconCatalog::name(static_cast<IconId>(tile.icon)));
+    std::snprintf(state_text, sizeof(state_text), "%s  |  ICON %s  |  %u DEC  |  %s",
+                  tile.visible ? "VISIBLE" : "HIDDEN", icon_text,
+                  static_cast<unsigned>(tile.decimals),
+                  tile.value_format == ValueFormatMode::Afr ? "AFR" : "NATIVE");
+    label(tile_editor_overlay_, state_text, 24, 80, &lv_font_montserrat_12, kMuted);
+
+    actionButton(tile_editor_overlay_, "< PARAM", 24, 116, 112, lv_color_hex(0x153B57), [](lv_event_t*) {
+        Ui* ui = Ui::instance_;
+        if (ui == nullptr || ui->editing_tile_ == nullptr) return;
+        TileView* view_ptr = ui->editing_tile_;
+        auto& profile_ref = view_ptr->track ? ui->config_->track_tiles : ui->config_->tiles;
+        TileConfig& cfg = profile_ref[view_ptr->config_index];
+        TileEditorModel::setParameter(cfg, ParameterPickerModel::previousVisible(*ui->config_, cfg.parameter));
+        ui->saveConfig();
+        ui->openTileEditor(*view_ptr);
+    });
+
+    actionButton(tile_editor_overlay_, "PARAM >", 144, 116, 112, lv_color_hex(0x153B57), [](lv_event_t*) {
+        Ui* ui = Ui::instance_;
+        if (ui == nullptr || ui->editing_tile_ == nullptr) return;
+        TileView* view_ptr = ui->editing_tile_;
+        auto& profile_ref = view_ptr->track ? ui->config_->track_tiles : ui->config_->tiles;
+        TileConfig& cfg = profile_ref[view_ptr->config_index];
+        TileEditorModel::setParameter(cfg, ParameterPickerModel::nextVisible(*ui->config_, cfg.parameter));
+        ui->saveConfig();
+        ui->openTileEditor(*view_ptr);
+    });
+
+    actionButton(tile_editor_overlay_, tile.visible ? "HIDE TILE" : "SHOW TILE", 264, 116, 112,
+                 tile.visible ? lv_color_hex(0x6B321D) : lv_color_hex(0x15592A), [](lv_event_t*) {
+        Ui* ui = Ui::instance_;
+        if (ui == nullptr || ui->editing_tile_ == nullptr) return;
+        TileView* view_ptr = ui->editing_tile_;
+        auto& profile_ref = view_ptr->track ? ui->config_->track_tiles : ui->config_->tiles;
+        TileConfig& cfg = profile_ref[view_ptr->config_index];
+        const bool becoming_visible = !cfg.visible;
+        TileEditorModel::setVisible(cfg, becoming_visible);
+        ui->saveConfig();
+        if (becoming_visible) ui->openTileEditor(*view_ptr);
+        else ui->closeTileEditor();
+    });
+
+    actionButton(tile_editor_overlay_, "ICON >", 384, 116, 96, lv_color_hex(0x3C285C), [](lv_event_t*) {
+        Ui* ui = Ui::instance_;
+        if (ui == nullptr || ui->editing_tile_ == nullptr) return;
+        TileView* view_ptr = ui->editing_tile_;
+        auto& profile_ref = view_ptr->track ? ui->config_->track_tiles : ui->config_->tiles;
+        TileConfig& cfg = profile_ref[view_ptr->config_index];
+        if (!cfg.icon_enabled) {
+            TileEditorModel::useDefaultIcon(cfg);
+        } else if (cfg.icon == 0U) {
+            TileEditorModel::useCustomIcon(cfg, IconId::Generic);
+        } else if (cfg.icon < static_cast<uint16_t>(IconId::LapTime)) {
+            TileEditorModel::useCustomIcon(cfg, static_cast<IconId>(cfg.icon + 1U));
+        } else {
+            TileEditorModel::disableIcon(cfg);
+        }
+        ui->saveConfig();
+        ui->openTileEditor(*view_ptr);
+    });
+
+    actionButton(tile_editor_overlay_, "DEC +", 488, 116, 104, lv_color_hex(0x254254), [](lv_event_t*) {
+        Ui* ui = Ui::instance_;
+        if (ui == nullptr || ui->editing_tile_ == nullptr) return;
+        TileView* view_ptr = ui->editing_tile_;
+        auto& profile_ref = view_ptr->track ? ui->config_->track_tiles : ui->config_->tiles;
+        TileConfig& cfg = profile_ref[view_ptr->config_index];
+        cfg.decimals = static_cast<uint8_t>((cfg.decimals + 1U) % 4U);
+        ui->saveConfig();
+        ui->openTileEditor(*view_ptr);
+    });
+
+    const bool lambda_parameter = tile.parameter == ParameterId::Lambda || tile.parameter == ParameterId::LambdaTarget;
+    actionButton(tile_editor_overlay_, lambda_parameter ?
+                     (tile.value_format == ValueFormatMode::Afr ? "SHOW LAMBDA" : "SHOW AFR") : "AFR N/A",
+                 24, 170, 152, lambda_parameter ? lv_color_hex(0x56327A) : lv_color_hex(0x292D33),
+                 lambda_parameter ? +[](lv_event_t*) {
+        Ui* ui = Ui::instance_;
+        if (ui == nullptr || ui->editing_tile_ == nullptr) return;
+        TileView* view_ptr = ui->editing_tile_;
+        auto& profile_ref = view_ptr->track ? ui->config_->track_tiles : ui->config_->tiles;
+        TileConfig& cfg = profile_ref[view_ptr->config_index];
+        TileEditorModel::setAfrMode(cfg, cfg.value_format != ValueFormatMode::Afr);
+        ui->saveConfig();
+        ui->openTileEditor(*view_ptr);
+    } : nullptr);
+
+    label(tile_editor_overlay_, "Label editor and warning shortcut are next in Task 9", 24, 232,
+          &lv_font_montserrat_14, kMuted);
+
+    actionButton(tile_editor_overlay_, "CLOSE", 448, 258, 144, lv_color_hex(0x153B57), [](lv_event_t*) {
         if (Ui::instance_ != nullptr) Ui::instance_->closeTileEditor();
-    }, LV_EVENT_CLICKED, nullptr);
-    lv_obj_t* close_label = lv_label_create(close);
-    lv_label_set_text(close_label, "CLOSE");
-    lv_obj_center(close_label);
+    });
 }
 
 void Ui::closeTileEditor() {
