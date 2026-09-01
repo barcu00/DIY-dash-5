@@ -15,6 +15,7 @@ public:
     void begin(AppConfig& config, ParameterRegistry& registry, NvsConfigStore& store,
                void* context, LayoutHandler layout_handler, ChangedHandler changed_handler);
     void bindSectionCard(lv_obj_t* card, uint8_t section_index);
+    void openWarning(ParameterId parameter);
     bool active() const { return overlay_ != nullptr; }
     void close();
 
@@ -35,6 +36,22 @@ private:
     static void parameterPrevEvent(lv_event_t* event);
     static void parameterNextEvent(lv_event_t* event);
     static void parameterToggleEvent(lv_event_t* event);
+    static void warningPrevEvent(lv_event_t* event);
+    static void warningNextEvent(lv_event_t* event);
+    static void warningModeEvent(lv_event_t* event);
+    static void warningWarnDownEvent(lv_event_t* event);
+    static void warningWarnUpEvent(lv_event_t* event);
+    static void warningCriticalDownEvent(lv_event_t* event);
+    static void warningCriticalUpEvent(lv_event_t* event);
+    static void warningHystDownEvent(lv_event_t* event);
+    static void warningHystUpEvent(lv_event_t* event);
+    static void warningDelayDownEvent(lv_event_t* event);
+    static void warningDelayUpEvent(lv_event_t* event);
+    static void warningCurvePointEvent(lv_event_t* event);
+    static void warningCurveAddEvent(lv_event_t* event);
+    static void warningCurveRemoveEvent(lv_event_t* event);
+    static void warningCurveRpmDownEvent(lv_event_t* event);
+    static void warningCurveRpmUpEvent(lv_event_t* event);
     static void stoichDownEvent(lv_event_t* event);
     static void stoichUpEvent(lv_event_t* event);
     static void lambdaFormatEvent(lv_event_t* event);
@@ -43,6 +60,7 @@ private:
     void openSection(uint8_t section);
     void openCan();
     void openParameters();
+    void openWarnings();
     void openFuel();
     void openSystem();
     void openInfo(const char* title, const char* message);
@@ -54,6 +72,10 @@ private:
     void notifyChanged();
     void refreshRegistryVisibility();
     void applyGlobalLambdaFormat();
+    WarningConfig* selectedWarning();
+    float warningStep() const;
+    static const char* warningModeName(WarningMode mode);
+    void adjustWarningScalar(float delta, bool critical);
 
     AppConfig* config_ = nullptr;
     ParameterRegistry* registry_ = nullptr;
@@ -63,5 +85,7 @@ private:
     ChangedHandler changed_handler_ = nullptr;
     lv_obj_t* overlay_ = nullptr;
     uint16_t selected_parameter_ = 0U;
+    uint16_t selected_warning_parameter_ = 0U;
+    uint8_t selected_curve_point_ = 0U;
     CardContext card_contexts_[7]{};
 };
