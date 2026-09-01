@@ -16,8 +16,8 @@ void test_runtime_evaluates_configured_warning_from_registry() {
 
     WarningConfig& w = config.warnings[parameterIndex(ParameterId::Clt)];
     w.mode = WarningMode::High;
-    w.warning_high = 100.0f;
-    w.critical_high = 110.0f;
+    w.warning_threshold = 100.0f;
+    w.critical_threshold = 110.0f;
     w.delay_ms = 0U;
 
     registry.set(ParameterId::Rpm, 3000.0f, 10U);
@@ -41,8 +41,8 @@ void test_runtime_keeps_hidden_parameter_warning_active() {
     config.parameter_visible[parameterIndex(ParameterId::OilPressure)] = false;
     WarningConfig& w = config.warnings[parameterIndex(ParameterId::OilPressure)];
     w.mode = WarningMode::Low;
-    w.warning_low = 2.0f;
-    w.critical_low = 1.0f;
+    w.warning_threshold = 2.0f;
+    w.critical_threshold = 1.0f;
     w.delay_ms = 0U;
 
     registry.set(ParameterId::Rpm, 4000.0f, 20U);
@@ -61,8 +61,8 @@ void test_invalid_values_clear_runtime_alarm() {
 
     WarningConfig& w = config.warnings[parameterIndex(ParameterId::Clt)];
     w.mode = WarningMode::High;
-    w.warning_high = 90.0f;
-    w.critical_high = 100.0f;
+    w.warning_threshold = 90.0f;
+    w.critical_threshold = 100.0f;
     w.delay_ms = 0U;
 
     registry.set(ParameterId::Clt, 110.0f, 1U);
