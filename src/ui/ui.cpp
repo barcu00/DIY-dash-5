@@ -2,7 +2,10 @@
 
 #include <cstdio>
 
+#include "ui/icon_assets.h"
+#include "ui/icon_catalog.h"
 #include "ui/settings_screen_model.h"
+#include "ui/tile_engine.h"
 
 Ui* Ui::instance_ = nullptr;
 
@@ -34,7 +37,8 @@ void styleScreen(lv_obj_t* screen) {
     lv_obj_add_flag(screen, LV_OBJ_FLAG_GESTURE_BUBBLE);
 }
 
-lv_obj_t* label(lv_obj_t* parent, const char* text, int x, int y, const lv_font_t* font, lv_color_t color = kText) {
+lv_obj_t* label(lv_obj_t* parent, const char* text, int x, int y,
+                const lv_font_t* font, lv_color_t color = kText) {
     lv_obj_t* obj = lv_label_create(parent);
     lv_label_set_text(obj, text);
     lv_obj_set_pos(obj, x, y);
@@ -53,42 +57,43 @@ GestureDirection gestureFromLvgl(lv_dir_t dir) {
         default: return GestureDirection::None;
     }
 }
+
+lv_color_t tileAccent(ParameterId id) {
+    switch (id) {
+        case ParameterId::Lambda:
+        case ParameterId::LambdaTarget:
+        case ParameterId::LambdaCorrection:
+            return kPurple;
+        case ParameterId::OilPressure:
+        case ParameterId::OilTemperature:
+            return kYellow;
+        case ParameterId::FuelPressure:
+        case ParameterId::EthanolContent:
+        case ParameterId::Tps:
+        case ParameterId::DbwPosition:
+        case ParameterId::DbwTarget:
+            return kGreen;
+        case ParameterId::BatteryVoltage:
+        case ParameterId::ErrorFlagRaw:
+            return kRed;
+        default:
+            return kBlue;
+    }
+}
 }
 
-void Ui::begin() {
+void Ui::begin(AppConfig& config, ParameterRegistry& registry, NvsConfigStore& config_store) {
     instance_ = this;
+    config_ = &config;
+    registry_ = &registry;
+    config_store_ = &config_store;
+
     createDash();
     createTrack();
     createDiag();
     createSettings();
+    refreshAllTiles();
     load(UiPage::Dash);
-}
-
-lv_obj_t* Ui::createValueTile(lv_obj_t* parent, const char* title, int x, int y, int w, int h,
-                              lv_obj_t** value_label, lv_color_t accent) {
-    lv_obj_t* tile = lv_obj_create(parent);
-    lv_obj_set_pos(tile, x, y);
-    lv_obj_set_size(tile, w, h);
-    lv_obj_set_style_bg_color(tile, kPanel, 0);
-    lv_obj_set_style_border_width(tile, 1, 0);
-    lv_obj_set_style_border_color(tile, lv_color_hex(0x27313C), 0);
-    lv_obj_set_style_radius(tile, 8, 0);
-    lv_obj_set_style_pad_all(tile, 8, 0);
-    lv_obj_clear_flag(tile, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_add_flag(tile, LV_OBJ_FLAG_GESTURE_BUBBLE);
-
-    lv_obj_t* stripe = lv_obj_create(tile);
-    lv_obj_set_pos(stripe, 0, 0);
-    lv_obj_set_size(stripe, 4, h - 2);
-    lv_obj_set_style_bg_color(stripe, accent, 0);
-    lv_obj_set_style_border_width(stripe, 0, 0);
-    lv_obj_set_style_radius(stripe, 2, 0);
-    lv_obj_clear_flag(stripe, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_add_flag(stripe, LV_OBJ_FLAG_GESTURE_BUBBLE);
-
-    label(tile, title, 10, 2, &lv_font_montserrat_12, kMuted);
-    *value_label = label(tile, "--", 10, 23, &lv_font_montserrat_24);
-    return tile;
 }
 
 void Ui::createShiftBar(lv_obj_t* parent, lv_obj_t** segments) {
@@ -104,28 +109,69 @@ void Ui::createShiftBar(lv_obj_t* parent, lv_obj_t** segments) {
     }
 }
 
+void Ui::createConfigurableTiles(lv_obj_t* parent,
+                                 std::array<TileView, AppConfig::kTileCount>& views,
+                                 bool track) {
+    for (uint8_t i = 0; i < AppConfig::kTileCount; ++i) {
+        TileView& view = views[i];
+        view.config_index = i;
+        view.track = track;
+
+        view.container = lv_obj_create(parent);
+        lv_obj_set_size(view.container, 200, 60);
+        lv_obj_set_style_bg_color(view.container, kPanel, 0);
+        lv_obj_set_style_border_width(view.container, 1, 0);
+        lv_obj_set_style_border_color(view.container, lv_color_hex(0x27313C), 0);
+        lv_obj_set_style_radius(view.container, 8, 0);
+        lv_obj_set_style_pad_all(view.container, 6, 0);
+        lv_obj_clear_flag(view.container, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_add_flag(view.container, LV_OBJ_FLAG_GESTURE_BUBBLE);
+        lv_obj_add_event_cb(view.container, tileEvent, LV_EVENT_LONG_PRESSED, &view);
+
+        view.title = label(view.container, "--", 8, 1, &lv_font_montserrat_12, kMuted);
+        view.value = label(view.container, "--", 8, 22, &lv_font_montserrat_20, kText);
+
+        view.icon = lv_canvas_create(view.container);
+        lv_canvas_set_buffer(view.icon, view.icon_buffer.data(), 16, 16, LV_IMG_CF_TRUE_COLOR);
+        lv_obj_set_pos(view.icon, 170, 7);
+        lv_obj_add_flag(view.icon, LV_OBJ_FLAG_GESTURE_BUBBLE);
+    }
+}
+
 void Ui::createDash() {
     dash_ = lv_obj_create(nullptr);
     styleScreen(dash_);
     lv_obj_add_event_cb(dash_, gestureEvent, LV_EVENT_GESTURE, nullptr);
     createShiftBar(dash_, dash_shift_);
 
-    label(dash_, "RPM", 332, 42, &lv_font_montserrat_14, kMuted);
-    dash_rpm_ = label(dash_, "0000", 300, 58, &lv_font_montserrat_48);
-    label(dash_, "GEAR", 610, 42, &lv_font_montserrat_14, kMuted);
-    dash_gear_ = label(dash_, "N", 626, 56, &lv_font_montserrat_48, kYellow);
+    label(dash_, "RPM", 330, 48, &lv_font_montserrat_14, kMuted);
+    dash_rpm_ = label(dash_, "0000", 286, 68, &lv_font_montserrat_48);
+    label(dash_, "GEAR", 412, 48, &lv_font_montserrat_14, kMuted);
+    dash_gear_ = label(dash_, "N", 432, 66, &lv_font_montserrat_48, kYellow);
+    dash_source_ = label(dash_, "DATA SOURCE --", 250, 150, &lv_font_montserrat_14, kMuted);
+    label(dash_, "Long-press a tile to edit", 268, 405, &lv_font_montserrat_12, kMuted);
 
-    createValueTile(dash_, "SPEED km/h", 12, 45, 180, 78, &dash_speed_, kBlue);
-    createValueTile(dash_, "BOOST / MAP bar", 12, 130, 180, 78, &dash_map_, kBlue);
-    createValueTile(dash_, "LAMBDA", 12, 215, 180, 78, &dash_lambda_, kPurple);
-    createValueTile(dash_, "CLT C", 12, 300, 180, 78, &dash_clt_, kBlue);
-    createValueTile(dash_, "IAT C", 608, 130, 180, 78, &dash_iat_, kBlue);
-    createValueTile(dash_, "OIL PRESS bar", 608, 215, 180, 78, &dash_oil_p_, kYellow);
-    createValueTile(dash_, "OIL TEMP C", 608, 300, 180, 78, &dash_oil_t_, kYellow);
-    createValueTile(dash_, "FUEL PRESS bar", 210, 300, 180, 78, &dash_fuel_p_, kGreen);
-    createValueTile(dash_, "BATTERY V", 405, 300, 180, 78, &dash_batt_, kRed);
-    createValueTile(dash_, "TPS %", 210, 210, 180, 78, &dash_tps_, kGreen);
-    dash_source_ = label(dash_, "DATA SOURCE --", 420, 225, &lv_font_montserrat_14, kMuted);
+    createConfigurableTiles(dash_, dash_tiles_, false);
+}
+
+void Ui::createTrack() {
+    track_ = lv_obj_create(nullptr);
+    styleScreen(track_);
+    lv_obj_add_event_cb(track_, gestureEvent, LV_EVENT_GESTURE, nullptr);
+    createShiftBar(track_, track_shift_);
+
+    label(track_, "RPM", 330, 44, &lv_font_montserrat_14, kMuted);
+    track_rpm_ = label(track_, "0000", 286, 62, &lv_font_montserrat_48);
+    label(track_, "GEAR", 412, 44, &lv_font_montserrat_14, kMuted);
+    track_gear_ = label(track_, "N", 432, 60, &lv_font_montserrat_48, kYellow);
+
+    label(track_, "LAP TIME", 326, 158, &lv_font_montserrat_14, kMuted);
+    label(track_, "00:48.73", 278, 184, &lv_font_montserrat_36);
+    label(track_, "BEST  01:35.42", 304, 244, &lv_font_montserrat_14, kPurple);
+    label(track_, "DELTA -0.38", 323, 270, &lv_font_montserrat_14, kGreen);
+    label(track_, "Timing remains MOCK in v0.2", 278, 405, &lv_font_montserrat_12, kMuted);
+
+    createConfigurableTiles(track_, track_tiles_, true);
 }
 
 void Ui::createDiag() {
@@ -153,29 +199,6 @@ void Ui::createDiag() {
     diag_can_stats_ = label(diag_can_box_, "1000 kbit/s  RX: 0  BAD: 0", 300, 45, &lv_font_montserrat_16, kMuted);
 }
 
-void Ui::createTrack() {
-    track_ = lv_obj_create(nullptr);
-    styleScreen(track_);
-    lv_obj_add_event_cb(track_, gestureEvent, LV_EVENT_GESTURE, nullptr);
-    createShiftBar(track_, track_shift_);
-
-    label(track_, "RPM", 324, 46, &lv_font_montserrat_14, kMuted);
-    track_rpm_ = label(track_, "0000", 285, 62, &lv_font_montserrat_48);
-    label(track_, "GEAR", 612, 46, &lv_font_montserrat_14, kMuted);
-    track_gear_ = label(track_, "N", 628, 60, &lv_font_montserrat_48, kYellow);
-
-    createValueTile(track_, "SPEED km/h", 18, 70, 180, 80, &track_speed_, kBlue);
-    createValueTile(track_, "BOOST bar", 18, 158, 180, 80, &track_map_, kBlue);
-    createValueTile(track_, "LAMBDA", 18, 246, 180, 80, &track_lambda_, kPurple);
-    createValueTile(track_, "OIL PRESS bar", 602, 158, 180, 80, &track_oil_p_, kYellow);
-    createValueTile(track_, "CLT C", 602, 246, 180, 80, &track_clt_, kBlue);
-
-    label(track_, "LAP TIME (MOCK)", 290, 185, &lv_font_montserrat_14, kMuted);
-    label(track_, "00:48.73", 270, 208, &lv_font_montserrat_40);
-    label(track_, "BEST (MOCK)  01:35.42", 270, 270, &lv_font_montserrat_16, kPurple);
-    label(track_, "DELTA (MOCK)  -0.38", 270, 300, &lv_font_montserrat_16, kGreen);
-}
-
 void Ui::createSettings() {
     settings_ = lv_obj_create(nullptr);
     styleScreen(settings_);
@@ -201,13 +224,98 @@ void Ui::createSettings() {
     }
 }
 
+void Ui::refreshTileLayout(std::array<TileView, AppConfig::kTileCount>& views,
+                           const std::array<TileConfig, AppConfig::kTileCount>& config) {
+    std::array<uint8_t, AppConfig::kTileCount> order{};
+    const uint8_t visible_count = TileEngine::visibleOrder(config, order);
+
+    for (auto& view : views) {
+        lv_obj_add_flag(view.container, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    for (uint8_t slot = 0; slot < visible_count; ++slot) {
+        const uint8_t tile_index = order[slot];
+        TileView& view = views[tile_index];
+        const uint8_t side_slot = static_cast<uint8_t>(slot % 6U);
+        const int x = slot < 6U ? 10 : 590;
+        const int y = 42 + static_cast<int>(side_slot) * 66;
+        lv_obj_set_pos(view.container, x, y);
+        lv_obj_clear_flag(view.container, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+void Ui::renderTileIcon(TileView& view, const TileConfig& config) {
+    if (registry_ == nullptr || !config.icon_enabled) {
+        lv_obj_add_flag(view.icon, LV_OBJ_FLAG_HIDDEN);
+        return;
+    }
+
+    IconId icon = config.icon == 0U
+                      ? registry_->descriptor(config.parameter).default_icon
+                      : static_cast<IconId>(config.icon);
+    const IconAsset& asset = IconAssets::get(icon);
+    if (asset.rows == nullptr || asset.width != 16U || asset.height != 16U) {
+        lv_obj_add_flag(view.icon, LV_OBJ_FLAG_HIDDEN);
+        return;
+    }
+
+    const lv_color_t accent = tileAccent(config.parameter);
+    lv_canvas_fill_bg(view.icon, kPanel, LV_OPA_COVER);
+    for (uint8_t y = 0; y < 16U; ++y) {
+        const uint16_t row = asset.rows[y];
+        for (uint8_t x = 0; x < 16U; ++x) {
+            if ((row & static_cast<uint16_t>(1U << (15U - x))) != 0U) {
+                lv_canvas_set_px_color(view.icon, x, y, accent);
+            }
+        }
+    }
+    lv_obj_clear_flag(view.icon, LV_OBJ_FLAG_HIDDEN);
+}
+
+void Ui::refreshTileValues(std::array<TileView, AppConfig::kTileCount>& views,
+                           const std::array<TileConfig, AppConfig::kTileCount>& config) {
+    if (registry_ == nullptr || config_ == nullptr) return;
+
+    for (uint8_t i = 0; i < AppConfig::kTileCount; ++i) {
+        TileView& view = views[i];
+        const TileConfig& tile = config[i];
+        if (!tile.visible) continue;
+
+        const ParameterDescriptor& descriptor = registry_->descriptor(tile.parameter);
+        const char* title_text = tile.custom_label_enabled && tile.custom_label[0] != '\0'
+                                     ? tile.custom_label.data()
+                                     : descriptor.short_name;
+        lv_label_set_text(view.title, title_text);
+        lv_obj_set_style_text_color(view.title, tileAccent(tile.parameter), 0);
+
+        const ParameterValue& value = registry_->value(tile.parameter);
+        if (!value.valid) {
+            lv_label_set_text(view.value, "--");
+        } else {
+            const float presented = TileEngine::presentValue(tile, value.value, config_->stoich_afr);
+            char value_text[32];
+            std::snprintf(value_text, sizeof(value_text), "%.*f",
+                          static_cast<int>(tile.decimals), static_cast<double>(presented));
+            lv_label_set_text(view.value, value_text);
+        }
+
+        renderTileIcon(view, tile);
+    }
+}
+
+void Ui::refreshAllTiles() {
+    if (config_ == nullptr) return;
+    refreshTileLayout(dash_tiles_, config_->tiles);
+    refreshTileLayout(track_tiles_, config_->track_tiles);
+    refreshTileValues(dash_tiles_, config_->tiles);
+    refreshTileValues(track_tiles_, config_->track_tiles);
+}
+
 void Ui::updateShiftBar(lv_obj_t** segments, uint16_t rpm) {
     const int lit = static_cast<int>((static_cast<uint32_t>(rpm) * 12U) / 8000U);
     for (int i = 0; i < 12; ++i) {
         lv_color_t color = lv_color_hex(0x202830);
-        if (i < lit) {
-            color = i < 6 ? kGreen : (i < 9 ? kYellow : kRed);
-        }
+        if (i < lit) color = i < 6 ? kGreen : (i < 9 ? kYellow : kRed);
         lv_obj_set_style_bg_color(segments[i], color, 0);
     }
 }
@@ -215,34 +323,34 @@ void Ui::updateShiftBar(lv_obj_t** segments, uint16_t rpm) {
 void Ui::update(const VehicleState& s, const RuntimeDiagnostics& d,
                 const TelemetryRuntimeStatus& telemetry) {
     char buf[128];
+
     lv_label_set_text_fmt(dash_rpm_, "%u", s.rpm);
     lv_label_set_text_fmt(dash_gear_, "%d", static_cast<int>(s.gear));
-    lv_label_set_text_fmt(dash_speed_, "%.0f", s.speed_kph);
-    lv_label_set_text_fmt(dash_map_, "%.2f", s.map_bar);
-    lv_label_set_text_fmt(dash_lambda_, "%.2f", s.lambda);
-    lv_label_set_text_fmt(dash_clt_, "%.0f", s.clt_c);
-    lv_label_set_text_fmt(dash_iat_, "%.0f", s.iat_c);
-    lv_label_set_text_fmt(dash_oil_p_, "%.1f", s.oil_pressure_bar);
-    lv_label_set_text_fmt(dash_oil_t_, "%.0f", s.oil_temp_c);
-    lv_label_set_text_fmt(dash_fuel_p_, "%.1f", s.fuel_pressure_bar);
-    lv_label_set_text_fmt(dash_batt_, "%.1f", s.battery_v);
-    lv_label_set_text_fmt(dash_tps_, "%.0f", s.tps_percent);
     updateShiftBar(dash_shift_, s.rpm);
 
     if (telemetry.source == DataSource::Mock) {
         lv_label_set_text(dash_source_, "MOCK TELEMETRY");
         lv_obj_set_style_text_color(dash_source_, kMuted, 0);
     } else {
-        std::snprintf(buf, sizeof(buf), "%s CAN / %s", dataSourceName(telemetry.source), telemetry.can_online ? "ONLINE" : "OFFLINE");
+        std::snprintf(buf, sizeof(buf), "%s CAN / %s", dataSourceName(telemetry.source),
+                      telemetry.can_online ? "ONLINE" : "OFFLINE");
         lv_label_set_text(dash_source_, buf);
         lv_obj_set_style_text_color(dash_source_, telemetry.can_online ? kGreen : kRed, 0);
     }
 
-    std::snprintf(buf, sizeof(buf), "Display: %s\nTouch: %s\nResolution: 800x480", d.display_ok ? "OK" : "FAIL", d.touch_ok ? "OK" : "NO");
+    refreshTileValues(dash_tiles_, config_->tiles);
+    refreshTileValues(track_tiles_, config_->track_tiles);
+
+    std::snprintf(buf, sizeof(buf), "Display: %s\nTouch: %s\nResolution: 800x480",
+                  d.display_ok ? "OK" : "FAIL", d.touch_ok ? "OK" : "NO");
     lv_label_set_text(diag_status_, buf);
-    std::snprintf(buf, sizeof(buf), "PSRAM: %.1f MB\nFree heap: %u KB", static_cast<double>(d.psram_total) / (1024.0 * 1024.0), static_cast<unsigned>(d.free_heap / 1024U));
+    std::snprintf(buf, sizeof(buf), "PSRAM: %.1f MB\nFree heap: %u KB",
+                  static_cast<double>(d.psram_total) / (1024.0 * 1024.0),
+                  static_cast<unsigned>(d.free_heap / 1024U));
     lv_label_set_text(diag_memory_, buf);
-    std::snprintf(buf, sizeof(buf), "Uptime: %u s\nUI updates: %u", static_cast<unsigned>(d.uptime_ms / 1000U), static_cast<unsigned>(d.ui_updates));
+    std::snprintf(buf, sizeof(buf), "Uptime: %u s\nUI updates: %u",
+                  static_cast<unsigned>(d.uptime_ms / 1000U),
+                  static_cast<unsigned>(d.ui_updates));
     lv_label_set_text(diag_runtime_, buf);
     std::snprintf(buf, sizeof(buf), "v0.2 / DATA SOURCE: %s", dataSourceName(telemetry.source));
     lv_label_set_text(diag_source_, buf);
@@ -254,21 +362,84 @@ void Ui::update(const VehicleState& s, const RuntimeDiagnostics& d,
     lv_obj_set_style_text_color(diag_can_state_, can_color, 0);
     lv_obj_set_style_border_color(diag_can_box_, can_color, 0);
     lv_obj_set_style_bg_color(diag_can_box_, online ? lv_color_hex(0x0D2416) : lv_color_hex(0x25120F), 0);
-    std::snprintf(buf, sizeof(buf), "%u kbit/s  RX: %u  BAD: %u", static_cast<unsigned>(telemetry.can_bitrate / 1000U), static_cast<unsigned>(telemetry.received_frames), static_cast<unsigned>(telemetry.invalid_frames));
+
+    std::snprintf(buf, sizeof(buf), "%u kbit/s  RX: %u  BAD: %u",
+                  static_cast<unsigned>(telemetry.can_bitrate / 1000U),
+                  static_cast<unsigned>(telemetry.received_frames),
+                  static_cast<unsigned>(telemetry.invalid_frames));
     lv_label_set_text(diag_can_stats_, buf);
 
     lv_label_set_text_fmt(track_rpm_, "%u", s.rpm);
     lv_label_set_text_fmt(track_gear_, "%d", static_cast<int>(s.gear));
-    lv_label_set_text_fmt(track_speed_, "%.0f", s.speed_kph);
-    lv_label_set_text_fmt(track_map_, "%.2f", s.map_bar);
-    lv_label_set_text_fmt(track_lambda_, "%.2f", s.lambda);
-    lv_label_set_text_fmt(track_oil_p_, "%.1f", s.oil_pressure_bar);
-    lv_label_set_text_fmt(track_clt_, "%.0f", s.clt_c);
     updateShiftBar(track_shift_, s.rpm);
 }
 
+void Ui::tileEvent(lv_event_t* event) {
+    if (instance_ == nullptr || lv_event_get_code(event) != LV_EVENT_LONG_PRESSED) return;
+    auto* view = static_cast<TileView*>(lv_event_get_user_data(event));
+    if (view != nullptr) instance_->openTileEditor(*view);
+}
+
+void Ui::openTileEditor(TileView& view) {
+    closeTileEditor();
+    editing_tile_ = &view;
+
+    tile_editor_overlay_ = lv_obj_create(lv_layer_top());
+    lv_obj_set_size(tile_editor_overlay_, 560, 300);
+    lv_obj_center(tile_editor_overlay_);
+    lv_obj_set_style_bg_color(tile_editor_overlay_, lv_color_hex(0x0C1117), 0);
+    lv_obj_set_style_bg_opa(tile_editor_overlay_, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_color(tile_editor_overlay_, kBlue, 0);
+    lv_obj_set_style_border_width(tile_editor_overlay_, 2, 0);
+    lv_obj_set_style_radius(tile_editor_overlay_, 12, 0);
+    lv_obj_clear_flag(tile_editor_overlay_, LV_OBJ_FLAG_SCROLLABLE);
+
+    const auto& profile = view.track ? config_->track_tiles : config_->tiles;
+    const TileConfig& tile = profile[view.config_index];
+    const ParameterDescriptor& descriptor = registry_->descriptor(tile.parameter);
+
+    char title_text[64];
+    std::snprintf(title_text, sizeof(title_text), "%s TILE %u",
+                  view.track ? "TRACK" : "DASH",
+                  static_cast<unsigned>(view.config_index + 1U));
+    label(tile_editor_overlay_, title_text, 22, 16, &lv_font_montserrat_24);
+    label(tile_editor_overlay_, descriptor.name, 24, 58, &lv_font_montserrat_18, kBlue);
+    label(tile_editor_overlay_, "Editor controls are being enabled in Task 9", 24, 104,
+          &lv_font_montserrat_14, kMuted);
+    label(tile_editor_overlay_, "Parameter / visibility / label / icon / Lambda-AFR / warning", 24, 136,
+          &lv_font_montserrat_14, kText);
+
+    lv_obj_t* close = lv_btn_create(tile_editor_overlay_);
+    lv_obj_set_pos(close, 390, 220);
+    lv_obj_set_size(close, 130, 48);
+    lv_obj_set_style_bg_color(close, lv_color_hex(0x153B57), 0);
+    lv_obj_add_event_cb(close, [](lv_event_t*) {
+        if (Ui::instance_ != nullptr) Ui::instance_->closeTileEditor();
+    }, LV_EVENT_CLICKED, nullptr);
+    lv_obj_t* close_label = lv_label_create(close);
+    lv_label_set_text(close_label, "CLOSE");
+    lv_obj_center(close_label);
+}
+
+void Ui::closeTileEditor() {
+    if (tile_editor_overlay_ != nullptr) {
+        lv_obj_del(tile_editor_overlay_);
+        tile_editor_overlay_ = nullptr;
+    }
+    editing_tile_ = nullptr;
+}
+
+void Ui::saveConfig() {
+    if (config_ != nullptr && config_store_ != nullptr) {
+        config_->validate();
+        config_store_->save(*config_);
+        refreshAllTiles();
+    }
+}
+
 void Ui::gestureEvent(lv_event_t* event) {
-    if (instance_ == nullptr || lv_event_get_code(event) != LV_EVENT_GESTURE) return;
+    if (instance_ == nullptr || lv_event_get_code(event) != LV_EVENT_GESTURE ||
+        instance_->tile_editor_overlay_ != nullptr) return;
     lv_indev_t* indev = lv_indev_get_act();
     if (indev == nullptr) return;
     const GestureDirection direction = gestureFromLvgl(lv_indev_get_gesture_dir(indev));
@@ -277,6 +448,7 @@ void Ui::gestureEvent(lv_event_t* event) {
 }
 
 void Ui::load(UiPage page) {
+    closeTileEditor();
     current_page_ = page;
     switch (page) {
         case UiPage::Dash: lv_scr_load(dash_); break;
