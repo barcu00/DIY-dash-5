@@ -14,8 +14,6 @@ const lv_color_t kGreen = lv_color_hex(0x39D353);
 const lv_color_t kYellow = lv_color_hex(0xFFCF33);
 const lv_color_t kRed = lv_color_hex(0xFF3B30);
 const lv_color_t kPurple = lv_color_hex(0xB26BFF);
-constexpr int kNavY = 420;
-constexpr int kNavH = 60;
 
 const char* dataSourceName(DataSource source) {
     switch (source) {
@@ -31,6 +29,7 @@ void styleScreen(lv_obj_t* screen) {
     lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
     lv_obj_set_style_text_color(screen, kText, 0);
     lv_obj_clear_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(screen, LV_OBJ_FLAG_GESTURE_BUBBLE);
 }
 
 lv_obj_t* label(lv_obj_t* parent, const char* text, int x, int y, const lv_font_t* font, lv_color_t color = kText) {
@@ -39,7 +38,18 @@ lv_obj_t* label(lv_obj_t* parent, const char* text, int x, int y, const lv_font_
     lv_obj_set_pos(obj, x, y);
     lv_obj_set_style_text_font(obj, font, 0);
     lv_obj_set_style_text_color(obj, color, 0);
+    lv_obj_add_flag(obj, LV_OBJ_FLAG_GESTURE_BUBBLE);
     return obj;
+}
+
+GestureDirection gestureFromLvgl(lv_dir_t dir) {
+    switch (dir) {
+        case LV_DIR_LEFT: return GestureDirection::Left;
+        case LV_DIR_RIGHT: return GestureDirection::Right;
+        case LV_DIR_TOP: return GestureDirection::Up;
+        case LV_DIR_BOTTOM: return GestureDirection::Down;
+        default: return GestureDirection::None;
+    }
 }
 }
 
@@ -48,7 +58,7 @@ void Ui::begin() {
     createDash();
     createDiag();
     createTrack();
-    load(Page::Dash);
+    load(UiPage::Dash);
 }
 
 lv_obj_t* Ui::createValueTile(lv_obj_t* parent, const char* title, int x, int y, int w, int h,
@@ -62,6 +72,7 @@ lv_obj_t* Ui::createValueTile(lv_obj_t* parent, const char* title, int x, int y,
     lv_obj_set_style_radius(tile, 8, 0);
     lv_obj_set_style_pad_all(tile, 8, 0);
     lv_obj_clear_flag(tile, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(tile, LV_OBJ_FLAG_GESTURE_BUBBLE);
 
     lv_obj_t* stripe = lv_obj_create(tile);
     lv_obj_set_pos(stripe, 0, 0);
@@ -70,6 +81,7 @@ lv_obj_t* Ui::createValueTile(lv_obj_t* parent, const char* title, int x, int y,
     lv_obj_set_style_border_width(stripe, 0, 0);
     lv_obj_set_style_radius(stripe, 2, 0);
     lv_obj_clear_flag(stripe, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(stripe, LV_OBJ_FLAG_GESTURE_BUBBLE);
 
     label(tile, title, 10, 2, &lv_font_montserrat_12, kMuted);
     *value_label = label(tile, "--", 10, 23, &lv_font_montserrat_24);
@@ -85,29 +97,14 @@ void Ui::createShiftBar(lv_obj_t* parent, lv_obj_t** segments) {
         lv_obj_set_style_radius(segments[i], 4, 0);
         lv_obj_set_style_bg_color(segments[i], lv_color_hex(0x202830), 0);
         lv_obj_clear_flag(segments[i], LV_OBJ_FLAG_SCROLLABLE);
-    }
-}
-
-void Ui::createNavigation(lv_obj_t* parent, Page active) {
-    const char* names[] = {"DASH", "DIAG", "TRACK"};
-    for (int i = 0; i < 3; ++i) {
-        lv_obj_t* btn = lv_btn_create(parent);
-        lv_obj_set_pos(btn, i * 266 + (i == 2 ? 2 : 0), kNavY);
-        lv_obj_set_size(btn, 266, kNavH);
-        lv_obj_set_style_radius(btn, 0, 0);
-        lv_obj_set_style_bg_color(btn, static_cast<int>(active) == i ? lv_color_hex(0x153B57) : lv_color_hex(0x10151B), 0);
-        lv_obj_set_style_border_width(btn, 0, 0);
-        lv_obj_add_event_cb(btn, navEvent, LV_EVENT_CLICKED, reinterpret_cast<void*>(static_cast<intptr_t>(i)));
-        lv_obj_t* txt = lv_label_create(btn);
-        lv_label_set_text(txt, names[i]);
-        lv_obj_set_style_text_font(txt, &lv_font_montserrat_16, 0);
-        lv_obj_center(txt);
+        lv_obj_add_flag(segments[i], LV_OBJ_FLAG_GESTURE_BUBBLE);
     }
 }
 
 void Ui::createDash() {
     dash_ = lv_obj_create(nullptr);
     styleScreen(dash_);
+    lv_obj_add_event_cb(dash_, gestureEvent, LV_EVENT_GESTURE, nullptr);
     createShiftBar(dash_, dash_shift_);
 
     label(dash_, "RPM", 332, 42, &lv_font_montserrat_14, kMuted);
@@ -119,22 +116,19 @@ void Ui::createDash() {
     createValueTile(dash_, "BOOST / MAP bar", 12, 130, 180, 78, &dash_map_, kBlue);
     createValueTile(dash_, "LAMBDA", 12, 215, 180, 78, &dash_lambda_, kPurple);
     createValueTile(dash_, "CLT C", 12, 300, 180, 78, &dash_clt_, kBlue);
-
     createValueTile(dash_, "IAT C", 608, 130, 180, 78, &dash_iat_, kBlue);
     createValueTile(dash_, "OIL PRESS bar", 608, 215, 180, 78, &dash_oil_p_, kYellow);
     createValueTile(dash_, "OIL TEMP C", 608, 300, 180, 78, &dash_oil_t_, kYellow);
-
     createValueTile(dash_, "FUEL PRESS bar", 210, 300, 180, 78, &dash_fuel_p_, kGreen);
     createValueTile(dash_, "BATTERY V", 405, 300, 180, 78, &dash_batt_, kRed);
     createValueTile(dash_, "TPS %", 210, 210, 180, 78, &dash_tps_, kGreen);
     dash_source_ = label(dash_, "DATA SOURCE --", 420, 225, &lv_font_montserrat_14, kMuted);
-
-    createNavigation(dash_, Page::Dash);
 }
 
 void Ui::createDiag() {
     diag_ = lv_obj_create(nullptr);
     styleScreen(diag_);
+    lv_obj_add_event_cb(diag_, gestureEvent, LV_EVENT_GESTURE, nullptr);
     label(diag_, "OPENDASH DIAGNOSTICS", 22, 18, &lv_font_montserrat_28);
     diag_source_ = label(diag_, "v0.2 / DATA SOURCE: --", 24, 56, &lv_font_montserrat_14, kMuted);
 
@@ -149,16 +143,17 @@ void Ui::createDiag() {
     lv_obj_set_style_border_color(diag_can_box_, kRed, 0);
     lv_obj_set_style_border_width(diag_can_box_, 2, 0);
     lv_obj_set_style_radius(diag_can_box_, 8, 0);
+    lv_obj_clear_flag(diag_can_box_, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(diag_can_box_, LV_OBJ_FLAG_GESTURE_BUBBLE);
     label(diag_can_box_, "CAN / ECU DATA", 20, 12, &lv_font_montserrat_16, kMuted);
     diag_can_state_ = label(diag_can_box_, "OFFLINE", 20, 38, &lv_font_montserrat_28, kRed);
     diag_can_stats_ = label(diag_can_box_, "1000 kbit/s  RX: 0  BAD: 0", 300, 45, &lv_font_montserrat_16, kMuted);
-
-    createNavigation(diag_, Page::Diag);
 }
 
 void Ui::createTrack() {
     track_ = lv_obj_create(nullptr);
     styleScreen(track_);
+    lv_obj_add_event_cb(track_, gestureEvent, LV_EVENT_GESTURE, nullptr);
     createShiftBar(track_, track_shift_);
 
     label(track_, "RPM", 324, 46, &lv_font_montserrat_14, kMuted);
@@ -176,8 +171,6 @@ void Ui::createTrack() {
     label(track_, "00:48.73", 270, 208, &lv_font_montserrat_40);
     label(track_, "BEST (MOCK)  01:35.42", 270, 270, &lv_font_montserrat_16, kPurple);
     label(track_, "DELTA (MOCK)  -0.38", 270, 300, &lv_font_montserrat_16, kGreen);
-
-    createNavigation(track_, Page::Track);
 }
 
 void Ui::updateShiftBar(lv_obj_t** segments, uint16_t rpm) {
@@ -194,7 +187,6 @@ void Ui::updateShiftBar(lv_obj_t** segments, uint16_t rpm) {
 void Ui::update(const VehicleState& s, const RuntimeDiagnostics& d,
                 const TelemetryRuntimeStatus& telemetry) {
     char buf[128];
-
     lv_label_set_text_fmt(dash_rpm_, "%u", s.rpm);
     lv_label_set_text_fmt(dash_gear_, "%d", static_cast<int>(s.gear));
     lv_label_set_text_fmt(dash_speed_, "%.0f", s.speed_kph);
@@ -213,23 +205,17 @@ void Ui::update(const VehicleState& s, const RuntimeDiagnostics& d,
         lv_label_set_text(dash_source_, "MOCK TELEMETRY");
         lv_obj_set_style_text_color(dash_source_, kMuted, 0);
     } else {
-        std::snprintf(buf, sizeof(buf), "%s CAN / %s", dataSourceName(telemetry.source),
-                      telemetry.can_online ? "ONLINE" : "OFFLINE");
+        std::snprintf(buf, sizeof(buf), "%s CAN / %s", dataSourceName(telemetry.source), telemetry.can_online ? "ONLINE" : "OFFLINE");
         lv_label_set_text(dash_source_, buf);
         lv_obj_set_style_text_color(dash_source_, telemetry.can_online ? kGreen : kRed, 0);
     }
 
-    std::snprintf(buf, sizeof(buf), "Display: %s\nTouch: %s\nResolution: 800x480",
-                  d.display_ok ? "OK" : "FAIL", d.touch_ok ? "OK" : "NO");
+    std::snprintf(buf, sizeof(buf), "Display: %s\nTouch: %s\nResolution: 800x480", d.display_ok ? "OK" : "FAIL", d.touch_ok ? "OK" : "NO");
     lv_label_set_text(diag_status_, buf);
-    std::snprintf(buf, sizeof(buf), "PSRAM: %.1f MB\nFree heap: %u KB",
-                  static_cast<double>(d.psram_total) / (1024.0 * 1024.0),
-                  static_cast<unsigned>(d.free_heap / 1024U));
+    std::snprintf(buf, sizeof(buf), "PSRAM: %.1f MB\nFree heap: %u KB", static_cast<double>(d.psram_total) / (1024.0 * 1024.0), static_cast<unsigned>(d.free_heap / 1024U));
     lv_label_set_text(diag_memory_, buf);
-    std::snprintf(buf, sizeof(buf), "Uptime: %u s\nUI updates: %u",
-                  static_cast<unsigned>(d.uptime_ms / 1000U), static_cast<unsigned>(d.ui_updates));
+    std::snprintf(buf, sizeof(buf), "Uptime: %u s\nUI updates: %u", static_cast<unsigned>(d.uptime_ms / 1000U), static_cast<unsigned>(d.ui_updates));
     lv_label_set_text(diag_runtime_, buf);
-
     std::snprintf(buf, sizeof(buf), "v0.2 / DATA SOURCE: %s", dataSourceName(telemetry.source));
     lv_label_set_text(diag_source_, buf);
 
@@ -240,11 +226,7 @@ void Ui::update(const VehicleState& s, const RuntimeDiagnostics& d,
     lv_obj_set_style_text_color(diag_can_state_, can_color, 0);
     lv_obj_set_style_border_color(diag_can_box_, can_color, 0);
     lv_obj_set_style_bg_color(diag_can_box_, online ? lv_color_hex(0x0D2416) : lv_color_hex(0x25120F), 0);
-
-    std::snprintf(buf, sizeof(buf), "%u kbit/s  RX: %u  BAD: %u",
-                  static_cast<unsigned>(telemetry.can_bitrate / 1000U),
-                  static_cast<unsigned>(telemetry.received_frames),
-                  static_cast<unsigned>(telemetry.invalid_frames));
+    std::snprintf(buf, sizeof(buf), "%u kbit/s  RX: %u  BAD: %u", static_cast<unsigned>(telemetry.can_bitrate / 1000U), static_cast<unsigned>(telemetry.received_frames), static_cast<unsigned>(telemetry.invalid_frames));
     lv_label_set_text(diag_can_stats_, buf);
 
     lv_label_set_text_fmt(track_rpm_, "%u", s.rpm);
@@ -257,17 +239,20 @@ void Ui::update(const VehicleState& s, const RuntimeDiagnostics& d,
     updateShiftBar(track_shift_, s.rpm);
 }
 
-void Ui::navEvent(lv_event_t* event) {
-    if (instance_ == nullptr) return;
-    const auto page = static_cast<Page>(reinterpret_cast<intptr_t>(lv_event_get_user_data(event)));
-    instance_->load(page);
+void Ui::gestureEvent(lv_event_t* event) {
+    if (instance_ == nullptr || lv_event_get_code(event) != LV_EVENT_GESTURE) return;
+    lv_indev_t* indev = lv_indev_get_act();
+    if (indev == nullptr) return;
+    const GestureDirection direction = gestureFromLvgl(lv_indev_get_gesture_dir(indev));
+    const UiPage next = GestureNavigation::navigate(instance_->current_page_, direction);
+    if (next != instance_->current_page_) instance_->load(next);
 }
 
-void Ui::load(Page page) {
+void Ui::load(UiPage page) {
     current_page_ = page;
     switch (page) {
-        case Page::Dash: lv_scr_load(dash_); break;
-        case Page::Diag: lv_scr_load(diag_); break;
-        case Page::Track: lv_scr_load(track_); break;
+        case UiPage::Dash: lv_scr_load(dash_); break;
+        case UiPage::Diag: lv_scr_load(diag_); break;
+        case UiPage::Track: lv_scr_load(track_); break;
     }
 }
