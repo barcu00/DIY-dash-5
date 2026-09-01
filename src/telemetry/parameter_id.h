@@ -42,6 +42,7 @@ enum class ParameterId : uint16_t {
     TcTorqueReduction = 36,
     PitLimiterTorqueReduction = 37,
     EcuError = 38,
+    ErrorFlagRaw = EcuError,
     LaunchControlActive = 39,
     AntiLagActive = 40,
     GearCutActive = 41,
