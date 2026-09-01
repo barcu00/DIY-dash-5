@@ -69,6 +69,7 @@ void App::applyConfig() {
     data_source_.setEcumasterBaseId(config_.ecumaster_base_id);
     data_source_.setTimeoutMs(config_.can_timeout_ms);
     data_source_.update(0U);
+    alarm_manager_.resetAll();
 
     for (uint16_t i = 0; i < AppConfig::kParameterCount; ++i) {
         registry_.setPickerVisible(static_cast<ParameterId>(i), config_.parameter_visible[i]);
@@ -88,6 +89,7 @@ void App::loop() {
         data_source_.handleCanFrame(frame, now);
     }
     data_source_.update(now);
+    alarm_runtime_.update(registry_, config_, alarm_manager_, now);
 
     if (now - last_ui_update_ms_ >= 50U) {
         if (board_.lock()) {
