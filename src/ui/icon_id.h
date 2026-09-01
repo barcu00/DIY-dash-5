@@ -37,5 +37,14 @@ enum class IconId : uint16_t {
     Output,
     Starter,
     AirConditioning,
+    Egt,
+    Ethanol,
+    Knock,
+    FuelPump,
+    SensorError,
+    GearCut,
+    Idle,
+    Dsg,
     LapTime,
+    Count
 };
