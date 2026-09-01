@@ -3,7 +3,7 @@ Import("env")
 from os.path import join
 
 app_bin = join("$BUILD_DIR", "${PROGNAME}.bin")
-merged_bin = join("$BUILD_DIR", "OpenDash-v0.1-full.bin")
+merged_bin = join("$BUILD_DIR", "OpenDash-v0.2-full.bin")
 
 
 def merge_firmware(source, target, env):
