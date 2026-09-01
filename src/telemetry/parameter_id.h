@@ -1,0 +1,63 @@
+#pragma once
+
+#include <cstdint>
+
+enum class ParameterId : uint16_t {
+    Rpm = 0,
+    Tps = 1,
+    Map = 2,
+    BoostTarget = 3,
+    InjectorPulseWidth = 4,
+    IgnitionAngle = 5,
+    Dwell = 6,
+    Iat = 7,
+    Clt = 8,
+    OilTemperature = 9,
+    EcuTemperature = 10,
+    Egt1 = 11,
+    Egt2 = 12,
+    BarometricPressure = 13,
+    OilPressure = 14,
+    FuelPressure = 15,
+    Lambda = 16,
+    LambdaTarget = 17,
+    LambdaCorrection = 18,
+    EthanolContent = 19,
+    FuelUsed = 20,
+    VehicleSpeed = 21,
+    Gear = 22,
+    DbwPosition = 23,
+    DbwTarget = 24,
+    BatteryVoltage = 25,
+    Ain1 = 26,
+    Ain2 = 27,
+    Ain3 = 28,
+    Ain4 = 29,
+    Ain5 = 30,
+    Ain6 = 31,
+    Pwm1 = 32,
+    Pwm2 = 33,
+    TcDifferentialRpmRaw = 34,
+    TcDifferentialRpmFiltered = 35,
+    TcTorqueReduction = 36,
+    PitLimiterTorqueReduction = 37,
+    EcuError = 38,
+    LaunchControlActive = 39,
+    AntiLagActive = 40,
+    GearCutActive = 41,
+    TractionControlActive = 42,
+    PitLimiterActive = 43,
+    BrakeActive = 44,
+    FuelPumpActive = 45,
+    FanActive = 46,
+    NitrousActive = 47,
+    CanSwitch1 = 48,
+    CanSwitch2 = 49,
+    CanSwitch3 = 50,
+    CanSwitch4 = 51,
+    Count = 52
+};
+
+constexpr uint16_t parameterIndex(ParameterId id) {
+    return static_cast<uint16_t>(id);
+}
