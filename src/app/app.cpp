@@ -4,12 +4,12 @@
 
 bool App::begin() {
     if (!board_.begin()) {
-        Serial.println("[BartzDash] FATAL: display subsystem unavailable");
+        Serial.println("[OpenDash] FATAL: display subsystem unavailable");
         return false;
     }
 
     if (!board_.lock()) {
-        Serial.println("[BartzDash] FATAL: cannot lock LVGL");
+        Serial.println("[OpenDash] FATAL: cannot lock LVGL");
         return false;
     }
 
@@ -20,7 +20,7 @@ bool App::begin() {
 
     ready_ = true;
     last_ui_update_ms_ = millis();
-    Serial.println("[BartzDash] UI ready - DASH / DIAG / TRACK");
+    Serial.println("[OpenDash] UI ready - DASH / DIAG / TRACK");
     return true;
 }
 
