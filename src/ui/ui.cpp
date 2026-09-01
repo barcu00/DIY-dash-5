@@ -196,7 +196,7 @@ void Ui::createSettings() {
         lv_obj_set_style_radius(card, 8, 0);
         lv_obj_clear_flag(card, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_add_flag(card, LV_OBJ_FLAG_GESTURE_BUBBLE);
-        label(card, SettingsScreenModel::sectionLabel(i), 16, 19, &lv_font_montserrat_18,
+        label(card, SettingsScreenModel::sectionLabel(i), 16, 18, &lv_font_montserrat_20,
               i == 0 ? kBlue : kText);
     }
 }
