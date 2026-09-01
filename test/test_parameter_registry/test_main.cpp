@@ -1,6 +1,7 @@
 #include <unity.h>
 
 #include "telemetry/parameter_registry.h"
+#include "ui/icon_id.h"
 
 void test_registry_descriptor_and_value_lifecycle() {
     ParameterRegistry registry;
@@ -28,9 +29,23 @@ void test_registry_picker_visibility_is_independent() {
     TEST_ASSERT_TRUE(registry.pickerVisible(ParameterId::Rpm));
 }
 
+void test_descriptors_expose_catalog_default_icons() {
+    ParameterRegistry registry;
+
+    TEST_ASSERT_EQUAL(static_cast<int>(IconId::Rpm),
+                      static_cast<int>(registry.descriptor(ParameterId::Rpm).default_icon));
+    TEST_ASSERT_EQUAL(static_cast<int>(IconId::Boost),
+                      static_cast<int>(registry.descriptor(ParameterId::Map).default_icon));
+    TEST_ASSERT_EQUAL(static_cast<int>(IconId::OilPressure),
+                      static_cast<int>(registry.descriptor(ParameterId::OilPressure).default_icon));
+    TEST_ASSERT_EQUAL(static_cast<int>(IconId::Warning),
+                      static_cast<int>(registry.descriptor(ParameterId::EcuError).default_icon));
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_registry_descriptor_and_value_lifecycle);
     RUN_TEST(test_registry_picker_visibility_is_independent);
+    RUN_TEST(test_descriptors_expose_catalog_default_icons);
     return UNITY_END();
 }
