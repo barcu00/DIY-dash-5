@@ -185,8 +185,8 @@ void Ui::createConfigurableTiles(lv_obj_t* parent,
         lv_obj_add_event_cb(view.container, tileEvent, LV_EVENT_LONG_PRESSED, &view);
 
         view.title = label(view.container, "---", 8, 4, &lv_font_montserrat_12, kMuted);
-        view.value = label(view.container, "---", 8, 22, &lv_font_montserrat_22, kText);
-        view.unit = label(view.container, "", 112, 35, &lv_font_montserrat_10, kMuted);
+        view.value = label(view.container, "---", 8, 22, &lv_font_montserrat_20, kText);
+        view.unit = label(view.container, "", 112, 34, &lv_font_montserrat_12, kMuted);
         lv_obj_set_width(view.unit, 56);
         lv_obj_set_style_text_align(view.unit, LV_TEXT_ALIGN_RIGHT, 0);
 
@@ -299,7 +299,7 @@ void Ui::createSettings() {
     lv_obj_set_style_pad_all(body, 0, 0);
     lv_obj_set_scroll_dir(body, LV_DIR_VER);
     lv_obj_set_scrollbar_mode(body, LV_SCROLLBAR_MODE_AUTO);
-    lv_obj_set_style_scrollbar_width(body, 4, LV_PART_SCROLLBAR);
+    lv_obj_set_style_width(body, 4, LV_PART_SCROLLBAR);
     lv_obj_set_style_bg_color(body, kBlue, LV_PART_SCROLLBAR);
     lv_obj_add_flag(body, LV_OBJ_FLAG_GESTURE_BUBBLE);
 
