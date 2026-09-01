@@ -2,6 +2,8 @@
 
 #include <cstddef>
 
+#include "ui/icon_catalog.h"
+
 namespace {
 constexpr IconId kNoIcon = static_cast<IconId>(0);
 
@@ -108,14 +110,18 @@ constexpr std::size_t idx(ParameterId id) {
 
 ParameterRegistry::ParameterRegistry() {
     picker_visible_.fill(true);
+    for (std::size_t i = 0; i < count(); ++i) {
+        descriptors_[i] = kDescriptors[i];
+        descriptors_[i].default_icon = IconCatalog::defaultIcon(descriptors_[i].id);
+    }
 }
 
 const ParameterDescriptor& ParameterRegistry::descriptor(ParameterId id) const {
     const auto index = idx(id);
     if (index >= count()) {
-        return kDescriptors[0];
+        return descriptors_[0];
     }
-    return kDescriptors[index];
+    return descriptors_[index];
 }
 
 const ParameterValue& ParameterRegistry::value(ParameterId id) const {
