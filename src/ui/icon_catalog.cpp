@@ -9,33 +9,29 @@ IconId IconCatalog::defaultIcon(ParameterId id) {
         case ParameterId::BoostMapSet: return IconId::Boost;
         case ParameterId::InjectorPulseWidth: return IconId::Injector;
         case ParameterId::IgnitionAngle:
-        case ParameterId::Dwell:
-        case ParameterId::Knocking: return IconId::Ignition;
+        case ParameterId::Dwell: return IconId::Ignition;
+        case ParameterId::Knocking: return IconId::Knock;
         case ParameterId::Iat:
         case ParameterId::Clt:
-        case ParameterId::EcuTemperature:
+        case ParameterId::EcuTemperature: return IconId::Temperature;
         case ParameterId::Egt1:
-        case ParameterId::Egt2: return IconId::Temperature;
+        case ParameterId::Egt2: return IconId::Egt;
         case ParameterId::OilTemperature: return IconId::OilTemperature;
         case ParameterId::BarometricPressure: return IconId::Pressure;
         case ParameterId::OilPressure: return IconId::OilPressure;
-        case ParameterId::FuelPressure:
-        case ParameterId::FuelPressureRelativeError: return IconId::FuelPressure;
+        case ParameterId::FuelPressure: return IconId::FuelPressure;
+        case ParameterId::FuelPressureRelativeError: return IconId::SensorError;
         case ParameterId::Lambda:
         case ParameterId::LambdaTarget:
-        case ParameterId::LambdaCorrection:
-        case ParameterId::WidebandError: return IconId::Lambda;
-        case ParameterId::EthanolContent:
-        case ParameterId::FuelUsed:
-        case ParameterId::FlexFuelSensorError:
-        case ParameterId::FuelPumpActive: return IconId::Fuel;
+        case ParameterId::LambdaCorrection: return IconId::Lambda;
+        case ParameterId::EthanolContent: return IconId::Ethanol;
+        case ParameterId::FuelUsed: return IconId::Fuel;
         case ParameterId::VehicleSpeed: return IconId::Speed;
-        case ParameterId::Gear:
-        case ParameterId::GearCutActive:
-        case ParameterId::DsgMode: return IconId::Gear;
+        case ParameterId::Gear: return IconId::Gear;
+        case ParameterId::GearCutActive: return IconId::GearCut;
+        case ParameterId::DsgMode: return IconId::Dsg;
         case ParameterId::DbwPosition:
-        case ParameterId::DbwTarget:
-        case ParameterId::DbwError: return IconId::Dbw;
+        case ParameterId::DbwTarget: return IconId::Dbw;
         case ParameterId::BatteryVoltage: return IconId::Battery;
         case ParameterId::Ain1:
         case ParameterId::Ain2:
@@ -51,18 +47,13 @@ IconId IconCatalog::defaultIcon(ParameterId id) {
         case ParameterId::TractionControlActive: return IconId::Traction;
         case ParameterId::PitLimiterTorqueReduction:
         case ParameterId::PitLimiterActive: return IconId::Limiter;
-        case ParameterId::EcuError:
-        case ParameterId::CltSensorError:
-        case ParameterId::IatSensorError:
-        case ParameterId::MapSensorError:
-        case ParameterId::Egt1SensorError:
-        case ParameterId::Egt2SensorError:
-        case ParameterId::EgtAlarm: return IconId::Warning;
+        case ParameterId::EcuError: return IconId::Warning;
         case ParameterId::LaunchControlActive:
         case ParameterId::LaunchMapSet: return IconId::Launch;
         case ParameterId::AntiLagActive:
         case ParameterId::AlsMapSet: return IconId::AntiLag;
         case ParameterId::BrakeActive: return IconId::Brake;
+        case ParameterId::FuelPumpActive: return IconId::FuelPump;
         case ParameterId::FanActive:
         case ParameterId::AcFanActive: return IconId::Fan;
         case ParameterId::NitrousActive: return IconId::Nitrous;
@@ -74,7 +65,16 @@ IconId IconCatalog::defaultIcon(ParameterId id) {
         case ParameterId::CanSwitch6:
         case ParameterId::CanSwitch7:
         case ParameterId::CanSwitch8: return IconId::Can;
-        case ParameterId::IdleActive:
+        case ParameterId::CltSensorError:
+        case ParameterId::IatSensorError:
+        case ParameterId::MapSensorError:
+        case ParameterId::WidebandError:
+        case ParameterId::Egt1SensorError:
+        case ParameterId::Egt2SensorError:
+        case ParameterId::FlexFuelSensorError:
+        case ParameterId::DbwError: return IconId::SensorError;
+        case ParameterId::EgtAlarm: return IconId::Warning;
+        case ParameterId::IdleActive: return IconId::Idle;
         case ParameterId::TableSet2Active:
         case ParameterId::Switch1:
         case ParameterId::Switch2:
@@ -133,7 +133,16 @@ const char* IconCatalog::name(IconId id) {
         case IconId::Output: return "OUTPUT";
         case IconId::Starter: return "STARTER";
         case IconId::AirConditioning: return "A/C";
+        case IconId::Egt: return "EGT";
+        case IconId::Ethanol: return "ETHANOL";
+        case IconId::Knock: return "KNOCK";
+        case IconId::FuelPump: return "FUEL PUMP";
+        case IconId::SensorError: return "SENSOR ERROR";
+        case IconId::GearCut: return "GEAR CUT";
+        case IconId::Idle: return "IDLE";
+        case IconId::Dsg: return "DSG";
         case IconId::LapTime: return "LAP / TIME";
+        case IconId::Count: return "";
     }
     return "";
 }
