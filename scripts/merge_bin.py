@@ -3,7 +3,7 @@ Import("env")
 from os.path import join
 
 app_bin = join("$BUILD_DIR", "${PROGNAME}.bin")
-merged_bin = join("$BUILD_DIR", "BartzDash-v0.1-full.bin")
+merged_bin = join("$BUILD_DIR", "OpenDash-v0.1-full.bin")
 
 
 def merge_firmware(source, target, env):
@@ -25,7 +25,7 @@ def merge_firmware(source, target, env):
     )
     result = env.Execute(command)
     if result != 0:
-        raise RuntimeError("Failed to create merged BartzDash flash image")
+        raise RuntimeError("Failed to create merged OpenDash flash image")
 
 
 env.AddPostAction(app_bin, merge_firmware)
