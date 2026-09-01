@@ -108,6 +108,31 @@ void test_tile_config_supports_hide_label_icon_and_decimals() {
     TEST_ASSERT_EQUAL_UINT16(42U, tile.icon);
     TEST_ASSERT_EQUAL_UINT8(2U, tile.decimals);
 }
+
+void test_in_place_reset_restores_factory_configuration() {
+    AppConfig cfg = AppConfig::defaults();
+    cfg.data_source = DataSource::Mock;
+    cfg.can_bitrate = 125000U;
+    cfg.stoich_afr = 9.0f;
+    cfg.tiles[0].parameter = ParameterId::BatteryVoltage;
+    cfg.track_tiles[5].visible = true;
+    cfg.parameter_visible[parameterIndex(ParameterId::Lambda)] = false;
+    cfg.warnings[parameterIndex(ParameterId::OilPressure)].mode = WarningMode::RpmCurve;
+    cfg.warnings[parameterIndex(ParameterId::OilPressure)].rpm_curve_count = 3U;
+
+    AppConfig::resetToDefaults(cfg);
+
+    TEST_ASSERT_EQUAL_UINT32(AppConfig::kSchemaVersion, cfg.schema_version);
+    TEST_ASSERT_EQUAL(static_cast<int>(DataSource::Ecumaster), static_cast<int>(cfg.data_source));
+    TEST_ASSERT_EQUAL_UINT32(1000000U, cfg.can_bitrate);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 14.7f, cfg.stoich_afr);
+    TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::VehicleSpeed), static_cast<int>(cfg.tiles[0].parameter));
+    TEST_ASSERT_FALSE(cfg.track_tiles[5].visible);
+    TEST_ASSERT_TRUE(cfg.parameter_visible[parameterIndex(ParameterId::Lambda)]);
+    TEST_ASSERT_EQUAL(static_cast<int>(WarningMode::Off),
+                      static_cast<int>(cfg.warnings[parameterIndex(ParameterId::OilPressure)].mode));
+    TEST_ASSERT_EQUAL_UINT8(0U, cfg.warnings[parameterIndex(ParameterId::OilPressure)].rpm_curve_count);
+}
 }
 
 int main(int, char**) {
@@ -122,5 +147,6 @@ int main(int, char**) {
     RUN_TEST(test_validation_repairs_invalid_can_and_afr_values);
     RUN_TEST(test_schema_mismatch_requires_factory_defaults);
     RUN_TEST(test_tile_config_supports_hide_label_icon_and_decimals);
+    RUN_TEST(test_in_place_reset_restores_factory_configuration);
     return UNITY_END();
 }
