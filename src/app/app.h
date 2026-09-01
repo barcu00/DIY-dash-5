@@ -14,6 +14,7 @@ public:
 
 private:
     VehicleState legacyVehicleState() const;
+    TelemetryRuntimeStatus telemetryRuntimeStatus() const;
 
     BoardDisplay board_;
     ParameterRegistry registry_;
