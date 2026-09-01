@@ -126,7 +126,7 @@ void Ui::createDash() {
 void Ui::createDiag() {
     diag_ = lv_obj_create(nullptr);
     styleScreen(diag_);
-    label(diag_, "BARTZDASH DIAGNOSTICS", 22, 18, &lv_font_montserrat_28);
+    label(diag_, "OPENDASH DIAGNOSTICS", 22, 18, &lv_font_montserrat_28);
     label(diag_, "v0.1 / DATA SOURCE: MOCK / CAN: DISABLED", 24, 56, &lv_font_montserrat_14, kMuted);
 
     diag_status_ = label(diag_, "Display: --\nTouch: --\nResolution: 800x480", 30, 110, &lv_font_montserrat_20);
