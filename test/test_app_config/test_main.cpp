@@ -27,6 +27,29 @@ void test_default_tiles_are_visible_and_have_expected_core_mappings() {
     TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::Clt), static_cast<int>(cfg.tiles[3].parameter));
 }
 
+void test_track_layout_has_independent_defaults() {
+    const AppConfig cfg = AppConfig::defaults();
+    TEST_ASSERT_TRUE(cfg.track_tiles[0].visible);
+    TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::VehicleSpeed), static_cast<int>(cfg.track_tiles[0].parameter));
+    TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::Map), static_cast<int>(cfg.track_tiles[1].parameter));
+    TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::Lambda), static_cast<int>(cfg.track_tiles[2].parameter));
+    TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::OilPressure), static_cast<int>(cfg.track_tiles[3].parameter));
+    TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::Clt), static_cast<int>(cfg.track_tiles[4].parameter));
+    TEST_ASSERT_FALSE(cfg.track_tiles[5].visible);
+}
+
+void test_dash_and_track_layouts_are_configurable_independently() {
+    AppConfig cfg = AppConfig::defaults();
+    cfg.tiles[0].parameter = ParameterId::BatteryVoltage;
+    cfg.track_tiles[0].parameter = ParameterId::EthanolContent;
+    cfg.track_tiles[0].visible = false;
+
+    TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::BatteryVoltage), static_cast<int>(cfg.tiles[0].parameter));
+    TEST_ASSERT_TRUE(cfg.tiles[0].visible);
+    TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::EthanolContent), static_cast<int>(cfg.track_tiles[0].parameter));
+    TEST_ASSERT_FALSE(cfg.track_tiles[0].visible);
+}
+
 void test_tile_and_parameter_visibility_are_configurable_independently() {
     AppConfig cfg = AppConfig::defaults();
     cfg.tiles[2].visible = false;
@@ -92,6 +115,8 @@ int main(int, char**) {
     RUN_TEST(test_default_can_configuration_targets_ecumaster);
     RUN_TEST(test_default_lambda_format_and_stoich);
     RUN_TEST(test_default_tiles_are_visible_and_have_expected_core_mappings);
+    RUN_TEST(test_track_layout_has_independent_defaults);
+    RUN_TEST(test_dash_and_track_layouts_are_configurable_independently);
     RUN_TEST(test_tile_and_parameter_visibility_are_configurable_independently);
     RUN_TEST(test_afr_mode_uses_configurable_stoich);
     RUN_TEST(test_validation_repairs_invalid_can_and_afr_values);
