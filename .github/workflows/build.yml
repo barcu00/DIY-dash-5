@@ -1,4 +1,4 @@
-name: BartzDash CI
+name: OpenDash CI
 
 on:
   push:
@@ -45,7 +45,7 @@ jobs:
       - name: Collect firmware binaries
         run: |
           mkdir -p artifacts
-          for f in firmware.bin bootloader.bin partitions.bin BartzDash-v0.1-full.bin; do
+          for f in firmware.bin bootloader.bin partitions.bin OpenDash-v0.1-full.bin; do
             if [ -f ".pio/build/waveshare_5/$f" ]; then
               cp ".pio/build/waveshare_5/$f" artifacts/
             fi
@@ -53,12 +53,12 @@ jobs:
           test -f artifacts/firmware.bin
           test -f artifacts/bootloader.bin
           test -f artifacts/partitions.bin
-          test -f artifacts/BartzDash-v0.1-full.bin
+          test -f artifacts/OpenDash-v0.1-full.bin
           ls -lah artifacts
 
       - name: Upload firmware artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: BartzDash-v0.1-waveshare-5
+          name: OpenDash-v0.1-waveshare-5
           path: artifacts/*
           if-no-files-found: error
