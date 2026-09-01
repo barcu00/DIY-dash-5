@@ -15,12 +15,16 @@ bool App::begin() {
         return false;
     }
 
+    data_source_.setSource(DataSource::Ecumaster);
+    data_source_.setEcumasterBaseId(0x600U);
+    data_source_.setTimeoutMs(500U);
     data_source_.update(0U);
 
     if (can_.begin(1000000U)) {
         Serial.println("[OpenDash] CAN receiver ready: 1000 kbit/s, TX GPIO15, RX GPIO16");
+        Serial.println("[OpenDash] Data source: ECUMaster, base ID 0x600, timeout 500 ms");
     } else {
-        Serial.println("[OpenDash] CAN receiver unavailable; MOCK mode remains usable");
+        Serial.println("[OpenDash] CAN receiver unavailable; ECUMaster data remains offline");
     }
 
     if (!board_.lock()) {
@@ -29,7 +33,7 @@ bool App::begin() {
     }
 
     ui_.begin();
-    ui_.update(legacyVehicleState(), board_.diagnostics());
+    ui_.update(legacyVehicleState(), board_.diagnostics(), telemetryRuntimeStatus());
     board_.unlock();
 
     ready_ = true;
@@ -55,7 +59,7 @@ void App::loop() {
     if (now - last_ui_update_ms_ >= 50U) {
         if (board_.lock()) {
             board_.incrementUiUpdates();
-            ui_.update(legacyVehicleState(), board_.diagnostics());
+            ui_.update(legacyVehicleState(), board_.diagnostics(), telemetryRuntimeStatus());
             board_.unlock();
         }
         last_ui_update_ms_ = now;
@@ -80,4 +84,15 @@ VehicleState App::legacyVehicleState() const {
     state.battery_v = registryValueOr(registry_, ParameterId::BatteryVoltage);
     state.tps_percent = registryValueOr(registry_, ParameterId::Tps);
     return state;
+}
+
+TelemetryRuntimeStatus App::telemetryRuntimeStatus() const {
+    TelemetryRuntimeStatus status{};
+    status.source = data_source_.source();
+    status.can_driver_running = can_.running();
+    status.can_online = data_source_.canOnline();
+    status.can_bitrate = can_.bitrate();
+    status.received_frames = data_source_.receivedFrameCount();
+    status.invalid_frames = data_source_.invalidFrameCount();
+    return status;
 }
