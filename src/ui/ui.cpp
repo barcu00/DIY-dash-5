@@ -2,6 +2,8 @@
 
 #include <cstdio>
 
+#include "ui/settings_screen_model.h"
+
 Ui* Ui::instance_ = nullptr;
 
 namespace {
@@ -56,8 +58,9 @@ GestureDirection gestureFromLvgl(lv_dir_t dir) {
 void Ui::begin() {
     instance_ = this;
     createDash();
-    createDiag();
     createTrack();
+    createDiag();
+    createSettings();
     load(UiPage::Dash);
 }
 
@@ -173,6 +176,31 @@ void Ui::createTrack() {
     label(track_, "DELTA (MOCK)  -0.38", 270, 300, &lv_font_montserrat_16, kGreen);
 }
 
+void Ui::createSettings() {
+    settings_ = lv_obj_create(nullptr);
+    styleScreen(settings_);
+    lv_obj_add_event_cb(settings_, gestureEvent, LV_EVENT_GESTURE, nullptr);
+
+    label(settings_, "OPENDASH SETTINGS", 24, 18, &lv_font_montserrat_28);
+    label(settings_, "Touch a section to configure", 26, 56, &lv_font_montserrat_14, kMuted);
+
+    for (uint8_t i = 0; i < SettingsScreenModel::sectionCount(); ++i) {
+        const int col = i % 2;
+        const int row = i / 2;
+        lv_obj_t* card = lv_obj_create(settings_);
+        lv_obj_set_pos(card, 24 + col * 382, 92 + row * 86);
+        lv_obj_set_size(card, 360, 70);
+        lv_obj_set_style_bg_color(card, kPanel, 0);
+        lv_obj_set_style_border_color(card, lv_color_hex(0x27313C), 0);
+        lv_obj_set_style_border_width(card, 1, 0);
+        lv_obj_set_style_radius(card, 8, 0);
+        lv_obj_clear_flag(card, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_add_flag(card, LV_OBJ_FLAG_GESTURE_BUBBLE);
+        label(card, SettingsScreenModel::sectionLabel(i), 16, 19, &lv_font_montserrat_18,
+              i == 0 ? kBlue : kText);
+    }
+}
+
 void Ui::updateShiftBar(lv_obj_t** segments, uint16_t rpm) {
     const int lit = static_cast<int>((static_cast<uint32_t>(rpm) * 12U) / 8000U);
     for (int i = 0; i < 12; ++i) {
@@ -252,7 +280,8 @@ void Ui::load(UiPage page) {
     current_page_ = page;
     switch (page) {
         case UiPage::Dash: lv_scr_load(dash_); break;
-        case UiPage::Diag: lv_scr_load(diag_); break;
         case UiPage::Track: lv_scr_load(track_); break;
+        case UiPage::Diag: lv_scr_load(diag_); break;
+        case UiPage::Settings: lv_scr_load(settings_); break;
     }
 }
