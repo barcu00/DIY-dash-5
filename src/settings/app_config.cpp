@@ -32,8 +32,7 @@ void validateTiles(std::array<TileConfig, AppConfig::kTileCount>& tiles) {
 }
 }
 
-AppConfig AppConfig::defaults() {
-    AppConfig cfg{};
+void AppConfig::resetToDefaults(AppConfig& cfg) {
     cfg.schema_version = kSchemaVersion;
     cfg.data_source = DataSource::Ecumaster;
     cfg.can_bitrate = 1000000U;
@@ -42,7 +41,13 @@ AppConfig AppConfig::defaults() {
     cfg.lambda_format = ValueFormatMode::Native;
     cfg.stoich_afr = 14.7f;
 
+    // Reset arrays in place. AppConfig is intentionally large because it holds
+    // warning curves for every parameter; avoiding a whole-object temporary keeps
+    // ESP32 runtime stack usage bounded.
+    cfg.tiles.fill(TileConfig{});
+    cfg.track_tiles.fill(TileConfig{});
     cfg.parameter_visible.fill(true);
+    cfg.warnings.fill(WarningConfig{});
 
     cfg.tiles[0] = tile(ParameterId::VehicleSpeed, 0U);
     cfg.tiles[1] = tile(ParameterId::Map, 2U);
@@ -69,11 +74,11 @@ AppConfig AppConfig::defaults() {
     cfg.track_tiles[9] = tile(ParameterId::Tps, 0U, false);
     cfg.track_tiles[10] = tile(ParameterId::BoostTarget, 2U, false);
     cfg.track_tiles[11] = tile(ParameterId::EthanolContent, 0U, false);
+}
 
-    for (auto& warning : cfg.warnings) {
-        warning = WarningConfig{};
-    }
-
+AppConfig AppConfig::defaults() {
+    AppConfig cfg{};
+    resetToDefaults(cfg);
     return cfg;
 }
 
