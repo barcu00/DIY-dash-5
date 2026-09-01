@@ -11,6 +11,7 @@
 #include "telemetry/parameter_registry.h"
 #include "telemetry/vehicle_state.h"
 #include "ui/gesture_navigation.h"
+#include "ui/settings_overlay.h"
 
 struct TelemetryRuntimeStatus {
     DataSource source = DataSource::Mock;
@@ -40,6 +41,8 @@ private:
 
     static void gestureEvent(lv_event_t* event);
     static void tileEvent(lv_event_t* event);
+    static void layoutSettingsHandler(void* context, bool track);
+    static void settingsChangedHandler(void* context);
 
     static void createShiftBar(lv_obj_t* parent, lv_obj_t** segments);
     void createDash();
@@ -93,6 +96,7 @@ private:
     lv_obj_t* track_shift_[12]{};
     std::array<TileView, AppConfig::kTileCount> track_tiles_{};
 
+    SettingsOverlay settings_overlay_{};
     lv_obj_t* tile_editor_overlay_ = nullptr;
     TileView* editing_tile_ = nullptr;
 };
