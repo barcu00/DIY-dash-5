@@ -7,6 +7,15 @@ float registryValueOr(const ParameterRegistry& registry, ParameterId id, float f
     const ParameterValue& value = registry.value(id);
     return value.valid ? value.value : fallback;
 }
+
+const char* sourceName(DataSource source) {
+    switch (source) {
+        case DataSource::Mock: return "MOCK";
+        case DataSource::Ecumaster: return "ECUMASTER";
+        case DataSource::Rusefi: return "RUSEFI";
+    }
+    return "UNKNOWN";
+}
 }
 
 bool App::begin() {
@@ -15,17 +24,30 @@ bool App::begin() {
         return false;
     }
 
-    data_source_.setSource(DataSource::Ecumaster);
-    data_source_.setEcumasterBaseId(0x600U);
-    data_source_.setTimeoutMs(500U);
-    data_source_.update(0U);
-
-    if (can_.begin(1000000U)) {
-        Serial.println("[OpenDash] CAN receiver ready: 1000 kbit/s, TX GPIO15, RX GPIO16");
-        Serial.println("[OpenDash] Data source: ECUMaster, base ID 0x600, timeout 500 ms");
+    if (config_store_.load(config_)) {
+        Serial.println("[OpenDash] Configuration loaded from NVS");
     } else {
-        Serial.println("[OpenDash] CAN receiver unavailable; ECUMaster data remains offline");
+        config_ = AppConfig::defaults();
+        Serial.println("[OpenDash] Using factory configuration");
     }
+    config_.validate();
+    applyConfig();
+
+    if (config_.data_source != DataSource::Mock) {
+        if (can_.begin(config_.can_bitrate)) {
+            Serial.printf("[OpenDash] CAN receiver ready: %u kbit/s, TX GPIO15, RX GPIO16\n",
+                          static_cast<unsigned>(config_.can_bitrate / 1000U));
+        } else {
+            Serial.println("[OpenDash] CAN receiver unavailable; ECU data remains offline");
+        }
+    } else {
+        Serial.println("[OpenDash] CAN receiver not started in MOCK mode");
+    }
+
+    Serial.printf("[OpenDash] Data source: %s, EMU base ID 0x%03X, timeout %u ms\n",
+                  sourceName(config_.data_source),
+                  static_cast<unsigned>(config_.ecumaster_base_id),
+                  static_cast<unsigned>(config_.can_timeout_ms));
 
     if (!board_.lock()) {
         Serial.println("[OpenDash] FATAL: cannot lock LVGL");
@@ -38,8 +60,19 @@ bool App::begin() {
 
     ready_ = true;
     last_ui_update_ms_ = millis();
-    Serial.println("[OpenDash] UI ready - parameter registry active");
+    Serial.println("[OpenDash] UI ready - persistent configuration active");
     return true;
+}
+
+void App::applyConfig() {
+    data_source_.setSource(config_.data_source);
+    data_source_.setEcumasterBaseId(config_.ecumaster_base_id);
+    data_source_.setTimeoutMs(config_.can_timeout_ms);
+    data_source_.update(0U);
+
+    for (uint16_t i = 0; i < AppConfig::kParameterCount; ++i) {
+        registry_.setPickerVisible(static_cast<ParameterId>(i), config_.parameter_visible[i]);
+    }
 }
 
 void App::loop() {
@@ -91,7 +124,7 @@ TelemetryRuntimeStatus App::telemetryRuntimeStatus() const {
     status.source = data_source_.source();
     status.can_driver_running = can_.running();
     status.can_online = data_source_.canOnline();
-    status.can_bitrate = can_.bitrate();
+    status.can_bitrate = config_.can_bitrate;
     status.received_frames = data_source_.receivedFrameCount();
     status.invalid_frames = data_source_.invalidFrameCount();
     return status;
