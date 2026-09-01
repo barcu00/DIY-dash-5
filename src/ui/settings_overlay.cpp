@@ -119,8 +119,15 @@ void SettingsOverlay::closeEvent(lv_event_t* event) {
 
 void SettingsOverlay::close() {
     if (overlay_ != nullptr) {
-        lv_obj_del(overlay_);
+        // Settings callbacks frequently rebuild the same modal after changing a
+        // value. Deleting the modal synchronously from one of its own LVGL event
+        // callbacks invalidates the event target while LVGL is still walking the
+        // event stack, which can leave duplicated/corrupted top-layer objects.
+        // Detach our pointer immediately but let LVGL delete the object on its
+        // next async pass, after the current callback has returned.
+        lv_obj_t* stale_overlay = overlay_;
         overlay_ = nullptr;
+        lv_obj_del_async(stale_overlay);
     }
 }
 
