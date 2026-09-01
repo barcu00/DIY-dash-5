@@ -6,6 +6,7 @@
 #include "board/board_display.h"
 #include "telemetry/data_source.h"
 #include "telemetry/vehicle_state.h"
+#include "ui/gesture_navigation.h"
 
 struct TelemetryRuntimeStatus {
     DataSource source = DataSource::Mock;
@@ -23,22 +24,19 @@ public:
                 const TelemetryRuntimeStatus& telemetry);
 
 private:
-    enum class Page : uint8_t { Dash, Diag, Track };
-
-    static void navEvent(lv_event_t* event);
+    static void gestureEvent(lv_event_t* event);
     static lv_obj_t* createValueTile(lv_obj_t* parent, const char* title, int x, int y, int w, int h,
                                      lv_obj_t** value_label, lv_color_t accent);
     void createDash();
     void createDiag();
     void createTrack();
-    void createNavigation(lv_obj_t* parent, Page active);
     void createShiftBar(lv_obj_t* parent, lv_obj_t** segments);
-    void load(Page page);
+    void load(UiPage page);
     void updateShiftBar(lv_obj_t** segments, uint16_t rpm);
 
     static Ui* instance_;
 
-    Page current_page_ = Page::Dash;
+    UiPage current_page_ = UiPage::Dash;
     lv_obj_t* dash_ = nullptr;
     lv_obj_t* diag_ = nullptr;
     lv_obj_t* track_ = nullptr;
