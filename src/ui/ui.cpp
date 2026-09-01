@@ -17,6 +17,15 @@ const lv_color_t kPurple = lv_color_hex(0xB26BFF);
 constexpr int kNavY = 420;
 constexpr int kNavH = 60;
 
+const char* dataSourceName(DataSource source) {
+    switch (source) {
+        case DataSource::Mock: return "MOCK";
+        case DataSource::Ecumaster: return "ECUMASTER";
+        case DataSource::Rusefi: return "RUSEFI";
+    }
+    return "UNKNOWN";
+}
+
 void styleScreen(lv_obj_t* screen) {
     lv_obj_set_style_bg_color(screen, kBg, 0);
     lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
@@ -84,7 +93,7 @@ void Ui::createNavigation(lv_obj_t* parent, Page active) {
     for (int i = 0; i < 3; ++i) {
         lv_obj_t* btn = lv_btn_create(parent);
         lv_obj_set_pos(btn, i * 266 + (i == 2 ? 2 : 0), kNavY);
-        lv_obj_set_size(btn, i == 2 ? 266 : 266, kNavH);
+        lv_obj_set_size(btn, 266, kNavH);
         lv_obj_set_style_radius(btn, 0, 0);
         lv_obj_set_style_bg_color(btn, static_cast<int>(active) == i ? lv_color_hex(0x153B57) : lv_color_hex(0x10151B), 0);
         lv_obj_set_style_border_width(btn, 0, 0);
@@ -118,7 +127,7 @@ void Ui::createDash() {
     createValueTile(dash_, "FUEL PRESS bar", 210, 300, 180, 78, &dash_fuel_p_, kGreen);
     createValueTile(dash_, "BATTERY V", 405, 300, 180, 78, &dash_batt_, kRed);
     createValueTile(dash_, "TPS %", 210, 210, 180, 78, &dash_tps_, kGreen);
-    label(dash_, "MOCK TELEMETRY", 420, 225, &lv_font_montserrat_14, kMuted);
+    dash_source_ = label(dash_, "DATA SOURCE --", 420, 225, &lv_font_montserrat_14, kMuted);
 
     createNavigation(dash_, Page::Dash);
 }
@@ -127,21 +136,22 @@ void Ui::createDiag() {
     diag_ = lv_obj_create(nullptr);
     styleScreen(diag_);
     label(diag_, "OPENDASH DIAGNOSTICS", 22, 18, &lv_font_montserrat_28);
-    label(diag_, "v0.1 / DATA SOURCE: MOCK / CAN: DISABLED", 24, 56, &lv_font_montserrat_14, kMuted);
+    diag_source_ = label(diag_, "v0.2 / DATA SOURCE: --", 24, 56, &lv_font_montserrat_14, kMuted);
 
     diag_status_ = label(diag_, "Display: --\nTouch: --\nResolution: 800x480", 30, 110, &lv_font_montserrat_20);
     diag_memory_ = label(diag_, "PSRAM: --\nFree heap: --", 315, 110, &lv_font_montserrat_20);
     diag_runtime_ = label(diag_, "Uptime: --\nUI updates: --", 570, 110, &lv_font_montserrat_20);
 
-    lv_obj_t* can_box = lv_obj_create(diag_);
-    lv_obj_set_pos(can_box, 30, 265);
-    lv_obj_set_size(can_box, 740, 105);
-    lv_obj_set_style_bg_color(can_box, lv_color_hex(0x25120F), 0);
-    lv_obj_set_style_border_color(can_box, kRed, 0);
-    lv_obj_set_style_border_width(can_box, 2, 0);
-    lv_obj_set_style_radius(can_box, 8, 0);
-    label(can_box, "CAN / ECUMASTER", 20, 15, &lv_font_montserrat_16, kMuted);
-    label(can_box, "DISABLED IN v0.1", 20, 43, &lv_font_montserrat_28, kRed);
+    diag_can_box_ = lv_obj_create(diag_);
+    lv_obj_set_pos(diag_can_box_, 30, 265);
+    lv_obj_set_size(diag_can_box_, 740, 105);
+    lv_obj_set_style_bg_color(diag_can_box_, lv_color_hex(0x25120F), 0);
+    lv_obj_set_style_border_color(diag_can_box_, kRed, 0);
+    lv_obj_set_style_border_width(diag_can_box_, 2, 0);
+    lv_obj_set_style_radius(diag_can_box_, 8, 0);
+    label(diag_can_box_, "CAN / ECU DATA", 20, 12, &lv_font_montserrat_16, kMuted);
+    diag_can_state_ = label(diag_can_box_, "OFFLINE", 20, 38, &lv_font_montserrat_28, kRed);
+    diag_can_stats_ = label(diag_can_box_, "1000 kbit/s  RX: 0  BAD: 0", 300, 45, &lv_font_montserrat_16, kMuted);
 
     createNavigation(diag_, Page::Diag);
 }
@@ -181,8 +191,9 @@ void Ui::updateShiftBar(lv_obj_t** segments, uint16_t rpm) {
     }
 }
 
-void Ui::update(const VehicleState& s, const RuntimeDiagnostics& d) {
-    char buf[96];
+void Ui::update(const VehicleState& s, const RuntimeDiagnostics& d,
+                const TelemetryRuntimeStatus& telemetry) {
+    char buf[128];
 
     lv_label_set_text_fmt(dash_rpm_, "%u", s.rpm);
     lv_label_set_text_fmt(dash_gear_, "%d", static_cast<int>(s.gear));
@@ -198,6 +209,16 @@ void Ui::update(const VehicleState& s, const RuntimeDiagnostics& d) {
     lv_label_set_text_fmt(dash_tps_, "%.0f", s.tps_percent);
     updateShiftBar(dash_shift_, s.rpm);
 
+    if (telemetry.source == DataSource::Mock) {
+        lv_label_set_text(dash_source_, "MOCK TELEMETRY");
+        lv_obj_set_style_text_color(dash_source_, kMuted, 0);
+    } else {
+        std::snprintf(buf, sizeof(buf), "%s CAN / %s", dataSourceName(telemetry.source),
+                      telemetry.can_online ? "ONLINE" : "OFFLINE");
+        lv_label_set_text(dash_source_, buf);
+        lv_obj_set_style_text_color(dash_source_, telemetry.can_online ? kGreen : kRed, 0);
+    }
+
     std::snprintf(buf, sizeof(buf), "Display: %s\nTouch: %s\nResolution: 800x480",
                   d.display_ok ? "OK" : "FAIL", d.touch_ok ? "OK" : "NO");
     lv_label_set_text(diag_status_, buf);
@@ -208,6 +229,23 @@ void Ui::update(const VehicleState& s, const RuntimeDiagnostics& d) {
     std::snprintf(buf, sizeof(buf), "Uptime: %u s\nUI updates: %u",
                   static_cast<unsigned>(d.uptime_ms / 1000U), static_cast<unsigned>(d.ui_updates));
     lv_label_set_text(diag_runtime_, buf);
+
+    std::snprintf(buf, sizeof(buf), "v0.2 / DATA SOURCE: %s", dataSourceName(telemetry.source));
+    lv_label_set_text(diag_source_, buf);
+
+    const bool online = telemetry.can_driver_running && telemetry.can_online;
+    const bool driver_ready = telemetry.can_driver_running;
+    lv_label_set_text(diag_can_state_, online ? "ONLINE" : (driver_ready ? "WAITING FOR ECU" : "DRIVER ERROR"));
+    const lv_color_t can_color = online ? kGreen : (driver_ready ? kYellow : kRed);
+    lv_obj_set_style_text_color(diag_can_state_, can_color, 0);
+    lv_obj_set_style_border_color(diag_can_box_, can_color, 0);
+    lv_obj_set_style_bg_color(diag_can_box_, online ? lv_color_hex(0x0D2416) : lv_color_hex(0x25120F), 0);
+
+    std::snprintf(buf, sizeof(buf), "%u kbit/s  RX: %u  BAD: %u",
+                  static_cast<unsigned>(telemetry.can_bitrate / 1000U),
+                  static_cast<unsigned>(telemetry.received_frames),
+                  static_cast<unsigned>(telemetry.invalid_frames));
+    lv_label_set_text(diag_can_stats_, buf);
 
     lv_label_set_text_fmt(track_rpm_, "%u", s.rpm);
     lv_label_set_text_fmt(track_gear_, "%d", static_cast<int>(s.gear));
