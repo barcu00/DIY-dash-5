@@ -1,7 +1,10 @@
 #include "nvs_config_store.h"
 
+#include "app_config_migration.h"
+
 #if defined(ARDUINO_ARCH_ESP32)
 #include <Preferences.h>
+#include <new>
 #endif
 
 bool NvsConfigStore::load(AppConfig& config) {
@@ -13,27 +16,53 @@ bool NvsConfigStore::load(AppConfig& config) {
     }
 
     const size_t length = prefs.getBytesLength(kBlobKey);
-    if (length != sizeof(AppConfig)) {
+
+    if (length == sizeof(AppConfig)) {
+        // Read the current schema directly into the persistent application object.
+        // AppConfig contains warning curves for all parameters and is intentionally
+        // too large to duplicate on the Arduino task stack.
+        const size_t read = prefs.getBytes(kBlobKey, &config, sizeof(config));
         prefs.end();
-        AppConfig::resetToDefaults(config);
-        return false;
+
+        if (read != sizeof(config) || !config.validSchema()) {
+            AppConfig::resetToDefaults(config);
+            return false;
+        }
+
+        config.validate();
+        return true;
     }
 
-    // AppConfig contains the warning configuration for every parameter and is
-    // intentionally large. Reading into a second local AppConfig used more than
-    // a typical Arduino loop-task stack and could corrupt/reset the ESP32 during
-    // startup after a configuration had been saved. Read directly into the
-    // persistent application object and fall back to defaults if validation fails.
-    const size_t read = prefs.getBytes(kBlobKey, &config, sizeof(config));
+    if (length == sizeof(LegacyAppConfigV2)) {
+        // Never put the legacy structure on the task stack. It contains the same
+        // 90 WarningConfig records that previously caused stack corruption when
+        // AppConfig was copied from LVGL callbacks/startup code.
+        auto* legacy = new (std::nothrow) LegacyAppConfigV2;
+        if (legacy == nullptr) {
+            prefs.end();
+            AppConfig::resetToDefaults(config);
+            return false;
+        }
+
+        const size_t read = prefs.getBytes(kBlobKey, legacy, sizeof(*legacy));
+        prefs.end();
+        const bool migrated = read == sizeof(*legacy) && AppConfigMigration::fromV2(*legacy, config);
+        delete legacy;
+
+        if (!migrated) {
+            AppConfig::resetToDefaults(config);
+            return false;
+        }
+
+        // Best-effort in-place schema upgrade. The migrated live configuration is
+        // still usable for this boot even if the flash write fails.
+        save(config);
+        return true;
+    }
+
     prefs.end();
-
-    if (read != sizeof(config) || !config.validSchema()) {
-        AppConfig::resetToDefaults(config);
-        return false;
-    }
-
-    config.validate();
-    return true;
+    AppConfig::resetToDefaults(config);
+    return false;
 #else
     AppConfig::resetToDefaults(config);
     return false;
@@ -43,9 +72,8 @@ bool NvsConfigStore::load(AppConfig& config) {
 bool NvsConfigStore::save(const AppConfig& config) {
 #if defined(ARDUINO_ARCH_ESP32)
     // Callers validate the live AppConfig before saving. Do not make a complete
-    // stack copy here: the 90 WarningConfig records make AppConfig larger than a
-    // typical ESP32 Arduino task stack budget and the copy happened from LVGL
-    // button callbacks, which manifested as resets/corrupted duplicated graphics.
+    // stack copy here: the WarningConfig records make AppConfig larger than a
+    // typical ESP32 Arduino task stack budget.
     if (!config.validSchema()) {
         return false;
     }
