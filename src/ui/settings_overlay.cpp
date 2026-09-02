@@ -307,7 +307,7 @@ void SettingsOverlay::applyGlobalLambdaFormat() {
             }
         }
     };
-    apply(config_->tiles);
+    for (auto& dash_profile : config_->dash_tiles) apply(dash_profile);
     apply(config_->track_tiles);
 }
 
