@@ -36,11 +36,11 @@ void test_current_is_returned_when_it_is_only_visible_parameter() {
 
 void test_visibility_can_be_changed_without_touching_tile_visibility() {
     AppConfig cfg = AppConfig::defaults();
-    const bool original_tile_visibility = cfg.tiles[0].visible;
+    const bool original_tile_visibility = cfg.dash_tiles[0][0].visible;
     ParameterPickerModel::setVisible(cfg, ParameterId::VehicleSpeed, false);
 
     TEST_ASSERT_FALSE(cfg.parameter_visible[parameterIndex(ParameterId::VehicleSpeed)]);
-    TEST_ASSERT_EQUAL(original_tile_visibility, cfg.tiles[0].visible);
+    TEST_ASSERT_EQUAL(original_tile_visibility, cfg.dash_tiles[0][0].visible);
 }
 
 void test_at_least_one_picker_parameter_is_preserved() {
