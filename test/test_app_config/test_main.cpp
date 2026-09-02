@@ -18,13 +18,44 @@ void test_default_lambda_format_and_stoich() {
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 12.495f, cfg.lambdaToAfr(0.85f));
 }
 
-void test_default_tiles_are_visible_and_have_expected_core_mappings() {
+void test_three_dashboard_pages_have_render_priority_defaults() {
     const AppConfig cfg = AppConfig::defaults();
-    TEST_ASSERT_TRUE(cfg.tiles[0].visible);
-    TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::VehicleSpeed), static_cast<int>(cfg.tiles[0].parameter));
-    TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::Map), static_cast<int>(cfg.tiles[1].parameter));
-    TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::Lambda), static_cast<int>(cfg.tiles[2].parameter));
-    TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::Clt), static_cast<int>(cfg.tiles[3].parameter));
+    TEST_ASSERT_EQUAL_UINT8(3U, AppConfig::kDashPageCount);
+    TEST_ASSERT_EQUAL_UINT8(12U, AppConfig::kTileCount);
+    TEST_ASSERT_EQUAL_UINT32(3U, AppConfig::kSchemaVersion);
+
+    const auto& dash1 = cfg.dash_tiles[0];
+    TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::Rpm), static_cast<int>(dash1[0].parameter));
+    TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::VehicleSpeed), static_cast<int>(dash1[1].parameter));
+    TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::BoostTarget), static_cast<int>(dash1[2].parameter));
+    TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::Map), static_cast<int>(dash1[3].parameter));
+    TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::Iat), static_cast<int>(dash1[4].parameter));
+    TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::Clt), static_cast<int>(dash1[5].parameter));
+    TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::OilTemperature), static_cast<int>(dash1[6].parameter));
+    TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::OilPressure), static_cast<int>(dash1[7].parameter));
+    TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::Lambda), static_cast<int>(dash1[8].parameter));
+    TEST_ASSERT_EQUAL(static_cast<int>(ValueFormatMode::Afr), static_cast<int>(dash1[8].value_format));
+    TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::Lambda), static_cast<int>(dash1[9].parameter));
+    TEST_ASSERT_EQUAL(static_cast<int>(ValueFormatMode::Native), static_cast<int>(dash1[9].value_format));
+    TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::IgnitionAngle), static_cast<int>(dash1[10].parameter));
+    TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::Tps), static_cast<int>(dash1[11].parameter));
+
+    for (uint8_t page = 0; page < AppConfig::kDashPageCount; ++page) {
+        for (const TileConfig& tile : cfg.dash_tiles[page]) {
+            TEST_ASSERT_TRUE(parameterIndex(tile.parameter) < AppConfig::kParameterCount);
+        }
+    }
+}
+
+void test_three_dashboard_pages_are_configurable_independently() {
+    AppConfig cfg = AppConfig::defaults();
+    cfg.dash_tiles[0][0].parameter = ParameterId::BatteryVoltage;
+    cfg.dash_tiles[1][0].parameter = ParameterId::FuelPressure;
+    cfg.dash_tiles[2][0].parameter = ParameterId::BarometricPressure;
+
+    TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::BatteryVoltage), static_cast<int>(cfg.dash_tiles[0][0].parameter));
+    TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::FuelPressure), static_cast<int>(cfg.dash_tiles[1][0].parameter));
+    TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::BarometricPressure), static_cast<int>(cfg.dash_tiles[2][0].parameter));
 }
 
 void test_track_layout_has_independent_defaults() {
@@ -38,24 +69,12 @@ void test_track_layout_has_independent_defaults() {
     TEST_ASSERT_FALSE(cfg.track_tiles[5].visible);
 }
 
-void test_dash_and_track_layouts_are_configurable_independently() {
-    AppConfig cfg = AppConfig::defaults();
-    cfg.tiles[0].parameter = ParameterId::BatteryVoltage;
-    cfg.track_tiles[0].parameter = ParameterId::EthanolContent;
-    cfg.track_tiles[0].visible = false;
-
-    TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::BatteryVoltage), static_cast<int>(cfg.tiles[0].parameter));
-    TEST_ASSERT_TRUE(cfg.tiles[0].visible);
-    TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::EthanolContent), static_cast<int>(cfg.track_tiles[0].parameter));
-    TEST_ASSERT_FALSE(cfg.track_tiles[0].visible);
-}
-
 void test_tile_and_parameter_visibility_are_configurable_independently() {
     AppConfig cfg = AppConfig::defaults();
-    cfg.tiles[2].visible = false;
+    cfg.dash_tiles[0][8].visible = false;
     cfg.parameter_visible[parameterIndex(ParameterId::Lambda)] = false;
 
-    TEST_ASSERT_FALSE(cfg.tiles[2].visible);
+    TEST_ASSERT_FALSE(cfg.dash_tiles[0][8].visible);
     TEST_ASSERT_FALSE(cfg.parameter_visible[parameterIndex(ParameterId::Lambda)]);
     TEST_ASSERT_TRUE(cfg.parameter_visible[parameterIndex(ParameterId::OilPressure)]);
 }
@@ -73,12 +92,14 @@ void test_validation_repairs_invalid_can_and_afr_values() {
     cfg.ecumaster_base_id = 0x900U;
     cfg.can_timeout_ms = 0U;
     cfg.stoich_afr = -1.0f;
+    cfg.dash_tiles[2][7].parameter = static_cast<ParameterId>(0xFFFFU);
 
     cfg.validate();
     TEST_ASSERT_EQUAL_UINT32(1000000U, cfg.can_bitrate);
     TEST_ASSERT_EQUAL_HEX16(0x600U, cfg.ecumaster_base_id);
     TEST_ASSERT_EQUAL_UINT32(500U, cfg.can_timeout_ms);
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 14.7f, cfg.stoich_afr);
+    TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::Rpm), static_cast<int>(cfg.dash_tiles[2][7].parameter));
 }
 
 void test_schema_mismatch_requires_factory_defaults() {
@@ -92,7 +113,7 @@ void test_schema_mismatch_requires_factory_defaults() {
 
 void test_tile_config_supports_hide_label_icon_and_decimals() {
     AppConfig cfg = AppConfig::defaults();
-    TileConfig& tile = cfg.tiles[0];
+    TileConfig& tile = cfg.dash_tiles[0][0];
     tile.visible = false;
     tile.custom_label_enabled = true;
     tile.custom_label[0] = 'V';
@@ -114,7 +135,8 @@ void test_in_place_reset_restores_factory_configuration() {
     cfg.data_source = DataSource::Mock;
     cfg.can_bitrate = 125000U;
     cfg.stoich_afr = 9.0f;
-    cfg.tiles[0].parameter = ParameterId::BatteryVoltage;
+    cfg.dash_tiles[0][0].parameter = ParameterId::BatteryVoltage;
+    cfg.dash_tiles[1][0].parameter = ParameterId::EthanolContent;
     cfg.track_tiles[5].visible = true;
     cfg.parameter_visible[parameterIndex(ParameterId::Lambda)] = false;
     cfg.warnings[parameterIndex(ParameterId::OilPressure)].mode = WarningMode::RpmCurve;
@@ -122,11 +144,12 @@ void test_in_place_reset_restores_factory_configuration() {
 
     AppConfig::resetToDefaults(cfg);
 
-    TEST_ASSERT_EQUAL_UINT32(AppConfig::kSchemaVersion, cfg.schema_version);
+    TEST_ASSERT_EQUAL_UINT32(3U, cfg.schema_version);
     TEST_ASSERT_EQUAL(static_cast<int>(DataSource::Ecumaster), static_cast<int>(cfg.data_source));
     TEST_ASSERT_EQUAL_UINT32(1000000U, cfg.can_bitrate);
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 14.7f, cfg.stoich_afr);
-    TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::VehicleSpeed), static_cast<int>(cfg.tiles[0].parameter));
+    TEST_ASSERT_EQUAL(static_cast<int>(ParameterId::Rpm), static_cast<int>(cfg.dash_tiles[0][0].parameter));
+    TEST_ASSERT_NOT_EQUAL(static_cast<int>(ParameterId::EthanolContent), static_cast<int>(cfg.dash_tiles[1][0].parameter));
     TEST_ASSERT_FALSE(cfg.track_tiles[5].visible);
     TEST_ASSERT_TRUE(cfg.parameter_visible[parameterIndex(ParameterId::Lambda)]);
     TEST_ASSERT_EQUAL(static_cast<int>(WarningMode::Off),
@@ -139,9 +162,9 @@ int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_default_can_configuration_targets_ecumaster);
     RUN_TEST(test_default_lambda_format_and_stoich);
-    RUN_TEST(test_default_tiles_are_visible_and_have_expected_core_mappings);
+    RUN_TEST(test_three_dashboard_pages_have_render_priority_defaults);
+    RUN_TEST(test_three_dashboard_pages_are_configurable_independently);
     RUN_TEST(test_track_layout_has_independent_defaults);
-    RUN_TEST(test_dash_and_track_layouts_are_configurable_independently);
     RUN_TEST(test_tile_and_parameter_visibility_are_configurable_independently);
     RUN_TEST(test_afr_mode_uses_configurable_stoich);
     RUN_TEST(test_validation_repairs_invalid_can_and_afr_values);
