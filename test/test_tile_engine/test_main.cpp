@@ -8,25 +8,27 @@
 namespace {
 void test_hidden_tiles_compact_without_gaps() {
     AppConfig config = AppConfig::defaults();
-    config.tiles[1].visible = false;
-    config.tiles[4].visible = false;
-    config.tiles[8].visible = false;
+    auto& tiles = config.dash_tiles[0];
+    tiles[1].visible = false;
+    tiles[4].visible = false;
+    tiles[8].visible = false;
 
     std::array<uint8_t, AppConfig::kTileCount> order{};
-    const uint8_t count = TileEngine::visibleOrder(config.tiles, order);
+    const uint8_t count = TileEngine::visibleOrder(tiles, order);
 
     TEST_ASSERT_EQUAL_UINT8(9U, count);
     const uint8_t expected[] = {0, 2, 3, 5, 6, 7, 9, 10, 11};
     for (uint8_t i = 0; i < count; ++i) {
         TEST_ASSERT_EQUAL_UINT8(expected[i], order[i]);
-        TEST_ASSERT_EQUAL_UINT8(i, TileEngine::compactSlot(config.tiles, expected[i]));
+        TEST_ASSERT_EQUAL_UINT8(i, TileEngine::compactSlot(tiles, expected[i]));
     }
 }
 
 void test_hidden_tile_has_no_compact_slot() {
     AppConfig config = AppConfig::defaults();
-    config.tiles[3].visible = false;
-    TEST_ASSERT_EQUAL_UINT8(TileEngine::kNoSlot, TileEngine::compactSlot(config.tiles, 3));
+    auto& tiles = config.dash_tiles[0];
+    tiles[3].visible = false;
+    TEST_ASSERT_EQUAL_UINT8(TileEngine::kNoSlot, TileEngine::compactSlot(tiles, 3));
 }
 
 void test_lambda_to_afr_uses_configurable_stoich() {
