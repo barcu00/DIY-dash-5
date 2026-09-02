@@ -425,9 +425,9 @@ void Ui::refreshTileValues(std::array<TileView, AppConfig::kTileCount>& views,
 
 void Ui::refreshAllTiles() {
     if (config_ == nullptr) return;
-    refreshTileLayout(dash_tiles_, config_->tiles);
+    refreshTileLayout(dash_tiles_, config_->dash_tiles[0]);
     refreshTileLayout(track_tiles_, config_->track_tiles);
-    refreshTileValues(dash_tiles_, config_->tiles);
+    refreshTileValues(dash_tiles_, config_->dash_tiles[0]);
     refreshTileValues(track_tiles_, config_->track_tiles);
 }
 
@@ -458,7 +458,7 @@ void Ui::update(const VehicleState& s, const RuntimeDiagnostics& d,
         lv_obj_set_style_text_color(dash_source_, telemetry.can_online ? kGreen : kRed, 0);
     }
 
-    refreshTileValues(dash_tiles_, config_->tiles);
+    refreshTileValues(dash_tiles_, config_->dash_tiles[0]);
     refreshTileValues(track_tiles_, config_->track_tiles);
 
     std::snprintf(buf, sizeof(buf), "DISPLAY %s\nTOUCH %s\n800 x 480",
@@ -526,7 +526,7 @@ void Ui::openTileEditor(TileView& view) {
     lv_obj_set_style_radius(tile_editor_overlay_, 12, 0);
     lv_obj_clear_flag(tile_editor_overlay_, LV_OBJ_FLAG_SCROLLABLE);
 
-    auto& profile = view.track ? config_->track_tiles : config_->tiles;
+    auto& profile = view.track ? config_->track_tiles : config_->dash_tiles[0];
     TileConfig& tile = profile[view.config_index];
     const ParameterDescriptor& descriptor = registry_->descriptor(tile.parameter);
 
@@ -550,7 +550,7 @@ void Ui::openTileEditor(TileView& view) {
         Ui* ui = Ui::instance_;
         if (ui == nullptr || ui->editing_tile_ == nullptr) return;
         TileView* view_ptr = ui->editing_tile_;
-        auto& profile_ref = view_ptr->track ? ui->config_->track_tiles : ui->config_->tiles;
+        auto& profile_ref = view_ptr->track ? ui->config_->track_tiles : ui->config_->dash_tiles[0];
         TileConfig& cfg = profile_ref[view_ptr->config_index];
         TileEditorModel::setParameter(cfg, ParameterPickerModel::previousVisible(*ui->config_, cfg.parameter));
         ui->saveConfig();
@@ -561,7 +561,7 @@ void Ui::openTileEditor(TileView& view) {
         Ui* ui = Ui::instance_;
         if (ui == nullptr || ui->editing_tile_ == nullptr) return;
         TileView* view_ptr = ui->editing_tile_;
-        auto& profile_ref = view_ptr->track ? ui->config_->track_tiles : ui->config_->tiles;
+        auto& profile_ref = view_ptr->track ? ui->config_->track_tiles : ui->config_->dash_tiles[0];
         TileConfig& cfg = profile_ref[view_ptr->config_index];
         TileEditorModel::setParameter(cfg, ParameterPickerModel::nextVisible(*ui->config_, cfg.parameter));
         ui->saveConfig();
@@ -573,7 +573,7 @@ void Ui::openTileEditor(TileView& view) {
         Ui* ui = Ui::instance_;
         if (ui == nullptr || ui->editing_tile_ == nullptr) return;
         TileView* view_ptr = ui->editing_tile_;
-        auto& profile_ref = view_ptr->track ? ui->config_->track_tiles : ui->config_->tiles;
+        auto& profile_ref = view_ptr->track ? ui->config_->track_tiles : ui->config_->dash_tiles[0];
         TileConfig& cfg = profile_ref[view_ptr->config_index];
         TileEditorModel::setVisible(cfg, !cfg.visible);
         ui->saveConfig();
@@ -584,7 +584,7 @@ void Ui::openTileEditor(TileView& view) {
         Ui* ui = Ui::instance_;
         if (ui == nullptr || ui->editing_tile_ == nullptr) return;
         TileView* view_ptr = ui->editing_tile_;
-        auto& profile_ref = view_ptr->track ? ui->config_->track_tiles : ui->config_->tiles;
+        auto& profile_ref = view_ptr->track ? ui->config_->track_tiles : ui->config_->dash_tiles[0];
         TileConfig& cfg = profile_ref[view_ptr->config_index];
         const uint16_t last_icon = static_cast<uint16_t>(IconId::Count) - 1U;
         if (!cfg.icon_enabled) {
@@ -602,7 +602,7 @@ void Ui::openTileEditor(TileView& view) {
         Ui* ui = Ui::instance_;
         if (ui == nullptr || ui->editing_tile_ == nullptr) return;
         TileView* view_ptr = ui->editing_tile_;
-        auto& profile_ref = view_ptr->track ? ui->config_->track_tiles : ui->config_->tiles;
+        auto& profile_ref = view_ptr->track ? ui->config_->track_tiles : ui->config_->dash_tiles[0];
         TileConfig& cfg = profile_ref[view_ptr->config_index];
         cfg.decimals = static_cast<uint8_t>((cfg.decimals + 1U) % 4U);
         ui->saveConfig();
@@ -617,7 +617,7 @@ void Ui::openTileEditor(TileView& view) {
         Ui* ui = Ui::instance_;
         if (ui == nullptr || ui->editing_tile_ == nullptr) return;
         TileView* view_ptr = ui->editing_tile_;
-        auto& profile_ref = view_ptr->track ? ui->config_->track_tiles : ui->config_->tiles;
+        auto& profile_ref = view_ptr->track ? ui->config_->track_tiles : ui->config_->dash_tiles[0];
         TileConfig& cfg = profile_ref[view_ptr->config_index];
         TileEditorModel::setAfrMode(cfg, cfg.value_format != ValueFormatMode::Afr);
         ui->saveConfig();
