@@ -24,9 +24,11 @@ struct TileConfig {
 };
 
 struct AppConfig {
-    static constexpr uint32_t kSchemaVersion = 2U;
+    static constexpr uint32_t kSchemaVersion = 3U;
+    static constexpr uint8_t kDashPageCount = 3U;
     static constexpr uint8_t kTileCount = 12U;
     static constexpr uint16_t kParameterCount = parameterIndex(ParameterId::Count);
+    using TileProfile = std::array<TileConfig, kTileCount>;
 
     uint32_t schema_version = kSchemaVersion;
     DataSource data_source = DataSource::Ecumaster;
@@ -37,9 +39,8 @@ struct AppConfig {
     ValueFormatMode lambda_format = ValueFormatMode::Native;
     float stoich_afr = 14.7f;
 
-    // DASH layout. Kept as `tiles` for persisted v0.2 API compatibility.
-    std::array<TileConfig, kTileCount> tiles{};
-    std::array<TileConfig, kTileCount> track_tiles{};
+    std::array<TileProfile, kDashPageCount> dash_tiles{};
+    TileProfile track_tiles{};
     std::array<bool, kParameterCount> parameter_visible{};
     std::array<WarningConfig, kParameterCount> warnings{};
 
