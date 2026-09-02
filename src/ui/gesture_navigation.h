@@ -3,10 +3,12 @@
 #include <cstdint>
 
 enum class UiPage : uint8_t {
-    Dash = 0,
-    Track = 1,
-    Diag = 2,
-    Settings = 3,
+    Dash1 = 0,
+    Dash2,
+    Dash3,
+    Track,
+    Diag,
+    Settings,
 };
 
 enum class GestureDirection : uint8_t {
