@@ -1,0 +1,28 @@
+# PlatformIO
+.pio/
+.cache/
+__pycache__/
+
+# Editors
+.vscode/
+*.code-workspace
+*.suo
+*.user
+
+# Build products and logs
+*.bin
+*.elf
+*.map
+*.obj
+*.o
+*.log
+
+# Operating systems
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.tmp
+*.bak
+*~

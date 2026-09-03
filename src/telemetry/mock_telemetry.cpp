@@ -22,18 +22,19 @@ MockTelemetry::MockTelemetry() {
 }
 
 void MockTelemetry::reset() {
-    state_.rpm = 900;
-    state_.gear = 1;
-    state_.speed_kph = 0.0f;
-    state_.map_bar = 0.40f;
-    state_.lambda = 1.00f;
-    state_.clt_c = 85.0f;
-    state_.iat_c = 30.0f;
-    state_.oil_pressure_bar = 1.40f;
-    state_.oil_temp_c = 80.0f;
-    state_.fuel_pressure_bar = 3.50f;
-    state_.battery_v = 13.80f;
-    state_.tps_percent = 0.0f;
+    state_.reset(DataSource::Demo);
+    state_.set(VehicleSignal::Rpm, 900.0f, 0U);
+    state_.set(VehicleSignal::Gear, 1.0f, 0U);
+    state_.set(VehicleSignal::Speed, 0.0f, 0U);
+    state_.set(VehicleSignal::Map, 0.40f, 0U);
+    state_.set(VehicleSignal::Lambda, 1.00f, 0U);
+    state_.set(VehicleSignal::Clt, 85.0f, 0U);
+    state_.set(VehicleSignal::Iat, 30.0f, 0U);
+    state_.set(VehicleSignal::OilPressure, 1.40f, 0U);
+    state_.set(VehicleSignal::OilTemperature, 80.0f, 0U);
+    state_.set(VehicleSignal::FuelPressure, 3.50f, 0U);
+    state_.set(VehicleSignal::BatteryVoltage, 13.80f, 0U);
+    state_.set(VehicleSignal::Tps, 0.0f, 0U);
 }
 
 void MockTelemetry::update(uint32_t elapsed_ms) {
@@ -41,21 +42,31 @@ void MockTelemetry::update(uint32_t elapsed_ms) {
     const float load_wave = wave(elapsed_ms, 11.0f, 0.8f);
     const float thermal_wave = wave(elapsed_ms, 37.0f, 1.4f);
 
-    state_.tps_percent = lerp(0.0f, 100.0f, throttle_wave);
-    state_.rpm = static_cast<uint16_t>(std::lround(lerp(900.0f, 7800.0f, throttle_wave)));
-    state_.speed_kph = lerp(0.0f, 190.0f, wave(elapsed_ms, 24.0f, -1.0f));
+    const float tps = lerp(0.0f, 100.0f, throttle_wave);
+    const float rpm = static_cast<float>(std::lround(
+        lerp(900.0f, 7800.0f, throttle_wave)));
+    const float speed = lerp(0.0f, 190.0f,
+                             wave(elapsed_ms, 24.0f, -1.0f));
+    const int gear = std::clamp(1 + static_cast<int>(speed / 36.0f), 1, 6);
 
-    const int calculated_gear = 1 + static_cast<int>(state_.speed_kph / 36.0f);
-    state_.gear = static_cast<int8_t>(std::clamp(calculated_gear, 1, 6));
-
-    state_.map_bar = lerp(0.35f, 1.50f, load_wave);
-    state_.lambda = lerp(1.05f, 0.78f, 0.65f * throttle_wave + 0.35f * load_wave);
-    state_.clt_c = lerp(80.0f, 103.0f, thermal_wave);
-    state_.iat_c = lerp(25.0f, 55.0f, load_wave);
-    state_.oil_pressure_bar = lerp(1.20f, 5.80f, static_cast<float>(state_.rpm - 900) / 6900.0f);
-    state_.oil_temp_c = lerp(75.0f, 120.0f, wave(elapsed_ms, 49.0f, 0.3f));
-    state_.fuel_pressure_bar = lerp(3.0f, 4.5f, load_wave);
-    state_.battery_v = lerp(12.8f, 14.4f, wave(elapsed_ms, 13.0f, 2.0f));
+    state_.reset(DataSource::Demo);
+    state_.set(VehicleSignal::Tps, tps, elapsed_ms);
+    state_.set(VehicleSignal::Rpm, rpm, elapsed_ms);
+    state_.set(VehicleSignal::Speed, speed, elapsed_ms);
+    state_.set(VehicleSignal::Gear, static_cast<float>(gear), elapsed_ms);
+    state_.set(VehicleSignal::Map, lerp(0.35f, 1.50f, load_wave), elapsed_ms);
+    state_.set(VehicleSignal::Lambda,
+               lerp(1.05f, 0.78f, 0.65f * throttle_wave + 0.35f * load_wave),
+               elapsed_ms);
+    state_.set(VehicleSignal::Clt, lerp(80.0f, 103.0f, thermal_wave), elapsed_ms);
+    state_.set(VehicleSignal::Iat, lerp(25.0f, 55.0f, load_wave), elapsed_ms);
+    state_.set(VehicleSignal::OilPressure,
+               lerp(1.20f, 5.80f, (rpm - 900.0f) / 6900.0f), elapsed_ms);
+    state_.set(VehicleSignal::OilTemperature,
+               lerp(75.0f, 120.0f, wave(elapsed_ms, 49.0f, 0.3f)), elapsed_ms);
+    state_.set(VehicleSignal::FuelPressure, lerp(3.0f, 4.5f, load_wave), elapsed_ms);
+    state_.set(VehicleSignal::BatteryVoltage,
+               lerp(12.8f, 14.4f, wave(elapsed_ms, 13.0f, 2.0f)), elapsed_ms);
 }
 
 const VehicleState& MockTelemetry::state() const {
