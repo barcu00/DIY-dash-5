@@ -9,33 +9,43 @@ using esp_panel::drivers::TouchPoint;
 namespace {
 constexpr uint32_t kLvTickMs = 2;
 constexpr uint32_t kBufferLines = 40;
+constexpr uint16_t kExpectedWidth = 800;
+constexpr uint16_t kExpectedHeight = 480;
 }
 
 bool BoardDisplay::begin() {
-    Serial.println("[BartzDash] Initializing board");
-    Serial.printf("[BartzDash] PSRAM: %u bytes\n", static_cast<unsigned>(ESP.getPsramSize()));
-    Serial.printf("[BartzDash] Flash: %u bytes\n", static_cast<unsigned>(ESP.getFlashChipSize()));
+    Serial.println("[DIY Dash] Initializing board");
+    Serial.printf("[DIY Dash] PSRAM: %u bytes\n", static_cast<unsigned>(ESP.getPsramSize()));
+    Serial.printf("[DIY Dash] Flash: %u bytes\n", static_cast<unsigned>(ESP.getFlashChipSize()));
+    if (ESP.getPsramSize() == 0U) {
+        Serial.println("[DIY Dash] WARNING: PSRAM not detected");
+    }
 
     board_ = new Board();
     if (board_ == nullptr || !board_->init()) {
-        Serial.println("[BartzDash] ERROR: board init failed");
+        Serial.println("[DIY Dash] ERROR: board init failed");
         return false;
     }
     if (!board_->begin()) {
-        Serial.println("[BartzDash] ERROR: board begin failed");
+        Serial.println("[DIY Dash] ERROR: board begin failed");
         return false;
     }
 
     lcd_ = board_->getLCD();
     touch_ = board_->getTouch();
     if (lcd_ == nullptr) {
-        Serial.println("[BartzDash] ERROR: LCD not available");
+        Serial.println("[DIY Dash] ERROR: LCD not available");
         return false;
     }
 
-    Serial.printf("[BartzDash] LCD: %ux%u\n",
+    Serial.printf("[DIY Dash] LCD: %ux%u\n",
                   static_cast<unsigned>(lcd_->getFrameWidth()),
                   static_cast<unsigned>(lcd_->getFrameHeight()));
+    if (lcd_->getFrameWidth() != kExpectedWidth ||
+        lcd_->getFrameHeight() != kExpectedHeight) {
+        Serial.println("[DIY Dash] ERROR: unexpected LCD resolution");
+        return false;
+    }
 
     lv_init();
 
@@ -46,11 +56,11 @@ bool BoardDisplay::begin() {
     draw_buf_2_ = static_cast<lv_color_t*>(heap_caps_malloc(buffer_bytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
 
     if (draw_buf_1_ == nullptr) {
-        Serial.println("[BartzDash] PSRAM buffer allocation failed, trying internal RAM");
+        Serial.println("[DIY Dash] PSRAM buffer allocation failed, trying internal RAM");
         draw_buf_1_ = static_cast<lv_color_t*>(heap_caps_malloc(buffer_bytes, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
     }
     if (draw_buf_1_ == nullptr) {
-        Serial.println("[BartzDash] ERROR: LVGL buffer allocation failed");
+        Serial.println("[DIY Dash] ERROR: LVGL buffer allocation failed");
         return false;
     }
 
@@ -62,7 +72,7 @@ bool BoardDisplay::begin() {
     disp_drv_.draw_buf = &draw_buf_desc_;
     disp_drv_.user_data = this;
     if (lv_disp_drv_register(&disp_drv_) == nullptr) {
-        Serial.println("[BartzDash] ERROR: LVGL display registration failed");
+        Serial.println("[DIY Dash] ERROR: LVGL display registration failed");
         return false;
     }
 
@@ -73,14 +83,14 @@ bool BoardDisplay::begin() {
         indev_drv_.read_cb = touchCallback;
         indev_drv_.user_data = this;
         lv_indev_drv_register(&indev_drv_);
-        Serial.println("[BartzDash] Touch: GT911 ready");
+        Serial.println("[DIY Dash] Touch: GT911 ready");
     } else {
-        Serial.println("[BartzDash] WARNING: touch not available");
+        Serial.println("[DIY Dash] WARNING: touch not available");
     }
 
     lvgl_mutex_ = xSemaphoreCreateRecursiveMutex();
     if (lvgl_mutex_ == nullptr) {
-        Serial.println("[BartzDash] ERROR: LVGL mutex allocation failed");
+        Serial.println("[DIY Dash] ERROR: LVGL mutex allocation failed");
         return false;
     }
 
@@ -88,17 +98,17 @@ bool BoardDisplay::begin() {
         .callback = tickCallback,
         .arg = this,
         .dispatch_method = ESP_TIMER_TASK,
-        .name = "bartzdash_lv_tick",
+        .name = "diy_dash_lv_tick",
         .skip_unhandled_events = true,
     };
     if (esp_timer_create(&tick_args, &tick_timer_) != ESP_OK ||
         esp_timer_start_periodic(tick_timer_, kLvTickMs * 1000ULL) != ESP_OK) {
-        Serial.println("[BartzDash] ERROR: LVGL tick timer failed");
+        Serial.println("[DIY Dash] ERROR: LVGL tick timer failed");
         return false;
     }
 
     display_ok_ = true;
-    Serial.println("[BartzDash] Display/LVGL ready");
+    Serial.println("[DIY Dash] Display/LVGL ready");
     return true;
 }
 

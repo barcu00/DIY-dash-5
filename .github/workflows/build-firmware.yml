@@ -1,0 +1,72 @@
+name: DIY Dash firmware build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-firmware:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache PlatformIO packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio/.cache
+            ~/.platformio/packages
+            ~/.platformio/platforms
+          key: ${{ runner.os }}-platformio-${{ hashFiles('platformio.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-platformio-
+
+      - name: Install PlatformIO
+        run: python -m pip install --disable-pip-version-check platformio==6.1.18
+
+      - name: Run native unit tests
+        run: pio test -e native
+
+      - name: Test firmware packaging
+        run: python -m unittest discover -s scripts/tests -v
+
+      - name: Build Waveshare firmware
+        run: pio run -e waveshare_5
+
+      - name: Collect and verify firmware binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          build_dir=.pio/build/waveshare_5
+          artifact_dir=artifacts
+          mkdir -p "$artifact_dir"
+
+          for file in firmware.bin bootloader.bin partitions.bin \
+            DIY-Dash-ESP32-S3-Touch-LCD-5-full.bin flash-layout.json; do
+            test -f "$build_dir/$file"
+            cp "$build_dir/$file" "$artifact_dir/"
+          done
+
+          if test -f "$build_dir/boot_app0.bin"; then
+            cp "$build_dir/boot_app0.bin" "$artifact_dir/"
+          fi
+
+          ls -lah "$artifact_dir"
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: DIY-Dash-firmware
+          path: artifacts/*
+          if-no-files-found: error
+          retention-days: 30
