@@ -2,6 +2,7 @@ Import("env")
 
 import json
 import os
+import shutil
 from os.path import basename, join
 
 app_bin = join("$BUILD_DIR", "${PROGNAME}.bin")
@@ -24,6 +25,13 @@ def merge_firmware(source, target, env):
                     address, image_path
                 )
             )
+
+    # Framework-owned images (notably boot_app0.bin) must also be shipped
+    # beside the manifest so every recorded component can be flashed alone.
+    for _, image_path in image_pairs:
+        destination = join(env.subst("$BUILD_DIR"), basename(image_path))
+        if os.path.abspath(image_path) != os.path.abspath(destination):
+            shutil.copy2(image_path, destination)
 
     flash_images = []
     for address, image_path in image_pairs:

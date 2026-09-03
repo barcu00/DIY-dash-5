@@ -37,6 +37,9 @@ jobs:
       - name: Run native unit tests
         run: pio test -e native
 
+      - name: Test firmware packaging
+        run: python -m unittest discover -s scripts/tests -v
+
       - name: Build Waveshare firmware
         run: pio run -e waveshare_5
 
