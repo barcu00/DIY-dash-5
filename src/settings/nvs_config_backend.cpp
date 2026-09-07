@@ -2,6 +2,16 @@
 
 #include <Preferences.h>
 
+std::size_t NvsConfigBackend::storedSize() const {
+    Preferences preferences;
+    if (!preferences.begin(kNamespace, true)) {
+        return 0U;
+    }
+    const std::size_t size = preferences.getBytesLength(kBlobKey);
+    preferences.end();
+    return size;
+}
+
 bool NvsConfigBackend::read(void* data, std::size_t size) {
     Preferences preferences;
     if (!preferences.begin(kNamespace, true)) {

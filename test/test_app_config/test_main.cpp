@@ -92,7 +92,7 @@ void test_validation_normalizes_unsafe_persisted_values() {
 
 void test_validation_rejects_invalid_shift_order_without_reordering_it() {
     AppConfig config = AppConfig::defaults();
-    config.shift = ShiftLightConfig{7000U, 6000U, 5000U};
+    config.shift = ShiftLightConfig{7000U, 6000U, 5000U, 5000U, true};
 
     const ValidationResult result = config.validate();
 
@@ -105,7 +105,7 @@ void test_validation_rejects_invalid_shift_order_without_reordering_it() {
 
 void test_validation_rejects_red_zone_equal_to_maximum() {
     AppConfig config = AppConfig::defaults();
-    config.shift = ShiftLightConfig{5500U, 7000U, 7000U};
+    config.shift = ShiftLightConfig{5500U, 7000U, 7000U, 7000U, true};
 
     const ValidationResult result = config.validate();
 

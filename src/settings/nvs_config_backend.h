@@ -4,6 +4,7 @@
 
 class NvsConfigBackend : public ConfigBackend {
 public:
+    std::size_t storedSize() const override;
     bool read(void* data, std::size_t size) override;
     bool write(const void* data, std::size_t size) override;
     bool erase() override;

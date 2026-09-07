@@ -41,7 +41,9 @@ struct TileAddress {
 struct ShiftLightConfig {
     uint16_t start_rpm = 5500U;
     uint16_t red_rpm = 7000U;
+    uint16_t flash_rpm = 7500U;
     uint16_t max_rpm = 8000U;
+    bool flash_enabled = true;
 };
 
 struct CanSettings {
@@ -71,7 +73,7 @@ struct ValidationResult {
 };
 
 struct AppConfig {
-    static constexpr uint32_t kSchemaVersion = 1U;
+    static constexpr uint32_t kSchemaVersion = 2U;
     static constexpr std::size_t kDashTileCount = 14U;
     static constexpr std::size_t kTrackTileCount = 12U;
 

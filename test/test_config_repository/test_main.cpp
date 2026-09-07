@@ -166,7 +166,8 @@ void test_invalid_candidate_is_not_written_or_applied() {
     ConfigRepository repository(backend);
     AppConfig runtime = AppConfig::defaults();
     AppConfig candidate = runtime;
-    candidate.shift = ShiftLightConfig{7000U, 6000U, 5000U};
+    candidate.shift =
+        ShiftLightConfig{7000U, 6000U, 5000U, 5000U, true};
 
     TEST_ASSERT_FALSE(repository.saveCandidate(candidate, runtime));
     TEST_ASSERT_FALSE(backend.has_value);

@@ -142,8 +142,9 @@ ValidationResult AppConfig::validate() {
     validateTiles(dash_tiles);
     validateTiles(track_tiles);
 
-    result.shift_order_valid =
-        shift.start_rpm < shift.red_rpm && shift.red_rpm < shift.max_rpm;
+    result.shift_order_valid = shift.start_rpm < shift.red_rpm &&
+                               shift.red_rpm < shift.flash_rpm &&
+                               shift.flash_rpm <= shift.max_rpm;
     result.valid = result.shift_order_valid;
     return result;
 }

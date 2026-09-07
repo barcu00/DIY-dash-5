@@ -8,6 +8,7 @@
 class ConfigBackend {
 public:
     virtual ~ConfigBackend() = default;
+    virtual std::size_t storedSize() const = 0;
     virtual bool read(void* data, std::size_t size) = 0;
     virtual bool write(const void* data, std::size_t size) = 0;
     virtual bool erase() = 0;
@@ -15,6 +16,7 @@ public:
 
 enum class LoadResult : uint8_t {
     Loaded,
+    Migrated,
     DefaultsUsed,
 };
 
