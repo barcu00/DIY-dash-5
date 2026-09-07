@@ -508,6 +508,10 @@ void Ui::update(const VehicleState& state, const RuntimeDiagnostics& diagnostics
         }
         lv_label_set_text(settings_status_, buffer);
     }
+    if (commit_toast_ &&
+        static_cast<int32_t>(lv_tick_get() - commit_toast_until_ms_) >= 0) {
+        lv_obj_add_flag(commit_toast_, LV_OBJ_FLAG_HIDDEN);
+    }
     if (update_policy_.allowModalUpdates()) {
         updateWarningModal(warnings);
     }
@@ -516,8 +520,7 @@ void Ui::navEvent(lv_event_t* event) {
     if (!instance_) return;
     const Page destination = static_cast<Page>(
         reinterpret_cast<intptr_t>(lv_event_get_user_data(event)));
-    if (instance_->current_page_ == Page::Settings &&
-        instance_->settings_flow_.category() != SettingsCategory::Home) {
+    if (instance_->current_page_ == Page::Settings) {
         instance_->queueSettingsOnExit();
     }
     instance_->load(destination);
@@ -542,8 +545,7 @@ bool Ui::takeConfigCommit(ConfigCommitRequest& request) {
 
 void Ui::completeConfigCommit(uint32_t revision, bool success) {
     commit_model_.complete(revision, success);
-    settings_feedback_ = success ? "SAVED" : "SAVE ERROR";
-    showSettingsMessage(settings_feedback_);
+    showCommitFeedback(success ? "SAVED" : "SAVE ERROR");
     lv_obj_invalidate(lv_scr_act());
 }
 
@@ -636,6 +638,31 @@ void Ui::showSettingsMessage(const char* message) {
     if (settings_message_) lv_label_set_text(settings_message_, message);
 }
 
+void Ui::showCommitFeedback(const char* message) {
+    settings_feedback_ = message;
+    showSettingsMessage(message);
+    if (!commit_toast_) {
+        commit_toast_ = lv_label_create(lv_layer_top());
+        lv_obj_set_pos(commit_toast_, 640, 10);
+        lv_obj_set_width(commit_toast_, 140);
+        lv_obj_set_style_text_align(commit_toast_, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_set_style_text_color(commit_toast_, UiTheme::text(), 0);
+        lv_obj_set_style_bg_opa(commit_toast_, LV_OPA_COVER, 0);
+        lv_obj_set_style_radius(commit_toast_, 6, 0);
+        lv_obj_set_style_pad_all(commit_toast_, 8, 0);
+        lv_obj_clear_flag(commit_toast_, LV_OBJ_FLAG_CLICKABLE);
+    }
+    lv_obj_set_style_bg_color(
+        commit_toast_, std::strcmp(message, "SAVE ERROR") == 0
+                           ? UiTheme::red()
+                           : lv_color_hex(0x153B57),
+        0);
+    lv_label_set_text(commit_toast_, message);
+    lv_obj_clear_flag(commit_toast_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_foreground(commit_toast_);
+    commit_toast_until_ms_ = lv_tick_get() + 1500U;
+}
+
 bool Ui::stageSettings(AppConfig candidate, bool reconfigure_runtime) {
     if (!config_ || !candidate.validate().valid) {
         showSettingsMessage("SAVE ERROR");
@@ -656,8 +683,7 @@ bool Ui::stageSettings(AppConfig candidate, bool reconfigure_runtime) {
 
 void Ui::queueSettingsOnExit() {
     if (!config_ || !commit_model_.queueOnExit(*config_)) return;
-    settings_feedback_ = "SAVING";
-    showSettingsMessage(settings_feedback_);
+    showCommitFeedback("SAVING");
 }
 
 void Ui::openResetConfirmation(SettingsResetTarget target) {
@@ -710,7 +736,7 @@ void Ui::confirmReset() {
     } else {
         *config_ = AppConfig::defaults();
         commit_model_.queueFactoryReset();
-        settings_feedback_ = "SAVING";
+        showCommitFeedback("SAVING");
         staged = true;
     }
     closeResetConfirmation();

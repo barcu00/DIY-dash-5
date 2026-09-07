@@ -11,6 +11,9 @@ constexpr uint32_t kDefaultCanBitrate = 500000U;
 constexpr uint32_t kMinimumCanTimeoutMs = 100U;
 constexpr uint32_t kMaximumCanTimeoutMs = 5000U;
 constexpr uint16_t kMaximumWarningDelayMs = 10000U;
+constexpr uint16_t kMinimumShiftRpm = 1000U;
+constexpr uint16_t kMaximumShiftRpm = 15000U;
+constexpr uint16_t kShiftRpmStep = 100U;
 constexpr float kDefaultStoichAfr = 14.7f;
 
 bool supportedBitrate(uint32_t bitrate) {
@@ -142,9 +145,18 @@ ValidationResult AppConfig::validate() {
     validateTiles(dash_tiles);
     validateTiles(track_tiles);
 
-    result.shift_order_valid = shift.start_rpm < shift.red_rpm &&
-                               shift.red_rpm < shift.flash_rpm &&
-                               shift.flash_rpm <= shift.max_rpm;
+    const bool shift_in_range = shift.start_rpm >= kMinimumShiftRpm &&
+                                shift.max_rpm <= kMaximumShiftRpm;
+    const bool shift_on_steps =
+        shift.start_rpm % kShiftRpmStep == 0U &&
+        shift.red_rpm % kShiftRpmStep == 0U &&
+        shift.flash_rpm % kShiftRpmStep == 0U &&
+        shift.max_rpm % kShiftRpmStep == 0U;
+    result.shift_order_valid =
+        shift_in_range && shift_on_steps &&
+        shift.red_rpm >= shift.start_rpm + kShiftRpmStep &&
+        shift.flash_rpm >= shift.red_rpm + kShiftRpmStep &&
+        shift.flash_rpm <= shift.max_rpm;
     result.valid = result.shift_order_valid;
     return result;
 }

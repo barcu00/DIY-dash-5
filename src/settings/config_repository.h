@@ -17,6 +17,7 @@ public:
 enum class LoadResult : uint8_t {
     Loaded,
     Migrated,
+    MigrationWriteFailed,
     DefaultsUsed,
 };
 

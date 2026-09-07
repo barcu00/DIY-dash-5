@@ -18,10 +18,10 @@ struct LegacyAppConfigV1 {
     std::array<TileConfig, AppConfig::kTrackTileCount> track_tiles{};
 };
 
-bool migrateV1(ConfigBackend& backend, AppConfig& config) {
+LoadResult migrateV1(ConfigBackend& backend, AppConfig& config) {
     LegacyAppConfigV1 legacy{};
     if (!backend.read(&legacy, sizeof(legacy)) || legacy.schema_version != 1U) {
-        return false;
+        return LoadResult::DefaultsUsed;
     }
 
     AppConfig migrated = AppConfig::defaults();
@@ -37,12 +37,13 @@ bool migrateV1(ConfigBackend& backend, AppConfig& config) {
     migrated.dash_tiles = legacy.dash_tiles;
     migrated.track_tiles = legacy.track_tiles;
     if (!migrated.validate().valid) {
-        return false;
+        return LoadResult::DefaultsUsed;
     }
 
     config = migrated;
-    backend.write(&config, sizeof(config));
-    return true;
+    return backend.write(&config, sizeof(config))
+               ? LoadResult::Migrated
+               : LoadResult::MigrationWriteFailed;
 }
 }  // namespace
 
@@ -50,9 +51,11 @@ ConfigRepository::ConfigRepository(ConfigBackend& backend) : backend_(backend) {
 
 LoadResult ConfigRepository::load(AppConfig& config) {
     const std::size_t stored_size = backend_.storedSize();
-    if (stored_size == sizeof(LegacyAppConfigV1) &&
-        migrateV1(backend_, config)) {
-        return LoadResult::Migrated;
+    if (stored_size == sizeof(LegacyAppConfigV1)) {
+        const LoadResult migration = migrateV1(backend_, config);
+        if (migration != LoadResult::DefaultsUsed) {
+            return migration;
+        }
     }
 
     AppConfig candidate{};

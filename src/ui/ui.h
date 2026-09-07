@@ -67,6 +67,7 @@ private:
     void saveEditor();
     bool stageSettings(AppConfig candidate, bool reconfigure_runtime);
     void queueSettingsOnExit();
+    void showCommitFeedback(const char* message);
     void showSettingsMessage(const char* message);
     void openResetConfirmation(SettingsResetTarget target);
     void closeResetConfirmation();
@@ -91,6 +92,8 @@ private:
     TileEditorModel editor_{};
     const char* settings_feedback_ = "";
     lv_obj_t* settings_message_ = nullptr;
+    lv_obj_t* commit_toast_ = nullptr;
+    uint32_t commit_toast_until_ms_ = 0U;
     lv_obj_t* brightness_slider_ = nullptr;
     lv_obj_t* brightness_value_ = nullptr;
     lv_obj_t* source_dropdown_ = nullptr;
