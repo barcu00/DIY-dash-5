@@ -60,8 +60,9 @@ covering tiles or warning controls.
 - A wide tile centers both its label and its value.
 - RPM and gear are ordinary configurable slots: their parameter can be changed
   and the tile can be hidden.
-- The four left slots, four center-small slots, and four right slots are three
-  independent compacting groups.
+- The four left slots, two center-wide slots, four center-small slots, and four
+  right slots are four independent compacting groups. The wide group compacts
+  only between its two wide positions.
 
 The approved visual reference is
 `dashboard-layout-option-a-v3.html` in the conversation visualization
