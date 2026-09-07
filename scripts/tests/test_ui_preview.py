@@ -42,6 +42,21 @@ class PreviewContractTest(unittest.TestCase):
         self.assertFalse(settings["scrollable"])
         self.assertEqual(6, settings["category_count"])
         self.assertEqual(6, settings["layout_slots_per_page"])
+        self.assertEqual(4, settings["shift_slider_count"])
+        self.assertTrue(settings["shift_flash_switch"])
+        self.assertEqual(100, settings["shift_step_rpm"])
+
+    def test_shift_settings_uses_sliders_without_step_buttons(self):
+        source = SCRIPT_ROOT.parent / "src/ui/ui.cpp"
+        text = source.read_text(encoding="utf-8")
+
+        shift_section = text.split("void Ui::createShiftSettings", 1)[1]
+        shift_section = shift_section.split("void Ui::createUnitSettings", 1)[0]
+        self.assertIn("lv_slider_create", shift_section)
+        self.assertIn('"FLASH RPM"', shift_section)
+        self.assertIn('"FLASH ENABLED"', shift_section)
+        self.assertNotIn("makeSpinbox", shift_section)
+        self.assertNotIn("ShiftStartDecrease", shift_section)
 
 
 if __name__ == "__main__":
