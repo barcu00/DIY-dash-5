@@ -83,6 +83,14 @@ void test_shift_changes_clamp_to_supported_range() {
     TEST_ASSERT_EQUAL_UINT16(1200U, low.max_rpm);
 }
 
+void test_slider_request_is_rounded_to_the_nearest_hundred_rpm() {
+    const ShiftLightConfig corrected = SettingsFlowModel::correctedShift(
+        ShiftLightConfig{5500U, 7000U, 7500U, 8000U, true},
+        ShiftField::Flash, 7549U);
+
+    TEST_ASSERT_EQUAL_UINT16(7500U, corrected.flash_rpm);
+}
+
 void test_reset_requires_explicit_request_and_can_be_cancelled() {
     SettingsFlowModel model;
 
@@ -103,6 +111,7 @@ int main(int, char**) {
     RUN_TEST(test_maximum_change_pulls_earlier_shift_thresholds_down);
     RUN_TEST(test_flash_change_pulls_earlier_thresholds_down_without_moving_maximum);
     RUN_TEST(test_shift_changes_clamp_to_supported_range);
+    RUN_TEST(test_slider_request_is_rounded_to_the_nearest_hundred_rpm);
     RUN_TEST(test_reset_requires_explicit_request_and_can_be_cancelled);
     return UNITY_END();
 }
