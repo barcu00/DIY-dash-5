@@ -80,10 +80,14 @@ ShiftLightConfig SettingsFlowModel::correctedShift(
             std::max<uint16_t>(current.red_rpm,
                                current.start_rpm + kRpmGap),
             current.start_rpm + kRpmGap, kMaximumRpm - kRpmGap);
-        current.max_rpm = std::clamp<uint16_t>(
-            std::max<uint16_t>(current.max_rpm,
+        current.flash_rpm = std::clamp<uint16_t>(
+            std::max<uint16_t>(current.flash_rpm,
                                current.red_rpm + kRpmGap),
             current.red_rpm + kRpmGap, kMaximumRpm);
+        current.max_rpm = std::clamp<uint16_t>(
+            std::max<uint16_t>(current.max_rpm,
+                               current.flash_rpm),
+            current.flash_rpm, kMaximumRpm);
         return current;
     }
 
@@ -95,19 +99,42 @@ ShiftLightConfig SettingsFlowModel::correctedShift(
             std::min<uint16_t>(current.start_rpm,
                                current.red_rpm - kRpmGap),
             kMinimumRpm, current.red_rpm - kRpmGap);
-        current.max_rpm = std::clamp<uint16_t>(
-            std::max<uint16_t>(current.max_rpm,
+        current.flash_rpm = std::clamp<uint16_t>(
+            std::max<uint16_t>(current.flash_rpm,
                                current.red_rpm + kRpmGap),
             current.red_rpm + kRpmGap, kMaximumRpm);
+        current.max_rpm = std::clamp<uint16_t>(
+            std::max<uint16_t>(current.max_rpm, current.flash_rpm),
+            current.flash_rpm, kMaximumRpm);
+        return current;
+    }
+
+    if (field == ShiftField::Flash) {
+        current.flash_rpm = std::clamp<uint16_t>(
+            requested_rpm, kMinimumRpm + 2U * kRpmGap, kMaximumRpm);
+        current.red_rpm = std::clamp<uint16_t>(
+            std::min<uint16_t>(current.red_rpm,
+                               current.flash_rpm - kRpmGap),
+            kMinimumRpm + kRpmGap, current.flash_rpm - kRpmGap);
+        current.start_rpm = std::clamp<uint16_t>(
+            std::min<uint16_t>(current.start_rpm,
+                               current.red_rpm - kRpmGap),
+            kMinimumRpm, current.red_rpm - kRpmGap);
+        current.max_rpm = std::clamp<uint16_t>(
+            std::max<uint16_t>(current.max_rpm, current.flash_rpm),
+            current.flash_rpm, kMaximumRpm);
         return current;
     }
 
     current.max_rpm = std::clamp<uint16_t>(
         requested_rpm, kMinimumRpm + 2U * kRpmGap, kMaximumRpm);
+    current.flash_rpm = std::clamp<uint16_t>(
+        std::min<uint16_t>(current.flash_rpm, current.max_rpm),
+        kMinimumRpm + 2U * kRpmGap, current.max_rpm);
     current.red_rpm = std::clamp<uint16_t>(
         std::min<uint16_t>(current.red_rpm,
-                           current.max_rpm - kRpmGap),
-        kMinimumRpm + kRpmGap, current.max_rpm - kRpmGap);
+                           current.flash_rpm - kRpmGap),
+        kMinimumRpm + kRpmGap, current.flash_rpm - kRpmGap);
     current.start_rpm = std::clamp<uint16_t>(
         std::min<uint16_t>(current.start_rpm,
                            current.red_rpm - kRpmGap),

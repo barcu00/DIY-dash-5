@@ -21,6 +21,7 @@ using ShiftSegmentStates = std::array<ShiftSegmentState, 12>;
 
 class ShiftLightModel {
 public:
-    static ShiftSegmentStates segments(uint16_t rpm,
+    static ShiftSegmentStates segments(uint16_t rpm, bool rpm_valid,
+                                       uint32_t now_ms,
                                        const ShiftLightConfig& config);
 };

@@ -4,14 +4,27 @@
 #include <cstddef>
 
 ShiftSegmentStates ShiftLightModel::segments(
-    uint16_t rpm, const ShiftLightConfig& config) {
+    uint16_t rpm, bool rpm_valid, uint32_t now_ms,
+    const ShiftLightConfig& config) {
     ShiftSegmentStates states{};
-    if (!(config.start_rpm < config.red_rpm &&
-          config.red_rpm <= config.max_rpm)) {
+    if (!rpm_valid || !(config.start_rpm < config.red_rpm &&
+                        config.red_rpm < config.flash_rpm &&
+                        config.flash_rpm <= config.max_rpm)) {
         return states;
     }
 
     constexpr std::size_t kSegmentCount = 12U;
+    if (config.flash_enabled && rpm >= config.flash_rpm) {
+        const bool red_phase = ((now_ms / 125U) % 2U) == 0U;
+        if (red_phase) {
+            for (ShiftSegmentState& state : states) {
+                state.lit = true;
+                state.color = ShiftColor::Red;
+            }
+        }
+        return states;
+    }
+
     const uint32_t range =
         static_cast<uint32_t>(config.max_rpm - config.start_rpm);
     std::size_t lit_count = 0U;

@@ -35,6 +35,7 @@ enum class SettingsResetTarget : uint8_t {
 enum class ShiftField : uint8_t {
     Start,
     Red,
+    Flash,
     Maximum,
 };
 

@@ -12,8 +12,10 @@ void ShiftLightView::create(lv_obj_t* parent) {
         lv_obj_clear_flag(segments_[i], LV_OBJ_FLAG_SCROLLABLE);
     }
 }
-void ShiftLightView::update(uint16_t rpm, const ShiftLightConfig& config) {
-    const ShiftSegmentStates states = ShiftLightModel::segments(rpm, config);
+void ShiftLightView::update(uint16_t rpm, bool rpm_valid, uint32_t now_ms,
+                            const ShiftLightConfig& config) {
+    const ShiftSegmentStates states =
+        ShiftLightModel::segments(rpm, rpm_valid, now_ms, config);
     for (std::size_t i = 0U; i < segments_.size(); ++i) {
         lv_color_t color = lv_color_hex(0x202830);
         if (states[i].lit) {
