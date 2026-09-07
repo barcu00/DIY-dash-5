@@ -8,7 +8,13 @@ from PIL import Image, ImageDraw, ImageFont
 EXPECTED_PREVIEWS = (
     "ui-preview-dash.png",
     "ui-preview-track.png",
-    "ui-preview-settings.png",
+    "ui-preview-settings-home.png",
+    "ui-preview-settings-display.png",
+    "ui-preview-settings-can.png",
+    "ui-preview-settings-shift.png",
+    "ui-preview-settings-units.png",
+    "ui-preview-settings-layouts.png",
+    "ui-preview-settings-system.png",
     "ui-preview-tile-editor.png",
     "ui-preview-warning.png",
 )
@@ -127,6 +133,122 @@ def settings_page():
     return image
 
 
+def settings_shell(title, back=True):
+    image = base()
+    draw = ImageDraw.Draw(image)
+    if back:
+        draw.rounded_rectangle((20, 18, 140, 56), 5, fill="#153B57")
+        draw.text((80, 37), "< BACK", fill=C["text"], font=F14, anchor="mm")
+    draw.text((400, 20), title, fill=C["text"], font=F24, anchor="ma")
+    navigation(draw, "SETTINGS")
+    return image, draw
+
+
+def settings_control(draw, box, label, value=""):
+    x1, y1, x2, y2 = box
+    draw.rounded_rectangle(box, 8, fill=C["panel"], outline=C["border"])
+    draw.text((x1 + 14, y1 + 14), label, fill=C["muted"], font=F12)
+    if value:
+        draw.text(((x1 + x2) / 2, (y1 + y2) / 2 + 12), value,
+                  fill=C["text"], font=F18, anchor="mm")
+
+
+def settings_home_page():
+    image, draw = settings_shell("SETTINGS", back=False)
+    labels = (("DISPLAY", "Brightness & memory"), ("DATA & CAN", "Source, profile, bitrate"),
+              ("SHIFT LIGHT", "Start, redline, maximum"), ("UNITS", "Temperature & pressure"),
+              ("LAYOUTS", "Dash & track tiles"), ("SYSTEM", "Reset, version, memory"))
+    for index, (title, detail) in enumerate(labels):
+        col, row = index % 3, index // 3
+        x, y = 22 + col * 256, 72 + row * 166
+        draw.rounded_rectangle((x, y, x + 244, y + 154), 10,
+                               fill=C["panel"], outline=C["border"])
+        draw.text((x + 122, y + 62), title, fill=C["text"], font=F18, anchor="mm")
+        draw.text((x + 122, y + 96), detail, fill=C["muted"], font=F12, anchor="mm")
+    return image
+
+
+def settings_display_page():
+    image, draw = settings_shell("DISPLAY")
+    draw.text((44, 110), "BRIGHTNESS", fill=C["text"], font=F18)
+    draw.rounded_rectangle((210, 116, 666, 134), 9, fill=C["border"])
+    draw.rounded_rectangle((210, 116, 580, 134), 9, fill=C["blue"])
+    draw.text((714, 125), "80%", fill=C["blue"], font=F18, anchor="mm")
+    settings_control(draw, (44, 180, 370, 320), "MEMORY", "Free heap 199 KiB")
+    settings_control(draw, (394, 180, 756, 320), "DISPLAY", "800 x 480  |  RGB565")
+    draw.text((400, 352), "LVGL buffers: 250 KiB PSRAM", fill=C["muted"], font=F14, anchor="ma")
+    draw.text((700, 29), "SAVED", fill=C["yellow"], font=F12)
+    return image
+
+
+def settings_can_page():
+    image, draw = settings_shell("DATA & CAN")
+    items = (("SOURCE", "DEMO"), ("PROFILE", "none"),
+             ("BITRATE", "500 kbit/s"), ("TIMEOUT", "500 ms"))
+    for index, (label, value) in enumerate(items):
+        x = 24 + index * 190
+        settings_control(draw, (x, 90, x + 174, 180), label, value)
+    settings_control(draw, (24, 216, 776, 360), "CAN STATUS",
+                     "DISABLED  |  receive-only  |  RX 0  |  rejected 0")
+    return image
+
+
+def settings_shift_page():
+    image, draw = settings_shell("SHIFT LIGHT")
+    for index, (label, value) in enumerate((("START RPM", "5500"), ("RED RPM", "7000"), ("MAX RPM", "8000"))):
+        x = 36 + index * 250
+        settings_control(draw, (x, 102, x + 214, 236), label, value)
+        draw.rounded_rectangle((x, 254, x + 96, 304), 6, fill="#153B57")
+        draw.rounded_rectangle((x + 118, 254, x + 214, 304), 6, fill="#153B57")
+        draw.text((x + 48, 279), "-", fill=C["text"], font=F24, anchor="mm")
+        draw.text((x + 166, 279), "+", fill=C["text"], font=F24, anchor="mm")
+    draw.text((400, 350), "Changes are saved automatically", fill=C["muted"], font=F14, anchor="ma")
+    return image
+
+
+def settings_units_page():
+    image, draw = settings_shell("UNITS")
+    items = (("TEMPERATURE", "Celsius"), ("PRESSURE", "bar"),
+             ("SPEED", "km/h"), ("MIXTURE", "lambda"))
+    for index, (label, value) in enumerate(items):
+        x = 24 + index * 190
+        settings_control(draw, (x, 116, x + 174, 226), label, value)
+    draw.text((400, 300), "Applied to DASH, TRACK and warnings",
+              fill=C["muted"], font=F14, anchor="ma")
+    return image
+
+
+def settings_layouts_page():
+    image, draw = settings_shell("LAYOUTS")
+    draw.rounded_rectangle((28, 72, 194, 112), 6, fill="#153B57")
+    draw.rounded_rectangle((210, 72, 376, 112), 6, fill=C["panel"], outline=C["border"])
+    draw.text((111, 92), "DASH", fill=C["text"], font=F14, anchor="mm")
+    draw.text((293, 92), "TRACK", fill=C["text"], font=F14, anchor="mm")
+    slots = (("1", "SPEED"), ("2", "MAP"), ("3", "LAMBDA"),
+             ("4", "CLT"), ("5", "RPM"), ("6", "GEAR"))
+    for index, (slot, value) in enumerate(slots):
+        col, row = index % 2, index // 2
+        x, y = 22 + col * 382, 126 + row * 72
+        settings_control(draw, (x, y, x + 366, y + 62), f"SLOT {slot}", f"{value}  |  VISIBLE")
+    draw.rounded_rectangle((22, 354, 182, 404), 6, fill=C["panel"], outline=C["border"])
+    draw.rounded_rectangle((618, 354, 778, 404), 6, fill="#153B57")
+    draw.text((102, 379), "< PREVIOUS", fill=C["muted"], font=F14, anchor="mm")
+    draw.text((400, 379), "1 / 3", fill=C["text"], font=F14, anchor="mm")
+    draw.text((698, 379), "NEXT >", fill=C["text"], font=F14, anchor="mm")
+    return image
+
+
+def settings_system_page():
+    image, draw = settings_shell("SYSTEM")
+    settings_control(draw, (28, 88, 374, 238), "RUNTIME", "Free heap 199 KiB")
+    settings_control(draw, (396, 88, 772, 238), "FIRMWARE", "dashboard-dev")
+    for x, text in ((28, "RESET DASH"), (282, "RESET TRACK"), (536, "FACTORY RESET")):
+        draw.rounded_rectangle((x, 276, x + 236, 338), 7, fill="#32181A", outline=C["red"])
+        draw.text((x + 118, 307), text, fill=C["text"], font=F14, anchor="mm")
+    draw.text((400, 376), "Reset requires confirmation", fill=C["yellow"], font=F14, anchor="ma")
+    return image
+
+
 def editor_page():
     image = data_page(False).convert("RGBA")
     shade = Image.new("RGBA", image.size, (0, 0, 0, 145)); image.alpha_composite(shade)
@@ -164,7 +286,12 @@ def warning_page():
 
 def render_all(output):
     output.mkdir(parents=True, exist_ok=True)
-    images = (data_page(False), data_page(True), settings_page(), editor_page(), warning_page())
+    images = (
+        data_page(False), data_page(True), settings_home_page(),
+        settings_display_page(), settings_can_page(), settings_shift_page(),
+        settings_units_page(), settings_layouts_page(), settings_system_page(),
+        editor_page(), warning_page(),
+    )
     for name, image in zip(EXPECTED_PREVIEWS, images):
         image.save(output / name, format="PNG", optimize=False)
 

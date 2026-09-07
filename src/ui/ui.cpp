@@ -49,6 +49,33 @@ void makeStepper(lv_obj_t* parent, lv_obj_t* spinbox, int x, int y,
     makeButton(parent, "+", x + button_width + 6, y, button_width, 34,
                Ui::spinIncreaseEvent, spinbox);
 }
+enum SettingsAction : intptr_t {
+    BrightnessPreview = 1,
+    BrightnessCommit,
+    SourceChanged,
+    BitrateChanged,
+    TimeoutDecrease,
+    TimeoutIncrease,
+    ShiftStartDecrease,
+    ShiftStartIncrease,
+    ShiftRedDecrease,
+    ShiftRedIncrease,
+    ShiftMaxDecrease,
+    ShiftMaxIncrease,
+    UnitsChanged,
+};
+
+lv_obj_t* makeSettingsCard(lv_obj_t* parent, const char* title,
+                           int x, int y, int width, int height,
+                           lv_event_cb_t callback, void* user_data) {
+    lv_obj_t* button = makeButton(parent, title, x, y, width, height,
+                                  callback, user_data);
+    lv_obj_set_style_bg_color(button, UiTheme::panel(), 0);
+    lv_obj_set_style_border_color(button, UiTheme::border(), 0);
+    lv_obj_set_style_border_width(button, 1, 0);
+    lv_obj_set_style_radius(button, 10, 0);
+    return button;
+}
 }  // namespace
 void Ui::styleScreen(lv_obj_t* screen) {
     lv_obj_set_style_bg_color(screen, UiTheme::background(), 0);
@@ -60,7 +87,7 @@ void Ui::begin(AppConfig& config, ConfigRepository& repository,
                BoardDisplay& board) {
     instance_ = this; config_ = &config; repository_ = &repository; board_ = &board;
     createDataPage(Page::Dash, config); createDataPage(Page::Track, config);
-    createSettings(); board.setSoftwareBrightness(config.brightness_percent);
+    board.setSoftwareBrightness(config.brightness_percent);
     update_policy_.takeLayoutDirty();
     load(Page::Dash);
 }
@@ -110,88 +137,270 @@ void Ui::applyLayout(Page page, const AppConfig& config) {
         }
     }
 }
-void Ui::createSettings() {
-    settings_ = lv_obj_create(nullptr); styleScreen(settings_);
-    makeLabel(settings_, "SETTINGS", 24, 20, &lv_font_montserrat_28, UiTheme::text());
-    settings_status_ = makeLabel(settings_, "---", 190, 27, &lv_font_montserrat_12,
-                                 UiTheme::muted());
-    settings_container_ = lv_obj_create(settings_); lv_obj_set_pos(settings_container_, 16, 66);
-    lv_obj_set_size(settings_container_, 768, 348);
-    lv_obj_set_style_bg_color(settings_container_, UiTheme::panel(), 0);
-    lv_obj_set_style_border_color(settings_container_, UiTheme::border(), 0);
-    lv_obj_set_scroll_dir(settings_container_, LV_DIR_VER);
-    lv_obj_add_event_cb(settings_container_, settingsScrollEvent,
-                        LV_EVENT_SCROLL_BEGIN, nullptr);
-    lv_obj_add_event_cb(settings_container_, settingsScrollEvent,
-                        LV_EVENT_SCROLL_END, nullptr);
-
-    makeLabel(settings_container_, "DISPLAY", 12, 10, &lv_font_montserrat_14, UiTheme::blue());
-    makeLabel(settings_container_, "Brightness (20-100%)", 12, 39, &lv_font_montserrat_14, UiTheme::text());
-    brightness_slider_ = lv_slider_create(settings_container_);
-    lv_obj_set_pos(brightness_slider_, 220, 42); lv_obj_set_size(brightness_slider_, 500, 16);
-    lv_slider_set_range(brightness_slider_, 20, 100);
-    lv_obj_add_event_cb(brightness_slider_, settingsEvent, LV_EVENT_VALUE_CHANGED,
-                        reinterpret_cast<void*>(1));
-
-    makeLabel(settings_container_, "DATA SOURCE & CAN", 12, 82, &lv_font_montserrat_14, UiTheme::blue());
-    source_dropdown_ = lv_dropdown_create(settings_container_); lv_obj_set_pos(source_dropdown_, 12, 111);
-    lv_obj_set_size(source_dropdown_, 180, 40); lv_dropdown_set_options(source_dropdown_, "DEMO\nCAN");
-    bitrate_dropdown_ = lv_dropdown_create(settings_container_); lv_obj_set_pos(bitrate_dropdown_, 210, 111);
-    lv_obj_set_size(bitrate_dropdown_, 210, 40);
-    lv_dropdown_set_options(bitrate_dropdown_, "125 kbit/s\n250 kbit/s\n500 kbit/s\n1000 kbit/s");
-    makeLabel(settings_container_, "Timeout ms", 440, 93, &lv_font_montserrat_12, UiTheme::muted());
-    can_timeout_ = makeSpinbox(settings_container_, 440, 111, 150, 100, 5000, 500, 4);
-    lv_spinbox_set_step(can_timeout_, 100); makeStepper(settings_container_, can_timeout_, 600, 114, 48);
-    makeLabel(settings_container_, "Receive-only • profile: none", 440, 155,
-              &lv_font_montserrat_12, UiTheme::muted());
-
-    makeLabel(settings_container_, "SHIFT LIGHTS", 12, 174, &lv_font_montserrat_14, UiTheme::blue());
-    makeLabel(settings_container_, "Start", 12, 207, &lv_font_montserrat_12, UiTheme::muted());
-    shift_start_ = makeSpinbox(settings_container_, 62, 194, 150, 1000, 15000, 5500, 5);
-    lv_spinbox_set_step(shift_start_, 100); makeStepper(settings_container_, shift_start_, 62, 236, 65);
-    makeLabel(settings_container_, "Red", 235, 207, &lv_font_montserrat_12, UiTheme::muted());
-    shift_red_ = makeSpinbox(settings_container_, 275, 194, 150, 1000, 15000, 7000, 5);
-    lv_spinbox_set_step(shift_red_, 100); makeStepper(settings_container_, shift_red_, 275, 236, 65);
-    makeLabel(settings_container_, "Max", 448, 207, &lv_font_montserrat_12, UiTheme::muted());
-    shift_max_ = makeSpinbox(settings_container_, 488, 194, 150, 1000, 15000, 8000, 5);
-    lv_spinbox_set_step(shift_max_, 100); makeStepper(settings_container_, shift_max_, 488, 236, 65);
-
-    makeLabel(settings_container_, "UNITS", 12, 292, &lv_font_montserrat_14, UiTheme::blue());
-    temp_unit_ = lv_dropdown_create(settings_container_); lv_obj_set_pos(temp_unit_, 12, 320);
-    lv_obj_set_size(temp_unit_, 165, 40); lv_dropdown_set_options(temp_unit_, "Celsius\nFahrenheit");
-    pressure_unit_ = lv_dropdown_create(settings_container_); lv_obj_set_pos(pressure_unit_, 190, 320);
-    lv_obj_set_size(pressure_unit_, 165, 40); lv_dropdown_set_options(pressure_unit_, "bar\nkPa\npsi");
-    speed_unit_ = lv_dropdown_create(settings_container_); lv_obj_set_pos(speed_unit_, 368, 320);
-    lv_obj_set_size(speed_unit_, 165, 40); lv_dropdown_set_options(speed_unit_, "km/h\nmph");
-    mixture_unit_ = lv_dropdown_create(settings_container_); lv_obj_set_pos(mixture_unit_, 546, 320);
-    lv_obj_set_size(mixture_unit_, 165, 40); lv_dropdown_set_options(mixture_unit_, "lambda\nAFR");
-
-    makeButton(settings_container_, "SAVE SETTINGS", 12, 380, 220, 46, settingsEvent,
-               reinterpret_cast<void*>(2));
-    settings_message_ = makeLabel(settings_container_, "", 250, 394,
-                                  &lv_font_montserrat_14, UiTheme::yellow());
-    makeLabel(settings_container_, "LAYOUTS — tap any slot, including hidden ones", 12, 455,
-              &lv_font_montserrat_14, UiTheme::blue());
-    int y = 488;
-    for (std::size_t i = 0U; i < layout_labels_.size(); ++i) {
-        const bool track = i >= AppConfig::kDashTileCount;
-        const std::size_t slot = track ? i - AppConfig::kDashTileCount : i;
-        makeLabel(settings_container_, track ? "TRACK" : "DASH", 12, y + 13,
-                  &lv_font_montserrat_12, UiTheme::muted());
-        lv_obj_t* button = makeButton(settings_container_, "", 88, y, 620, 40,
-                                      layoutSlotEvent,
-                                      reinterpret_cast<void*>(static_cast<intptr_t>(i)));
-        layout_labels_[i] = lv_obj_get_child(button, 0);
-        y += 48;
-    }
-    makeButton(settings_container_, "RESET LAYOUTS", 12, y + 10, 220, 46,
-               settingsEvent, reinterpret_cast<void*>(3));
-    makeButton(settings_container_, "FACTORY RESET", 250, y + 10, 220, 46,
-               settingsEvent, reinterpret_cast<void*>(4));
-    lv_obj_set_height(settings_container_, 348);
-    createNavigation(settings_, Page::Settings);
-    updateSettingsControls();
+void Ui::clearSettingsWidgets() {
+    settings_status_ = nullptr;
+    settings_message_ = nullptr;
+    brightness_slider_ = nullptr;
+    brightness_value_ = nullptr;
+    source_dropdown_ = nullptr;
+    profile_dropdown_ = nullptr;
+    bitrate_dropdown_ = nullptr;
+    can_timeout_ = nullptr;
+    shift_start_ = nullptr;
+    shift_red_ = nullptr;
+    shift_max_ = nullptr;
+    temp_unit_ = nullptr;
+    pressure_unit_ = nullptr;
+    speed_unit_ = nullptr;
+    mixture_unit_ = nullptr;
+    layout_labels_.fill(nullptr);
+    layout_slots_.fill(0U);
 }
+
+lv_obj_t* Ui::createSettingsPanel(const char* title) {
+    makeLabel(settings_, title, 310, 20, &lv_font_montserrat_24,
+              UiTheme::text());
+    settings_message_ = makeLabel(settings_, "", 660, 27,
+                                  &lv_font_montserrat_12,
+                                  UiTheme::yellow());
+    lv_obj_t* panel = lv_obj_create(settings_);
+    lv_obj_set_pos(panel, 16, 66);
+    lv_obj_set_size(panel, 768, 348);
+    lv_obj_set_style_bg_color(panel, UiTheme::background(), 0);
+    lv_obj_set_style_border_width(panel, 0, 0);
+    lv_obj_set_style_pad_all(panel, 0, 0);
+    lv_obj_clear_flag(panel, LV_OBJ_FLAG_SCROLLABLE);
+    return panel;
+}
+
+void Ui::showSettings(SettingsCategory category) {
+    settings_flow_.open(category);
+    clearSettingsWidgets();
+    lv_obj_t* previous = settings_;
+    settings_ = lv_obj_create(nullptr);
+    styleScreen(settings_);
+    lv_obj_t* panel = createSettingsPanel(
+        category == SettingsCategory::Home ? "SETTINGS" :
+        category == SettingsCategory::Display ? "DISPLAY" :
+        category == SettingsCategory::DataCan ? "DATA & CAN" :
+        category == SettingsCategory::ShiftLight ? "SHIFT LIGHT" :
+        category == SettingsCategory::Units ? "UNITS" :
+        category == SettingsCategory::Layouts ? "LAYOUTS" : "SYSTEM");
+    if (category != SettingsCategory::Home) {
+        makeButton(settings_, "< BACK", 20, 18, 120, 38,
+                   settingsBackEvent);
+    }
+    if (category == SettingsCategory::Home) createSettingsHome(panel);
+    if (category == SettingsCategory::Display) createDisplaySettings(panel);
+    if (category == SettingsCategory::DataCan) createDataCanSettings(panel);
+    if (category == SettingsCategory::ShiftLight) createShiftSettings(panel);
+    if (category == SettingsCategory::Units) createUnitSettings(panel);
+    if (category == SettingsCategory::Layouts) createLayoutSettings(panel);
+    if (category == SettingsCategory::System) createSystemSettings(panel);
+    createNavigation(settings_, Page::Settings);
+    lv_scr_load(settings_);
+    if (previous && previous != settings_) lv_obj_del(previous);
+    update_policy_.setInteractionActive(false);
+}
+
+void Ui::createSettingsHome(lv_obj_t* panel) {
+    constexpr const char* names[] = {
+        "DISPLAY", "DATA & CAN", "SHIFT LIGHT",
+        "UNITS", "LAYOUTS", "SYSTEM"};
+    constexpr SettingsCategory categories[] = {
+        SettingsCategory::Display, SettingsCategory::DataCan,
+        SettingsCategory::ShiftLight, SettingsCategory::Units,
+        SettingsCategory::Layouts, SettingsCategory::System};
+    for (int index = 0; index < 6; ++index) {
+        const int column = index % 3;
+        const int row = index / 3;
+        makeSettingsCard(panel, names[index], column * 256 + 6,
+                         row * 166 + 6, 244, 154,
+                         settingsCategoryEvent,
+                         reinterpret_cast<void*>(static_cast<intptr_t>(
+                             categories[index])));
+    }
+}
+
+void Ui::createDisplaySettings(lv_obj_t* panel) {
+    makeLabel(panel, "Brightness", 28, 40, &lv_font_montserrat_14,
+              UiTheme::text());
+    brightness_slider_ = lv_slider_create(panel);
+    lv_obj_set_pos(brightness_slider_, 190, 50);
+    lv_obj_set_size(brightness_slider_, 480, 20);
+    lv_slider_set_range(brightness_slider_, 20, 100);
+    lv_slider_set_value(brightness_slider_, config_->brightness_percent,
+                        LV_ANIM_OFF);
+    brightness_value_ = makeLabel(panel, "", 685, 42,
+                                  &lv_font_montserrat_14, UiTheme::blue());
+    char value[12];
+    std::snprintf(value, sizeof(value), "%u%%",
+                  static_cast<unsigned>(config_->brightness_percent));
+    lv_label_set_text(brightness_value_, value);
+    lv_obj_add_event_cb(brightness_slider_, settingsEvent,
+                        LV_EVENT_VALUE_CHANGED,
+                        reinterpret_cast<void*>(BrightnessPreview));
+    lv_obj_add_event_cb(brightness_slider_, settingsEvent, LV_EVENT_RELEASED,
+                        reinterpret_cast<void*>(BrightnessCommit));
+    lv_obj_add_event_cb(brightness_slider_, settingsEvent, LV_EVENT_PRESSED,
+                        reinterpret_cast<void*>(BrightnessPreview));
+    settings_status_ = makeLabel(panel, "", 28, 125,
+                                 &lv_font_montserrat_14, UiTheme::muted());
+}
+
+void Ui::createDataCanSettings(lv_obj_t* panel) {
+    makeLabel(panel, "SOURCE", 24, 26, &lv_font_montserrat_12,
+              UiTheme::muted());
+    source_dropdown_ = lv_dropdown_create(panel);
+    lv_obj_set_pos(source_dropdown_, 24, 48);
+    lv_obj_set_size(source_dropdown_, 160, 44);
+    lv_dropdown_set_options(source_dropdown_, "DEMO\nCAN");
+    lv_dropdown_set_selected(source_dropdown_,
+                             config_->data_source == DataSource::Can ? 1 : 0);
+    lv_obj_add_event_cb(source_dropdown_, settingsEvent,
+                        LV_EVENT_VALUE_CHANGED,
+                        reinterpret_cast<void*>(SourceChanged));
+
+    makeLabel(panel, "PROFILE", 208, 26, &lv_font_montserrat_12,
+              UiTheme::muted());
+    profile_dropdown_ = lv_dropdown_create(panel);
+    lv_obj_set_pos(profile_dropdown_, 208, 48);
+    lv_obj_set_size(profile_dropdown_, 160, 44);
+    lv_dropdown_set_options(profile_dropdown_, "none");
+
+    makeLabel(panel, "BITRATE", 392, 26, &lv_font_montserrat_12,
+              UiTheme::muted());
+    bitrate_dropdown_ = lv_dropdown_create(panel);
+    lv_obj_set_pos(bitrate_dropdown_, 392, 48);
+    lv_obj_set_size(bitrate_dropdown_, 180, 44);
+    lv_dropdown_set_options(bitrate_dropdown_,
+                            "125 kbit/s\n250 kbit/s\n500 kbit/s\n1000 kbit/s");
+    const uint16_t bitrate_index = config_->can.bitrate == 125000U ? 0U :
+        (config_->can.bitrate == 250000U ? 1U :
+        (config_->can.bitrate == 500000U ? 2U : 3U));
+    lv_dropdown_set_selected(bitrate_dropdown_, bitrate_index);
+    lv_obj_add_event_cb(bitrate_dropdown_, settingsEvent,
+                        LV_EVENT_VALUE_CHANGED,
+                        reinterpret_cast<void*>(BitrateChanged));
+
+    makeLabel(panel, "TIMEOUT MS", 598, 26, &lv_font_montserrat_12,
+              UiTheme::muted());
+    can_timeout_ = makeSpinbox(panel, 598, 48, 140, 100, 5000,
+                               config_->can.timeout_ms, 4);
+    lv_spinbox_set_step(can_timeout_, 100);
+    makeButton(panel, "-", 598, 98, 64, 38, settingsEvent,
+               reinterpret_cast<void*>(TimeoutDecrease));
+    makeButton(panel, "+", 674, 98, 64, 38, settingsEvent,
+               reinterpret_cast<void*>(TimeoutIncrease));
+    settings_status_ = makeLabel(panel, "", 24, 174,
+                                 &lv_font_montserrat_14, UiTheme::muted());
+}
+
+void Ui::createShiftSettings(lv_obj_t* panel) {
+    constexpr const char* labels[] = {"START RPM", "RED RPM", "MAX RPM"};
+    lv_obj_t** boxes[] = {&shift_start_, &shift_red_, &shift_max_};
+    const int32_t values[] = {config_->shift.start_rpm,
+                              config_->shift.red_rpm,
+                              config_->shift.max_rpm};
+    const intptr_t decreases[] = {ShiftStartDecrease, ShiftRedDecrease,
+                                  ShiftMaxDecrease};
+    const intptr_t increases[] = {ShiftStartIncrease, ShiftRedIncrease,
+                                  ShiftMaxIncrease};
+    for (int index = 0; index < 3; ++index) {
+        const int x = 34 + index * 250;
+        makeLabel(panel, labels[index], x, 32, &lv_font_montserrat_14,
+                  UiTheme::muted());
+        *boxes[index] = makeSpinbox(panel, x, 68, 190, 1000, 15000,
+                                    values[index], 5);
+        lv_spinbox_set_step(*boxes[index], 100);
+        makeButton(panel, "-", x, 128, 88, 48, settingsEvent,
+                   reinterpret_cast<void*>(decreases[index]));
+        makeButton(panel, "+", x + 102, 128, 88, 48, settingsEvent,
+                   reinterpret_cast<void*>(increases[index]));
+    }
+    makeLabel(panel, "Values are saved after every change", 205, 235,
+              &lv_font_montserrat_14, UiTheme::muted());
+}
+
+void Ui::createUnitSettings(lv_obj_t* panel) {
+    constexpr const char* labels[] = {"TEMPERATURE", "PRESSURE",
+                                      "SPEED", "MIXTURE"};
+    constexpr const char* options[] = {"Celsius\nFahrenheit", "bar\nkPa\npsi",
+                                       "km/h\nmph", "lambda\nAFR"};
+    lv_obj_t** dropdowns[] = {&temp_unit_, &pressure_unit_,
+                              &speed_unit_, &mixture_unit_};
+    const uint16_t selected[] = {
+        static_cast<uint16_t>(config_->units.temperature),
+        static_cast<uint16_t>(config_->units.pressure),
+        static_cast<uint16_t>(config_->units.speed),
+        static_cast<uint16_t>(config_->units.mixture)};
+    for (int index = 0; index < 4; ++index) {
+        const int x = 18 + index * 188;
+        makeLabel(panel, labels[index], x, 56, &lv_font_montserrat_12,
+                  UiTheme::muted());
+        *dropdowns[index] = lv_dropdown_create(panel);
+        lv_obj_set_pos(*dropdowns[index], x, 84);
+        lv_obj_set_size(*dropdowns[index], 170, 48);
+        lv_dropdown_set_options(*dropdowns[index], options[index]);
+        lv_dropdown_set_selected(*dropdowns[index], selected[index]);
+        lv_obj_add_event_cb(*dropdowns[index], settingsEvent,
+                            LV_EVENT_VALUE_CHANGED,
+                            reinterpret_cast<void*>(UnitsChanged));
+    }
+    makeLabel(panel, "Unit changes apply to DASH, TRACK and warnings", 170, 210,
+              &lv_font_montserrat_14, UiTheme::muted());
+}
+
+void Ui::createLayoutSettings(lv_obj_t* panel) {
+    makeButton(panel, "DASH", 20, 8, 170, 38, layoutSelectEvent,
+               reinterpret_cast<void*>(static_cast<intptr_t>(PageId::Dash)));
+    makeButton(panel, "TRACK", 202, 8, 170, 38, layoutSelectEvent,
+               reinterpret_cast<void*>(static_cast<intptr_t>(PageId::Track)));
+    const std::size_t count = settings_flow_.layout() == PageId::Dash
+                                  ? AppConfig::kDashTileCount
+                                  : AppConfig::kTrackTileCount;
+    const std::size_t first = settings_flow_.firstSlot();
+    for (std::size_t index = 0U;
+         index < SettingsFlowModel::kSlotsPerPage && first + index < count;
+         ++index) {
+        const std::size_t slot = first + index;
+        const TileConfig& tile = settings_flow_.layout() == PageId::Dash
+                                     ? config_->dash_tiles[slot]
+                                     : config_->track_tiles[slot];
+        char text[80];
+        std::snprintf(text, sizeof(text), "SLOT %u  %s  %s",
+                      static_cast<unsigned>(slot + 1U),
+                      parameterDescriptor(tile.parameter).name,
+                      tile.visible ? "VISIBLE" : "HIDDEN");
+        const int column = static_cast<int>(index % 2U);
+        const int row = static_cast<int>(index / 2U);
+        lv_obj_t* button = makeSettingsCard(
+            panel, text, 12 + column * 376, 54 + row * 72, 364, 62,
+            layoutSlotEvent, reinterpret_cast<void*>(slot));
+        layout_labels_[index] = lv_obj_get_child(button, 0);
+        layout_slots_[index] = slot;
+    }
+    makeButton(panel, "< PREVIOUS", 12, 286, 160, 44, layoutPageEvent,
+               reinterpret_cast<void*>(-1));
+    char page[24];
+    std::snprintf(page, sizeof(page), "%u / %u",
+                  static_cast<unsigned>(settings_flow_.pageIndex() + 1U),
+                  static_cast<unsigned>(settings_flow_.pageCount()));
+    makeLabel(panel, page, 360, 298, &lv_font_montserrat_14,
+              UiTheme::text());
+    makeButton(panel, "NEXT >", 596, 286, 160, 44, layoutPageEvent,
+               reinterpret_cast<void*>(1));
+}
+
+void Ui::createSystemSettings(lv_obj_t* panel) {
+    makeLabel(panel, "Firmware and runtime information", 24, 26,
+              &lv_font_montserrat_14, UiTheme::text());
+    settings_status_ = makeLabel(panel, "", 24, 78,
+                                 &lv_font_montserrat_14, UiTheme::muted());
+    makeLabel(panel, "Reset controls require confirmation", 24, 270,
+              &lv_font_montserrat_14, UiTheme::yellow());
+}
+
 void Ui::update(const VehicleState& state, const RuntimeDiagnostics& diagnostics,
                 const UiRuntimeStatus& status, const AppConfig& config,
                 TileWarningEngine& warnings) {
@@ -213,17 +422,29 @@ void Ui::update(const VehicleState& state, const RuntimeDiagnostics& diagnostics
                 warnings.isHighlighted({PageId::Track, static_cast<uint8_t>(i)}));
         track_shift_.update(rpm_value, config.shift);
     }
-    if (update_policy_.shouldUpdateSettingsStatus(diagnostics.uptime_ms)) {
-        char buffer[384];
-        std::snprintf(buffer, sizeof(buffer),
-            "Brightness: %u%%\nSource: %s\nCAN: %s  •  %u kbit/s  •  timeout %u ms\nProfile: %s\nShift: %u / red %u / max %u rpm\nRX: %u  •  rejected: %u  •  mappings: %u",
-            static_cast<unsigned>(config.brightness_percent),
-            config.data_source == DataSource::Can ? "CAN" : "DEMO", canStatusText(status.can_status),
-            static_cast<unsigned>(config.can.bitrate / 1000U), static_cast<unsigned>(config.can.timeout_ms),
-            config.can.profile_id.data(), static_cast<unsigned>(config.shift.start_rpm),
-            static_cast<unsigned>(config.shift.red_rpm), static_cast<unsigned>(config.shift.max_rpm),
-            static_cast<unsigned>(status.received_frames), static_cast<unsigned>(status.rejected_frames),
-            static_cast<unsigned>(status.decoder_mappings));
+    if (settings_status_ &&
+        update_policy_.shouldUpdateSettingsStatus(diagnostics.uptime_ms)) {
+        char buffer[256];
+        if (settings_flow_.category() == SettingsCategory::Display) {
+            std::snprintf(buffer, sizeof(buffer),
+                "Free heap: %u KiB\nPSRAM total: %u KiB\nDisplay: 800 x 480 RGB565\nLVGL buffers: 250 KiB PSRAM",
+                static_cast<unsigned>(diagnostics.free_heap / 1024U),
+                static_cast<unsigned>(diagnostics.psram_total / 1024U));
+        } else if (settings_flow_.category() == SettingsCategory::DataCan) {
+            std::snprintf(buffer, sizeof(buffer),
+                "CAN: %s  |  receive-only\nRX: %u  |  rejected: %u  |  mappings: %u",
+                canStatusText(status.can_status),
+                static_cast<unsigned>(status.received_frames),
+                static_cast<unsigned>(status.rejected_frames),
+                static_cast<unsigned>(status.decoder_mappings));
+        } else {
+            std::snprintf(buffer, sizeof(buffer),
+                "Uptime: %u s\nFree heap: %u KiB\nPSRAM total: %u KiB\nUI updates: %u",
+                static_cast<unsigned>(diagnostics.uptime_ms / 1000U),
+                static_cast<unsigned>(diagnostics.free_heap / 1024U),
+                static_cast<unsigned>(diagnostics.psram_total / 1024U),
+                static_cast<unsigned>(diagnostics.ui_updates));
+        }
         lv_label_set_text(settings_status_, buffer);
     }
     if (update_policy_.allowModalUpdates()) {
@@ -245,7 +466,7 @@ void Ui::load(Page page) {
                             (page == Page::Track ? PageId::Track : PageId::Settings));
     if (page == Page::Dash) lv_scr_load(dash_);
     if (page == Page::Track) lv_scr_load(track_);
-    if (page == Page::Settings) lv_scr_load(settings_);
+    if (page == Page::Settings) showSettings(SettingsCategory::Home);
 }
 
 bool Ui::takeRuntimeReconfigureRequest() {
@@ -333,7 +554,10 @@ void Ui::saveEditor() {
     }
     runtime_reconfigure_requested_ = true;
     update_policy_.markLayoutDirty();
-    updateSettingsControls(); closeEditor();
+    const bool refresh_layout = current_page_ == Page::Settings &&
+        settings_flow_.category() == SettingsCategory::Layouts;
+    closeEditor();
+    if (refresh_layout) showSettings(SettingsCategory::Layouts);
 }
 
 void Ui::updateSettingsControls() {
@@ -360,6 +584,24 @@ void Ui::updateSettingsControls() {
             tile.visible ? "VISIBLE" : "HIDDEN");
         lv_label_set_text(layout_labels_[i], text);
     }
+}
+
+void Ui::showSettingsMessage(const char* message) {
+    if (settings_message_) lv_label_set_text(settings_message_, message);
+}
+
+bool Ui::persistSettings(AppConfig candidate, bool reconfigure_runtime) {
+    if (!repository_ || !config_ || !candidate.validate().valid ||
+        !repository_->saveCandidate(candidate, *config_)) {
+        showSettingsMessage("SAVE ERROR");
+        if (board_ && config_)
+            board_->setSoftwareBrightness(config_->brightness_percent);
+        return false;
+    }
+    runtime_reconfigure_requested_ |= reconfigure_runtime;
+    if (board_) board_->setSoftwareBrightness(config_->brightness_percent);
+    showSettingsMessage("SAVED");
+    return true;
 }
 
 void Ui::saveSettings() {
@@ -415,30 +657,127 @@ void Ui::editorEvent(lv_event_t* event) {
 }
 
 void Ui::settingsEvent(lv_event_t* event) {
-    if (!instance_) return;
+    if (!instance_ || !instance_->config_) return;
     const intptr_t action = reinterpret_cast<intptr_t>(lv_event_get_user_data(event));
-    if (action == 1 && instance_->board_)
-        instance_->board_->setSoftwareBrightness(static_cast<uint8_t>(
-            lv_slider_get_value(instance_->brightness_slider_)));
-    if (action == 2) instance_->saveSettings();
-    if (action == 3) instance_->resetLayouts();
-    if (action == 4) instance_->factoryReset();
+    AppConfig candidate = *instance_->config_;
+
+    if (action == BrightnessPreview) {
+        instance_->update_policy_.setInteractionActive(true);
+        const uint8_t value = static_cast<uint8_t>(
+            lv_slider_get_value(instance_->brightness_slider_));
+        if (instance_->board_) instance_->board_->setSoftwareBrightness(value);
+        if (instance_->brightness_value_) {
+            char text[12];
+            std::snprintf(text, sizeof(text), "%u%%",
+                          static_cast<unsigned>(value));
+            lv_label_set_text(instance_->brightness_value_, text);
+        }
+        return;
+    }
+    if (action == BrightnessCommit) {
+        instance_->update_policy_.setInteractionActive(false);
+        candidate.brightness_percent = static_cast<uint8_t>(
+            lv_slider_get_value(instance_->brightness_slider_));
+        instance_->persistSettings(candidate, false);
+        return;
+    }
+    if (action == SourceChanged) {
+        candidate.data_source = lv_dropdown_get_selected(
+            instance_->source_dropdown_) == 1U ? DataSource::Can
+                                                : DataSource::Demo;
+        instance_->persistSettings(candidate, true);
+        return;
+    }
+    if (action == BitrateChanged) {
+        constexpr uint32_t bitrates[] = {125000U, 250000U, 500000U, 1000000U};
+        candidate.can.bitrate = bitrates[lv_dropdown_get_selected(
+            instance_->bitrate_dropdown_)];
+        instance_->persistSettings(candidate, true);
+        return;
+    }
+    if (action == TimeoutDecrease || action == TimeoutIncrease) {
+        if (action == TimeoutDecrease)
+            lv_spinbox_decrement(instance_->can_timeout_);
+        else
+            lv_spinbox_increment(instance_->can_timeout_);
+        candidate.can.timeout_ms = static_cast<uint32_t>(
+            lv_spinbox_get_value(instance_->can_timeout_));
+        instance_->persistSettings(candidate, true);
+        return;
+    }
+
+    ShiftField field = ShiftField::Start;
+    lv_obj_t* box = nullptr;
+    bool increase = false;
+    if (action == ShiftStartDecrease || action == ShiftStartIncrease) {
+        field = ShiftField::Start; box = instance_->shift_start_;
+        increase = action == ShiftStartIncrease;
+    } else if (action == ShiftRedDecrease || action == ShiftRedIncrease) {
+        field = ShiftField::Red; box = instance_->shift_red_;
+        increase = action == ShiftRedIncrease;
+    } else if (action == ShiftMaxDecrease || action == ShiftMaxIncrease) {
+        field = ShiftField::Maximum; box = instance_->shift_max_;
+        increase = action == ShiftMaxIncrease;
+    }
+    if (box) {
+        if (increase) lv_spinbox_increment(box); else lv_spinbox_decrement(box);
+        candidate.shift = SettingsFlowModel::correctedShift(
+            candidate.shift, field,
+            static_cast<uint16_t>(lv_spinbox_get_value(box)));
+        lv_spinbox_set_value(instance_->shift_start_, candidate.shift.start_rpm);
+        lv_spinbox_set_value(instance_->shift_red_, candidate.shift.red_rpm);
+        lv_spinbox_set_value(instance_->shift_max_, candidate.shift.max_rpm);
+        instance_->persistSettings(candidate, false);
+        return;
+    }
+
+    if (action == UnitsChanged) {
+        candidate.units.temperature = static_cast<TemperatureUnit>(
+            lv_dropdown_get_selected(instance_->temp_unit_));
+        candidate.units.pressure = static_cast<PressureUnit>(
+            lv_dropdown_get_selected(instance_->pressure_unit_));
+        candidate.units.speed = static_cast<SpeedUnit>(
+            lv_dropdown_get_selected(instance_->speed_unit_));
+        candidate.units.mixture = static_cast<MixtureUnit>(
+            lv_dropdown_get_selected(instance_->mixture_unit_));
+        instance_->persistSettings(candidate, false);
+    }
+}
+
+void Ui::settingsCategoryEvent(lv_event_t* event) {
+    if (!instance_) return;
+    instance_->showSettings(static_cast<SettingsCategory>(
+        reinterpret_cast<intptr_t>(lv_event_get_user_data(event))));
+}
+
+void Ui::settingsBackEvent(lv_event_t*) {
+    if (!instance_) return;
+    instance_->settings_flow_.backToHome();
+    instance_->showSettings(SettingsCategory::Home);
+}
+
+void Ui::layoutPageEvent(lv_event_t* event) {
+    if (!instance_) return;
+    const intptr_t direction = reinterpret_cast<intptr_t>(
+        lv_event_get_user_data(event));
+    const bool changed = direction < 0 ? instance_->settings_flow_.previousPage()
+                                       : instance_->settings_flow_.nextPage();
+    if (changed) instance_->showSettings(SettingsCategory::Layouts);
+}
+
+void Ui::layoutSelectEvent(lv_event_t* event) {
+    if (!instance_) return;
+    instance_->settings_flow_.selectLayout(static_cast<PageId>(
+        reinterpret_cast<intptr_t>(lv_event_get_user_data(event))));
+    instance_->showSettings(SettingsCategory::Layouts);
 }
 
 void Ui::layoutSlotEvent(lv_event_t* event) {
     if (!instance_) return;
     const std::size_t index = static_cast<std::size_t>(
         reinterpret_cast<intptr_t>(lv_event_get_user_data(event)));
-    if (index < AppConfig::kDashTileCount)
-        instance_->openEditor({PageId::Dash, static_cast<uint8_t>(index)});
-    else instance_->openEditor({PageId::Track,
-        static_cast<uint8_t>(index - AppConfig::kDashTileCount)});
-}
-
-void Ui::settingsScrollEvent(lv_event_t* event) {
-    if (!instance_) return;
-    instance_->update_policy_.setInteractionActive(
-        lv_event_get_code(event) == LV_EVENT_SCROLL_BEGIN);
+    instance_->openEditor({instance_->settings_flow_.layout(),
+                           static_cast<uint8_t>(index)});
 }
 
 void Ui::spinDecreaseEvent(lv_event_t* event) {

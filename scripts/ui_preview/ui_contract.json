@@ -12,6 +12,15 @@
   "row_y": [36, 134, 232, 332],
   "navigation_y": 430,
   "navigation_height": 50,
+  "settings": {
+    "content_x": 16,
+    "content_y": 66,
+    "content_width": 768,
+    "content_height": 348,
+    "scrollable": false,
+    "category_count": 6,
+    "layout_slots_per_page": 6
+  },
   "colors": {
     "background": "#07090D",
     "panel": "#11161D",

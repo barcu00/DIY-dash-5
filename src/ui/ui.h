@@ -11,6 +11,7 @@
 #include "telemetry/vehicle_state.h"
 #include "ui/tile_editor_model.h"
 #include "ui/shift_light_view.h"
+#include "ui/settings_flow_model.h"
 #include "ui/tile_view.h"
 #include "ui/ui_update_policy.h"
 struct UiRuntimeStatus {
@@ -38,11 +39,23 @@ private:
     static void tileEvent(lv_event_t* event);
     static void editorEvent(lv_event_t* event);
     static void settingsEvent(lv_event_t* event);
+    static void settingsCategoryEvent(lv_event_t* event);
+    static void settingsBackEvent(lv_event_t* event);
     static void warningEvent(lv_event_t* event);
     static void layoutSlotEvent(lv_event_t* event);
-    static void settingsScrollEvent(lv_event_t* event);
+    static void layoutPageEvent(lv_event_t* event);
+    static void layoutSelectEvent(lv_event_t* event);
     void createDataPage(Page page, const AppConfig& config);
-    void createSettings();
+    void showSettings(SettingsCategory category);
+    lv_obj_t* createSettingsPanel(const char* title);
+    void createSettingsHome(lv_obj_t* panel);
+    void createDisplaySettings(lv_obj_t* panel);
+    void createDataCanSettings(lv_obj_t* panel);
+    void createShiftSettings(lv_obj_t* panel);
+    void createUnitSettings(lv_obj_t* panel);
+    void createLayoutSettings(lv_obj_t* panel);
+    void createSystemSettings(lv_obj_t* panel);
+    void clearSettingsWidgets();
     void createNavigation(lv_obj_t* parent, Page active);
     void applyLayout(Page page, const AppConfig& config);
     void load(Page page);
@@ -50,6 +63,8 @@ private:
     void closeEditor();
     void saveEditor();
     void saveSettings();
+    bool persistSettings(AppConfig candidate, bool reconfigure_runtime);
+    void showSettingsMessage(const char* message);
     void resetLayouts();
     void factoryReset();
     void updateSettingsControls();
@@ -66,15 +81,17 @@ private:
     ShiftLightView dash_shift_{};
     ShiftLightView track_shift_{};
     UiUpdatePolicy update_policy_{};
+    SettingsFlowModel settings_flow_{};
     AppConfig* config_ = nullptr;
     ConfigRepository* repository_ = nullptr;
     BoardDisplay* board_ = nullptr;
     TileEditorModel editor_{};
     bool runtime_reconfigure_requested_ = false;
-    lv_obj_t* settings_container_ = nullptr;
     lv_obj_t* settings_message_ = nullptr;
     lv_obj_t* brightness_slider_ = nullptr;
+    lv_obj_t* brightness_value_ = nullptr;
     lv_obj_t* source_dropdown_ = nullptr;
+    lv_obj_t* profile_dropdown_ = nullptr;
     lv_obj_t* bitrate_dropdown_ = nullptr;
     lv_obj_t* can_timeout_ = nullptr;
     lv_obj_t* shift_start_ = nullptr;
@@ -84,8 +101,8 @@ private:
     lv_obj_t* pressure_unit_ = nullptr;
     lv_obj_t* speed_unit_ = nullptr;
     lv_obj_t* mixture_unit_ = nullptr;
-    std::array<lv_obj_t*, AppConfig::kDashTileCount + AppConfig::kTrackTileCount>
-        layout_labels_{};
+    std::array<lv_obj_t*, SettingsFlowModel::kSlotsPerPage> layout_labels_{};
+    std::array<std::size_t, SettingsFlowModel::kSlotsPerPage> layout_slots_{};
     lv_obj_t* editor_overlay_ = nullptr;
     lv_obj_t* editor_parameter_ = nullptr;
     lv_obj_t* editor_visible_ = nullptr;
