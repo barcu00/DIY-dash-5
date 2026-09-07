@@ -5,8 +5,8 @@ The bottom navigation contains DASH, TRACK, and SETTINGS; DIAG is not present.
 
 ## Tiles and layout
 
-Tap a visible tile once to open its editor. Choose the parameter, visibility,
-decimal places, and optional warning. Save writes that one tile transaction to
+Hold a visible tile for about 600 ms to open its editor. Choose the parameter,
+visibility, decimal places, and optional warning. Save writes that one tile transaction to
 ESP32 NVS before the runtime layout changes. Cancel and failed writes leave the
 active configuration unchanged.
 

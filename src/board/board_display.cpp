@@ -82,6 +82,7 @@ bool BoardDisplay::begin() {
         indev_drv_.type = LV_INDEV_TYPE_POINTER;
         indev_drv_.read_cb = touchCallback;
         indev_drv_.user_data = this;
+        indev_drv_.long_press_time = 600U;
         lv_indev_drv_register(&indev_drv_);
         Serial.println("[DIY Dash] Touch: GT911 ready");
     } else {

@@ -12,6 +12,7 @@
 #include "ui/tile_editor_model.h"
 #include "ui/shift_light_view.h"
 #include "ui/tile_view.h"
+#include "ui/ui_update_policy.h"
 struct UiRuntimeStatus {
     CanStatus can_status = CanStatus::Waiting;
     bool demo_active = false;
@@ -63,6 +64,7 @@ private:
     std::array<TileView, AppConfig::kTrackTileCount> track_tiles_{};
     ShiftLightView dash_shift_{};
     ShiftLightView track_shift_{};
+    UiUpdatePolicy update_policy_{};
     AppConfig* config_ = nullptr;
     ConfigRepository* repository_ = nullptr;
     BoardDisplay* board_ = nullptr;

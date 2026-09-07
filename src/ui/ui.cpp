@@ -61,6 +61,7 @@ void Ui::begin(AppConfig& config, ConfigRepository& repository,
     instance_ = this; config_ = &config; repository_ = &repository; board_ = &board;
     createDataPage(Page::Dash, config); createDataPage(Page::Track, config);
     createSettings(); board.setSoftwareBrightness(config.brightness_percent);
+    update_policy_.takeLayoutDirty();
     load(Page::Dash);
 }
 void Ui::createDataPage(Page page, const AppConfig& config) {
@@ -187,30 +188,40 @@ void Ui::createSettings() {
     createNavigation(settings_, Page::Settings);
     updateSettingsControls();
 }
-void Ui::update(const VehicleState& state, const RuntimeDiagnostics&,
+void Ui::update(const VehicleState& state, const RuntimeDiagnostics& diagnostics,
                 const UiRuntimeStatus& status, const AppConfig& config,
                 TileWarningEngine& warnings) {
-    applyLayout(Page::Dash, config); applyLayout(Page::Track, config);
-    for (std::size_t i = 0U; i < dash_tiles_.size(); ++i)
-        dash_tiles_[i].update(config.dash_tiles[i], config.units, state,
-            warnings.isHighlighted({PageId::Dash, static_cast<uint8_t>(i)}));
-    for (std::size_t i = 0U; i < track_tiles_.size(); ++i)
-        track_tiles_[i].update(config.track_tiles[i], config.units, state,
-            warnings.isHighlighted({PageId::Track, static_cast<uint8_t>(i)}));
+    if (update_policy_.takeLayoutDirty()) {
+        applyLayout(Page::Dash, config);
+        applyLayout(Page::Track, config);
+    }
     const SignalValue& rpm = state.get(ParameterId::Rpm);
     const uint16_t rpm_value = rpm.valid && rpm.value > 0.0f ? static_cast<uint16_t>(rpm.value) : 0U;
-    dash_shift_.update(rpm_value, config.shift); track_shift_.update(rpm_value, config.shift);
-    char buffer[384];
-    std::snprintf(buffer, sizeof(buffer),
-        "Brightness: %u%%\nSource: %s\nCAN: %s  •  %u kbit/s  •  timeout %u ms\nProfile: %s\nShift: %u / red %u / max %u rpm\nRX: %u  •  rejected: %u  •  mappings: %u",
-        static_cast<unsigned>(config.brightness_percent),
-        config.data_source == DataSource::Can ? "CAN" : "DEMO", canStatusText(status.can_status),
-        static_cast<unsigned>(config.can.bitrate / 1000U), static_cast<unsigned>(config.can.timeout_ms),
-        config.can.profile_id.data(), static_cast<unsigned>(config.shift.start_rpm),
-        static_cast<unsigned>(config.shift.red_rpm), static_cast<unsigned>(config.shift.max_rpm),
-        static_cast<unsigned>(status.received_frames), static_cast<unsigned>(status.rejected_frames),
-        static_cast<unsigned>(status.decoder_mappings));
-    lv_label_set_text(settings_status_, buffer);
+    if (update_policy_.shouldUpdateData(PageId::Dash)) {
+        for (std::size_t i = 0U; i < dash_tiles_.size(); ++i)
+            dash_tiles_[i].update(config.dash_tiles[i], config.units, state,
+                warnings.isHighlighted({PageId::Dash, static_cast<uint8_t>(i)}));
+        dash_shift_.update(rpm_value, config.shift);
+    }
+    if (update_policy_.shouldUpdateData(PageId::Track)) {
+        for (std::size_t i = 0U; i < track_tiles_.size(); ++i)
+            track_tiles_[i].update(config.track_tiles[i], config.units, state,
+                warnings.isHighlighted({PageId::Track, static_cast<uint8_t>(i)}));
+        track_shift_.update(rpm_value, config.shift);
+    }
+    if (update_policy_.shouldUpdateSettingsStatus(diagnostics.uptime_ms)) {
+        char buffer[384];
+        std::snprintf(buffer, sizeof(buffer),
+            "Brightness: %u%%\nSource: %s\nCAN: %s  •  %u kbit/s  •  timeout %u ms\nProfile: %s\nShift: %u / red %u / max %u rpm\nRX: %u  •  rejected: %u  •  mappings: %u",
+            static_cast<unsigned>(config.brightness_percent),
+            config.data_source == DataSource::Can ? "CAN" : "DEMO", canStatusText(status.can_status),
+            static_cast<unsigned>(config.can.bitrate / 1000U), static_cast<unsigned>(config.can.timeout_ms),
+            config.can.profile_id.data(), static_cast<unsigned>(config.shift.start_rpm),
+            static_cast<unsigned>(config.shift.red_rpm), static_cast<unsigned>(config.shift.max_rpm),
+            static_cast<unsigned>(status.received_frames), static_cast<unsigned>(status.rejected_frames),
+            static_cast<unsigned>(status.decoder_mappings));
+        lv_label_set_text(settings_status_, buffer);
+    }
     updateWarningModal(warnings);
 }
 void Ui::navEvent(lv_event_t* event) {
@@ -224,6 +235,8 @@ void Ui::tileEvent(lv_event_t* event) {
 }
 void Ui::load(Page page) {
     current_page_ = page;
+    update_policy_.activate(page == Page::Dash ? PageId::Dash :
+                            (page == Page::Track ? PageId::Track : PageId::Settings));
     if (page == Page::Dash) lv_scr_load(dash_);
     if (page == Page::Track) lv_scr_load(track_);
     if (page == Page::Settings) lv_scr_load(settings_);
@@ -313,6 +326,7 @@ void Ui::saveEditor() {
         lv_label_set_text(editor_message_, "SAVE FAILED"); return;
     }
     runtime_reconfigure_requested_ = true;
+    update_policy_.markLayoutDirty();
     updateSettingsControls(); closeEditor();
 }
 
@@ -374,6 +388,7 @@ void Ui::resetLayouts() {
     AppConfig candidate = *config_; const AppConfig defaults = AppConfig::defaults();
     candidate.dash_tiles = defaults.dash_tiles; candidate.track_tiles = defaults.track_tiles;
     if (repository_->saveCandidate(candidate, *config_)) {
+        update_policy_.markLayoutDirty();
         lv_label_set_text(settings_message_, "LAYOUTS RESET"); updateSettingsControls();
     } else lv_label_set_text(settings_message_, "RESET FAILED");
 }
@@ -382,6 +397,7 @@ void Ui::factoryReset() {
     if (!config_ || !repository_) return;
     if (!repository_->reset(*config_)) { lv_label_set_text(settings_message_, "RESET FAILED"); return; }
     runtime_reconfigure_requested_ = true; updateSettingsControls();
+    update_policy_.markLayoutDirty();
     board_->setSoftwareBrightness(config_->brightness_percent); load(Page::Dash);
 }
 

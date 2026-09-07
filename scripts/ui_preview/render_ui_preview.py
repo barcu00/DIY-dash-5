@@ -67,7 +67,8 @@ def tile(draw, rect, title, value, unit="", centered=False, warning=False):
         draw.text((x + w - 18, y + 55), unit, fill=C["muted"], font=F12, anchor="rm")
     else:
         draw.text((x + 12, y + 10), title, fill=C["muted"], font=F12)
-        draw.text((x + 12, y + 43), value, fill=C["text"], font=F24)
+        draw.text((x + w / 2, y + 54), value, fill=C["text"], font=F24,
+                  anchor="mm")
         draw.text((x + w - 8, y + h - 8), unit, fill=C["muted"], font=F12, anchor="rs")
 
 

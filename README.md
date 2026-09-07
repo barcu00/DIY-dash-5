@@ -161,8 +161,9 @@ is explicitly selected and saved in SETTINGS.
 The navigation is exactly DASH, TRACK, and SETTINGS. DASH contains four small
 tiles on each side, two centered wide tiles, and four center-small tiles. TRACK
 contains four small tiles on each side and four centered wide tiles. Both pages
-share the same configurable shift-light strip. A tap opens the persistent tile
-editor for parameter, visibility, decimals, and a fully configurable warning.
+share the same configurable shift-light strip. Holding a tile for about 600 ms
+opens its persistent editor for parameter, visibility, decimals, and a fully
+configurable warning.
 See `docs/ui/dashboard-config-guide.md` for controls and safety limitations.
 
 ## Serial diagnostics
