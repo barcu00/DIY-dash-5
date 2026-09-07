@@ -30,20 +30,20 @@ bool App::begin() {
         return false;
     }
 
-    ui_.begin();
+    ui_.begin(config_);
     telemetry_.update(now);
-    alarm_summary_ = alarms_.evaluate(telemetry_.state());
     const UiRuntimeStatus status{
-        telemetry_.canStatus(), alarm_summary_, telemetry_.demoActive(),
+        telemetry_.canStatus(), telemetry_.demoActive(),
         DashboardConfig::kCanBitrate, DashboardConfig::kCanTimeoutMs,
         telemetry_.mappingCount(),
         can_.receivedFrames(), can_.rejectedFrames()};
-    ui_.update(telemetry_.state(), board_.diagnostics(), status);
+    warnings_.evaluate(config_, telemetry_.state(), now);
+    ui_.update(telemetry_.state(), board_.diagnostics(), status, config_, warnings_);
     board_.unlock();
 
     ready_ = true;
     last_ui_update_ms_ = now;
-    Serial.println("[DIY Dash] UI ready - DASH / TRACK / DIAG / SETTINGS");
+    Serial.println("[DIY Dash] UI ready - DASH / TRACK / SETTINGS");
     return true;
 }
 
@@ -61,15 +61,16 @@ void App::loop() {
     telemetry_.update(now);
 
     if (now - last_ui_update_ms_ >= 50U) {
-        alarm_summary_ = alarms_.evaluate(telemetry_.state());
+        warnings_.evaluate(config_, telemetry_.state(), now);
         if (board_.lock()) {
             board_.incrementUiUpdates();
             const UiRuntimeStatus status{
-                telemetry_.canStatus(), alarm_summary_, telemetry_.demoActive(),
+                telemetry_.canStatus(), telemetry_.demoActive(),
                 DashboardConfig::kCanBitrate, DashboardConfig::kCanTimeoutMs,
                 telemetry_.mappingCount(),
                 can_.receivedFrames(), can_.rejectedFrames()};
-            ui_.update(telemetry_.state(), board_.diagnostics(), status);
+            ui_.update(telemetry_.state(), board_.diagnostics(), status,
+                       config_, warnings_);
             board_.unlock();
         }
         last_ui_update_ms_ = now;
