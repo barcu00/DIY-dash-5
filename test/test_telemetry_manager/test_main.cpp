@@ -12,7 +12,8 @@ const SignalDefinition kDefinitions[] = {
 
 void test_valid_decoded_frame_selects_can_snapshot() {
     EcuCanDecoder decoder(kDefinitions, 1U);
-    TelemetryManager manager(decoder, true, 500U);
+    TelemetryManager manager(decoder, 500U);
+    manager.selectSource(DataSource::Can, 0U);
     const CanFrame frame{0x321U, 2U, {0x68U, 0x10U}, false, false};
 
     TEST_ASSERT_TRUE(manager.accept(frame, 100U));
@@ -26,9 +27,10 @@ void test_valid_decoded_frame_selects_can_snapshot() {
                              manager.state().get(VehicleSignal::Rpm).value);
 }
 
-void test_can_timeout_selects_whole_demo_snapshot() {
+void test_can_timeout_never_falls_back_to_demo() {
     EcuCanDecoder decoder(kDefinitions, 1U);
-    TelemetryManager manager(decoder, true, 500U);
+    TelemetryManager manager(decoder, 500U);
+    manager.selectSource(DataSource::Can, 0U);
     const CanFrame frame{0x321U, 2U, {0x68U, 0x10U}, false, false};
     manager.accept(frame, 100U);
 
@@ -36,31 +38,33 @@ void test_can_timeout_selects_whole_demo_snapshot() {
 
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(CanStatus::Offline),
                             static_cast<uint8_t>(manager.canStatus()));
-    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DataSource::Demo),
-                            static_cast<uint8_t>(manager.state().source()));
-    TEST_ASSERT_TRUE(manager.demoActive());
-    TEST_ASSERT_TRUE(manager.state().get(VehicleSignal::Rpm).valid);
-    TEST_ASSERT_NOT_EQUAL(4200,
-                          static_cast<int>(manager.state().get(VehicleSignal::Rpm).value));
-}
-
-void test_disabled_demo_leaves_invalid_empty_snapshot() {
-    EcuCanDecoder decoder(kDefinitions, 1U);
-    TelemetryManager manager(decoder, false, 500U);
-    const CanFrame frame{0x321U, 2U, {0x68U, 0x10U}, false, false};
-    manager.accept(frame, 100U);
-
-    manager.update(601U);
-
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DataSource::None),
                             static_cast<uint8_t>(manager.state().source()));
-    TEST_ASSERT_FALSE(manager.state().get(VehicleSignal::Rpm).valid);
     TEST_ASSERT_FALSE(manager.demoActive());
+    TEST_ASSERT_FALSE(manager.state().get(VehicleSignal::Rpm).valid);
+}
+
+void test_explicit_demo_selection_ignores_can_frames() {
+    EcuCanDecoder decoder(kDefinitions, 1U);
+    TelemetryManager manager(decoder, 500U);
+    manager.selectSource(DataSource::Demo, 0U);
+    const CanFrame frame{0x321U, 2U, {0x68U, 0x10U}, false, false};
+
+    TEST_ASSERT_FALSE(manager.accept(frame, 100U));
+    manager.update(100U);
+
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DataSource::Demo),
+                            static_cast<uint8_t>(manager.state().source()));
+    TEST_ASSERT_TRUE(manager.state().get(VehicleSignal::Rpm).valid);
+    TEST_ASSERT_TRUE(manager.demoActive());
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(CanStatus::Disabled),
+                            static_cast<uint8_t>(manager.canStatus()));
 }
 
 void test_unmapped_frame_never_marks_can_online() {
     EcuCanDecoder decoder(kDefinitions, 1U);
-    TelemetryManager manager(decoder, true, 500U);
+    TelemetryManager manager(decoder, 500U);
+    manager.selectSource(DataSource::Can, 0U);
     const CanFrame frame{0x777U, 2U, {0x68U, 0x10U}, false, false};
 
     TEST_ASSERT_FALSE(manager.accept(frame, 100U));
@@ -73,8 +77,8 @@ void test_unmapped_frame_never_marks_can_online() {
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_valid_decoded_frame_selects_can_snapshot);
-    RUN_TEST(test_can_timeout_selects_whole_demo_snapshot);
-    RUN_TEST(test_disabled_demo_leaves_invalid_empty_snapshot);
+    RUN_TEST(test_can_timeout_never_falls_back_to_demo);
+    RUN_TEST(test_explicit_demo_selection_ignores_can_frames);
     RUN_TEST(test_unmapped_frame_never_marks_can_online);
     return UNITY_END();
 }
