@@ -32,7 +32,7 @@ jobs:
             ${{ runner.os }}-platformio-
 
       - name: Install PlatformIO
-        run: python -m pip install --disable-pip-version-check platformio==6.1.18
+        run: python -m pip install --disable-pip-version-check platformio==6.1.18 Pillow==11.3.0
 
       - name: Run native unit tests
         run: pio test -e native
@@ -42,6 +42,9 @@ jobs:
 
       - name: Build Waveshare firmware
         run: pio run -e waveshare_5
+
+      - name: Render 800x480 UI previews
+        run: python scripts/ui_preview/render_ui_preview.py --output ui-previews
 
       - name: Collect and verify firmware binaries
         shell: bash
@@ -60,6 +63,7 @@ jobs:
           if test -f "$build_dir/boot_app0.bin"; then
             cp "$build_dir/boot_app0.bin" "$artifact_dir/"
           fi
+          cp ui-previews/*.png "$artifact_dir/"
 
           ls -lah "$artifact_dir"
 

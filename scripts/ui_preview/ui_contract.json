@@ -1,0 +1,26 @@
+{
+  "width": 800,
+  "height": 480,
+  "outer_margin": 8,
+  "left_width": 176,
+  "center_x": 192,
+  "center_width": 416,
+  "center_small_width": 204,
+  "right_x": 616,
+  "right_width": 176,
+  "tile_height": 90,
+  "row_y": [36, 134, 232, 332],
+  "navigation_y": 430,
+  "navigation_height": 50,
+  "colors": {
+    "background": "#07090D",
+    "panel": "#11161D",
+    "border": "#27313C",
+    "text": "#F2F5F7",
+    "muted": "#7D8996",
+    "blue": "#20A4F3",
+    "green": "#39D353",
+    "yellow": "#FFCF33",
+    "red": "#FF3B30"
+  }
+}
