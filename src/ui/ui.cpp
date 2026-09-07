@@ -242,6 +242,8 @@ void Ui::createDisplaySettings(lv_obj_t* panel) {
                         reinterpret_cast<void*>(BrightnessPreview));
     lv_obj_add_event_cb(brightness_slider_, settingsEvent, LV_EVENT_RELEASED,
                         reinterpret_cast<void*>(BrightnessCommit));
+    lv_obj_add_event_cb(brightness_slider_, settingsEvent, LV_EVENT_PRESS_LOST,
+                        reinterpret_cast<void*>(BrightnessCommit));
     lv_obj_add_event_cb(brightness_slider_, settingsEvent, LV_EVENT_PRESSED,
                         reinterpret_cast<void*>(BrightnessPreview));
     settings_status_ = makeLabel(panel, "", 28, 125,

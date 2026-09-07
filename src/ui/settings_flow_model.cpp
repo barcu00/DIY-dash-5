@@ -67,7 +67,8 @@ bool SettingsFlowModel::shouldPersist(SettingsInputKind kind,
                                       SettingsInputEvent event) {
     return kind == SettingsInputKind::Discrete
                ? event == SettingsInputEvent::ValueChanged
-               : event == SettingsInputEvent::Released;
+               : event == SettingsInputEvent::Released ||
+                     event == SettingsInputEvent::PressLost;
 }
 
 ShiftLightConfig SettingsFlowModel::correctedShift(

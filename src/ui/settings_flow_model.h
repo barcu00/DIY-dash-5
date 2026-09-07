@@ -23,6 +23,7 @@ enum class SettingsInputKind : uint8_t {
 enum class SettingsInputEvent : uint8_t {
     ValueChanged,
     Released,
+    PressLost,
 };
 
 enum class SettingsResetTarget : uint8_t {
