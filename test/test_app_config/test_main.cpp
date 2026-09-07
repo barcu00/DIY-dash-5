@@ -101,14 +101,14 @@ void test_validation_rejects_invalid_shift_order_without_reordering_it() {
     TEST_ASSERT_EQUAL_UINT16(5000U, config.shift.max_rpm);
 }
 
-void test_validation_accepts_red_zone_equal_to_maximum() {
+void test_validation_rejects_red_zone_equal_to_maximum() {
     AppConfig config = AppConfig::defaults();
     config.shift = ShiftLightConfig{5500U, 7000U, 7000U};
 
     const ValidationResult result = config.validate();
 
-    TEST_ASSERT_TRUE(result.valid);
-    TEST_ASSERT_TRUE(result.shift_order_valid);
+    TEST_ASSERT_FALSE(result.valid);
+    TEST_ASSERT_FALSE(result.shift_order_valid);
 }
 
 int main(int, char**) {
@@ -117,6 +117,6 @@ int main(int, char**) {
     RUN_TEST(test_defaults_use_demo_metric_and_shared_shift_configuration);
     RUN_TEST(test_validation_normalizes_unsafe_persisted_values);
     RUN_TEST(test_validation_rejects_invalid_shift_order_without_reordering_it);
-    RUN_TEST(test_validation_accepts_red_zone_equal_to_maximum);
+    RUN_TEST(test_validation_rejects_red_zone_equal_to_maximum);
     return UNITY_END();
 }
