@@ -139,6 +139,23 @@ void test_validation_rejects_flash_not_above_red_zone() {
     TEST_ASSERT_FALSE(result.shift_order_valid);
 }
 
+void test_validation_rejects_unsnapped_or_out_of_range_shift_values() {
+    AppConfig unsnapped = AppConfig::defaults();
+    unsnapped.shift =
+        ShiftLightConfig{5500U, 5501U, 5502U, 5502U, true};
+    TEST_ASSERT_FALSE(unsnapped.validate().valid);
+
+    AppConfig below_range = AppConfig::defaults();
+    below_range.shift =
+        ShiftLightConfig{900U, 1100U, 1200U, 1200U, true};
+    TEST_ASSERT_FALSE(below_range.validate().valid);
+
+    AppConfig above_range = AppConfig::defaults();
+    above_range.shift =
+        ShiftLightConfig{14000U, 14500U, 15100U, 15100U, true};
+    TEST_ASSERT_FALSE(above_range.validate().valid);
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_defaults_define_approved_dash_and_track_slots);
@@ -148,5 +165,6 @@ int main(int, char**) {
     RUN_TEST(test_validation_rejects_red_zone_equal_to_maximum);
     RUN_TEST(test_validation_accepts_flash_equal_to_maximum);
     RUN_TEST(test_validation_rejects_flash_not_above_red_zone);
+    RUN_TEST(test_validation_rejects_unsnapped_or_out_of_range_shift_values);
     return UNITY_END();
 }

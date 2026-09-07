@@ -30,6 +30,22 @@ class DeferredSettingsSaveContractTests(unittest.TestCase):
         self.assertIn("queueSettingsOnExit", source)
         self.assertGreaterEqual(source.count("queueSettingsOnExit()"), 3)
 
+    def test_settings_home_navigation_can_retry_a_failed_commit(self):
+        source = (ROOT / "src/ui/ui.cpp").read_text(encoding="utf-8")
+        nav = source.split("void Ui::navEvent", 1)[1]
+        nav = nav.split("void Ui::tileEvent", 1)[0]
+
+        self.assertIn("current_page_ == Page::Settings", nav)
+        self.assertNotIn("category() != SettingsCategory::Home", nav)
+
+    def test_commit_feedback_uses_the_shared_top_layer(self):
+        header = (ROOT / "src/ui/ui.h").read_text(encoding="utf-8")
+        source = (ROOT / "src/ui/ui.cpp").read_text(encoding="utf-8")
+
+        self.assertIn("commit_toast_", header)
+        self.assertIn("showCommitFeedback", source)
+        self.assertIn("lv_layer_top()", source)
+
 
 if __name__ == "__main__":
     unittest.main()

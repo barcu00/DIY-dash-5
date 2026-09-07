@@ -149,6 +149,31 @@ void test_schema_v1_is_migrated_without_losing_user_settings() {
     TEST_ASSERT_EQUAL_UINT32(sizeof(AppConfig), backend.stored_size);
 }
 
+void test_failed_v1_rewrite_reports_failure_but_keeps_migrated_runtime() {
+    MemoryBackend backend;
+    const AppConfig defaults = AppConfig::defaults();
+    LegacyAppConfigV1 legacy;
+    legacy.brightness_percent = 40U;
+    legacy.can = defaults.can;
+    legacy.shift = LegacyShiftLightConfigV1{5000U, 6500U, 7800U};
+    legacy.units = defaults.units;
+    legacy.dash_tiles = defaults.dash_tiles;
+    legacy.track_tiles = defaults.track_tiles;
+    TEST_ASSERT_TRUE(backend.write(&legacy, sizeof(legacy)));
+    backend.fail_writes = true;
+    ConfigRepository repository(backend);
+    AppConfig loaded{};
+
+    const LoadResult result = repository.load(loaded);
+
+    TEST_ASSERT_EQUAL_UINT8(
+        static_cast<uint8_t>(LoadResult::MigrationWriteFailed),
+        static_cast<uint8_t>(result));
+    TEST_ASSERT_EQUAL_UINT8(40U, loaded.brightness_percent);
+    TEST_ASSERT_EQUAL_UINT16(7800U, loaded.shift.flash_rpm);
+    TEST_ASSERT_EQUAL_UINT32(sizeof(LegacyAppConfigV1), backend.stored_size);
+}
+
 void test_failed_save_keeps_previous_runtime_configuration() {
     MemoryBackend backend;
     backend.fail_writes = true;
@@ -239,6 +264,7 @@ int main(int, char**) {
     RUN_TEST(test_schema_mismatch_loads_safe_defaults);
     RUN_TEST(test_valid_configuration_round_trips_through_backend);
     RUN_TEST(test_schema_v1_is_migrated_without_losing_user_settings);
+    RUN_TEST(test_failed_v1_rewrite_reports_failure_but_keeps_migrated_runtime);
     RUN_TEST(test_failed_save_keeps_previous_runtime_configuration);
     RUN_TEST(test_invalid_candidate_is_not_written_or_applied);
     RUN_TEST(test_reset_erases_storage_and_restores_defaults_only_after_success);
