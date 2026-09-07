@@ -17,8 +17,7 @@ private:
     BoardDisplay board_;
     CanDriver can_;
     EcuCanDecoder decoder_{nullptr, 0U};
-    TelemetryManager telemetry_{decoder_, DashboardConfig::kDemoEnabled,
-                                DashboardConfig::kCanTimeoutMs};
+    TelemetryManager telemetry_{decoder_, DashboardConfig::kCanTimeoutMs};
     AlarmManager alarms_;
     AlarmSummary alarm_summary_{};
     Ui ui_;

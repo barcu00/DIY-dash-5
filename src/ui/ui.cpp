@@ -37,6 +37,7 @@ lv_obj_t* label(lv_obj_t* parent, const char* text, int x, int y,
 
 const char* canStatusText(CanStatus status) {
     switch (status) {
+        case CanStatus::Disabled: return "DISABLED";
         case CanStatus::Waiting: return "WAITING";
         case CanStatus::Online: return "ONLINE";
         case CanStatus::Offline: return "OFFLINE";

@@ -1,10 +1,8 @@
 #include "telemetry_manager.h"
 
 TelemetryManager::TelemetryManager(const EcuCanDecoder& decoder,
-                                   bool demo_enabled,
                                    uint32_t can_timeout_ms)
-    : decoder_(decoder), demo_enabled_(demo_enabled),
-      can_timeout_ms_(can_timeout_ms) {
+    : decoder_(decoder), can_timeout_ms_(can_timeout_ms) {
     can_state_.reset(DataSource::Can);
     empty_state_.reset(DataSource::None);
     for (std::size_t i = 0; i < timeouts_.size(); ++i) {
@@ -12,14 +10,34 @@ TelemetryManager::TelemetryManager(const EcuCanDecoder& decoder,
     }
 }
 
+void TelemetryManager::selectSource(DataSource source, uint32_t now_ms) {
+    selected_source_ = source == DataSource::Can ? DataSource::Can
+                                                 : DataSource::Demo;
+    demo_active_ = selected_source_ == DataSource::Demo;
+    has_valid_frame_ = false;
+    started_ms_ = now_ms;
+    last_valid_frame_ms_ = now_ms;
+    can_state_.reset(DataSource::Can);
+    empty_state_.reset(DataSource::None);
+    can_status_ = selected_source_ == DataSource::Can
+                      ? (can_initialized_ ? CanStatus::Waiting
+                                          : CanStatus::InitFailed)
+                      : CanStatus::Disabled;
+}
+
 void TelemetryManager::setCanInitialized(bool initialized, uint32_t now_ms) {
     can_initialized_ = initialized;
     started_ms_ = now_ms;
-    can_status_ = initialized ? CanStatus::Waiting : CanStatus::InitFailed;
+    if (selected_source_ == DataSource::Can) {
+        can_status_ = initialized ? CanStatus::Waiting : CanStatus::InitFailed;
+    } else {
+        can_status_ = CanStatus::Disabled;
+    }
 }
 
 bool TelemetryManager::accept(const CanFrame& frame, uint32_t now_ms) {
-    if (!can_initialized_ || !decoder_.decode(frame, can_state_, now_ms)) {
+    if (selected_source_ != DataSource::Can || !can_initialized_ ||
+        !decoder_.decode(frame, can_state_, now_ms)) {
         return false;
     }
 
@@ -31,6 +49,13 @@ bool TelemetryManager::accept(const CanFrame& frame, uint32_t now_ms) {
 }
 
 void TelemetryManager::update(uint32_t now_ms) {
+    if (selected_source_ == DataSource::Demo) {
+        demo_active_ = true;
+        can_status_ = CanStatus::Disabled;
+        demo_.update(now_ms);
+        return;
+    }
+
     can_state_.invalidateStale(now_ms, timeouts_.data());
 
     const uint32_t reference_ms = has_valid_frame_ ? last_valid_frame_ms_ : started_ms_;
@@ -41,12 +66,8 @@ void TelemetryManager::update(uint32_t now_ms) {
                           : (timed_out ? CanStatus::Offline : CanStatus::Waiting);
     }
 
-    demo_active_ = demo_enabled_ &&
-                   (can_status_ == CanStatus::Offline ||
-                    can_status_ == CanStatus::InitFailed);
-    if (demo_active_) {
-        demo_.update(now_ms);
-    } else if (can_status_ != CanStatus::Online) {
+    demo_active_ = false;
+    if (can_status_ != CanStatus::Online) {
         empty_state_.reset(DataSource::None);
     }
 }
@@ -67,6 +88,10 @@ CanStatus TelemetryManager::canStatus() const {
 
 bool TelemetryManager::demoActive() const {
     return demo_active_;
+}
+
+DataSource TelemetryManager::selectedSource() const {
+    return selected_source_;
 }
 
 std::size_t TelemetryManager::mappingCount() const {

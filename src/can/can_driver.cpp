@@ -42,7 +42,8 @@ bool CanDriver::begin(uint32_t bitrate) {
 
     twai_general_config_t general = TWAI_GENERAL_CONFIG_DEFAULT(
         static_cast<gpio_num_t>(DashboardConfig::kCanTxGpio),
-        static_cast<gpio_num_t>(DashboardConfig::kCanRxGpio), TWAI_MODE_NORMAL);
+        static_cast<gpio_num_t>(DashboardConfig::kCanRxGpio),
+        TWAI_MODE_LISTEN_ONLY);
     general.tx_queue_len = 0U;
     general.rx_queue_len = 32U;
     const twai_filter_config_t filter = TWAI_FILTER_CONFIG_ACCEPT_ALL();

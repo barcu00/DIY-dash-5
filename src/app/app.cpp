@@ -9,7 +9,13 @@ bool App::begin() {
     }
 
     const uint32_t now = millis();
-    const bool can_ready = can_.begin(DashboardConfig::kCanBitrate);
+    const DataSource selected_source = DashboardConfig::kDemoEnabled
+                                           ? DataSource::Demo
+                                           : DataSource::Can;
+    telemetry_.selectSource(selected_source, now);
+    const bool can_ready = selected_source == DataSource::Can
+                               ? can_.begin(DashboardConfig::kCanBitrate)
+                               : false;
     telemetry_.setCanInitialized(can_ready, now);
     Serial.printf("[DIY Dash] CAN: %s, TX GPIO%u, RX GPIO%u, %u bit/s\n",
                   can_ready ? "READY" : "INIT FAILED",

@@ -9,9 +9,9 @@
 
 class TelemetryManager {
 public:
-    TelemetryManager(const EcuCanDecoder& decoder, bool demo_enabled,
-                     uint32_t can_timeout_ms);
+    TelemetryManager(const EcuCanDecoder& decoder, uint32_t can_timeout_ms);
 
+    void selectSource(DataSource source, uint32_t now_ms);
     void setCanInitialized(bool initialized, uint32_t now_ms);
     bool accept(const CanFrame& frame, uint32_t now_ms);
     void update(uint32_t now_ms);
@@ -19,6 +19,7 @@ public:
     const VehicleState& state() const;
     CanStatus canStatus() const;
     bool demoActive() const;
+    DataSource selectedSource() const;
     std::size_t mappingCount() const;
 
 private:
@@ -27,7 +28,7 @@ private:
     VehicleState can_state_{};
     VehicleState empty_state_{};
     std::array<uint32_t, VehicleState::kSignalCount> timeouts_{};
-    bool demo_enabled_ = false;
+    DataSource selected_source_ = DataSource::Demo;
     bool demo_active_ = false;
     bool can_initialized_ = true;
     bool has_valid_frame_ = false;
