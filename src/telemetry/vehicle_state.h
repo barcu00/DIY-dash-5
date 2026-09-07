@@ -4,26 +4,12 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "telemetry/parameter_id.h"
+
 enum class DataSource : uint8_t {
     None,
     Can,
     Demo,
-};
-
-enum class VehicleSignal : uint8_t {
-    Rpm,
-    Map,
-    Lambda,
-    Tps,
-    Clt,
-    Iat,
-    OilPressure,
-    OilTemperature,
-    BatteryVoltage,
-    Speed,
-    Gear,
-    FuelPressure,
-    Count,
 };
 
 struct SignalValue {
@@ -35,7 +21,7 @@ struct SignalValue {
 class VehicleState {
 public:
     static constexpr std::size_t kSignalCount =
-        static_cast<std::size_t>(VehicleSignal::Count);
+        parameterCount();
 
     void reset(DataSource source = DataSource::None) {
         values_.fill(SignalValue{});
