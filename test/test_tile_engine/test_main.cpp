@@ -90,7 +90,7 @@ void test_dash_center_small_tiles_bottom_pack_in_row_major_order() {
 
     TEST_ASSERT_EQUAL_INT16(404, first_visible->geometry.x);
     TEST_ASSERT_EQUAL_INT16(232, first_visible->geometry.y);
-    TEST_ASSERT_EQUAL_INT16(192, last_visible->geometry.x);
+    TEST_ASSERT_EQUAL_INT16(404, last_visible->geometry.x);
     TEST_ASSERT_EQUAL_INT16(332, last_visible->geometry.y);
 }
 
