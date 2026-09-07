@@ -113,3 +113,20 @@ ShiftLightConfig SettingsFlowModel::correctedShift(
         kMinimumRpm, current.red_rpm - kRpmGap);
     return current;
 }
+
+void SettingsFlowModel::requestReset(SettingsResetTarget target) {
+    reset_target_ = target;
+    reset_pending_ = true;
+}
+
+bool SettingsFlowModel::resetPending() const {
+    return reset_pending_;
+}
+
+SettingsResetTarget SettingsFlowModel::pendingReset() const {
+    return reset_target_;
+}
+
+void SettingsFlowModel::cancelReset() {
+    reset_pending_ = false;
+}

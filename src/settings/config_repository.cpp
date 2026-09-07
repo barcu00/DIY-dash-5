@@ -28,6 +28,19 @@ bool ConfigRepository::saveCandidate(const AppConfig& candidate,
     return true;
 }
 
+bool ConfigRepository::resetLayout(PageId page, AppConfig& runtime_config) {
+    AppConfig candidate = runtime_config;
+    const AppConfig defaults = AppConfig::defaults();
+    if (page == PageId::Dash) {
+        candidate.dash_tiles = defaults.dash_tiles;
+    } else if (page == PageId::Track) {
+        candidate.track_tiles = defaults.track_tiles;
+    } else {
+        return false;
+    }
+    return saveCandidate(candidate, runtime_config);
+}
+
 bool ConfigRepository::reset(AppConfig& runtime_config) {
     if (!backend_.erase()) {
         return false;

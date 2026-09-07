@@ -58,9 +58,15 @@ public:
     static ShiftLightConfig correctedShift(ShiftLightConfig current,
                                            ShiftField field,
                                            uint16_t requested_rpm);
+    void requestReset(SettingsResetTarget target);
+    bool resetPending() const;
+    SettingsResetTarget pendingReset() const;
+    void cancelReset();
 
 private:
     SettingsCategory category_ = SettingsCategory::Home;
     PageId layout_ = PageId::Dash;
     std::size_t page_index_ = 0U;
+    SettingsResetTarget reset_target_ = SettingsResetTarget::DashLayout;
+    bool reset_pending_ = false;
 };

@@ -24,6 +24,7 @@ public:
 
     LoadResult load(AppConfig& config);
     bool saveCandidate(const AppConfig& candidate, AppConfig& runtime_config);
+    bool resetLayout(PageId page, AppConfig& runtime_config);
     bool reset(AppConfig& runtime_config);
 
 private:

@@ -45,6 +45,8 @@ private:
     static void layoutSlotEvent(lv_event_t* event);
     static void layoutPageEvent(lv_event_t* event);
     static void layoutSelectEvent(lv_event_t* event);
+    static void settingsResetEvent(lv_event_t* event);
+    static void settingsConfirmEvent(lv_event_t* event);
     void createDataPage(Page page, const AppConfig& config);
     void showSettings(SettingsCategory category);
     lv_obj_t* createSettingsPanel(const char* title);
@@ -62,12 +64,11 @@ private:
     void openEditor(TileAddress address);
     void closeEditor();
     void saveEditor();
-    void saveSettings();
     bool persistSettings(AppConfig candidate, bool reconfigure_runtime);
     void showSettingsMessage(const char* message);
-    void resetLayouts();
-    void factoryReset();
-    void updateSettingsControls();
+    void openResetConfirmation(SettingsResetTarget target);
+    void closeResetConfirmation();
+    void confirmReset();
     void updateWarningModal(TileWarningEngine& warnings);
     static void styleScreen(lv_obj_t* screen);
     static Ui* instance_;
@@ -103,6 +104,7 @@ private:
     lv_obj_t* mixture_unit_ = nullptr;
     std::array<lv_obj_t*, SettingsFlowModel::kSlotsPerPage> layout_labels_{};
     std::array<std::size_t, SettingsFlowModel::kSlotsPerPage> layout_slots_{};
+    lv_obj_t* reset_overlay_ = nullptr;
     lv_obj_t* editor_overlay_ = nullptr;
     lv_obj_t* editor_parameter_ = nullptr;
     lv_obj_t* editor_visible_ = nullptr;

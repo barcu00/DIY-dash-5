@@ -199,7 +199,7 @@ void Ui::showSettings(SettingsCategory category) {
     if (category == SettingsCategory::System) createSystemSettings(panel);
     createNavigation(settings_, Page::Settings);
     lv_scr_load(settings_);
-    if (previous && previous != settings_) lv_obj_del(previous);
+    if (previous && previous != settings_) lv_obj_del_async(previous);
     update_policy_.setInteractionActive(false);
 }
 
@@ -380,16 +380,22 @@ void Ui::createLayoutSettings(lv_obj_t* panel) {
         layout_labels_[index] = lv_obj_get_child(button, 0);
         layout_slots_[index] = slot;
     }
-    makeButton(panel, "< PREVIOUS", 12, 286, 160, 44, layoutPageEvent,
-               reinterpret_cast<void*>(-1));
+    lv_obj_t* previous = makeButton(
+        panel, "< PREVIOUS", 12, 286, 160, 44, layoutPageEvent,
+        reinterpret_cast<void*>(-1));
+    if (settings_flow_.pageIndex() == 0U)
+        lv_obj_add_state(previous, LV_STATE_DISABLED);
     char page[24];
     std::snprintf(page, sizeof(page), "%u / %u",
                   static_cast<unsigned>(settings_flow_.pageIndex() + 1U),
                   static_cast<unsigned>(settings_flow_.pageCount()));
     makeLabel(panel, page, 360, 298, &lv_font_montserrat_14,
               UiTheme::text());
-    makeButton(panel, "NEXT >", 596, 286, 160, 44, layoutPageEvent,
-               reinterpret_cast<void*>(1));
+    lv_obj_t* next = makeButton(
+        panel, "NEXT >", 596, 286, 160, 44, layoutPageEvent,
+        reinterpret_cast<void*>(1));
+    if (settings_flow_.pageIndex() + 1U >= settings_flow_.pageCount())
+        lv_obj_add_state(next, LV_STATE_DISABLED);
 }
 
 void Ui::createSystemSettings(lv_obj_t* panel) {
@@ -397,8 +403,16 @@ void Ui::createSystemSettings(lv_obj_t* panel) {
               &lv_font_montserrat_14, UiTheme::text());
     settings_status_ = makeLabel(panel, "", 24, 78,
                                  &lv_font_montserrat_14, UiTheme::muted());
-    makeLabel(panel, "Reset controls require confirmation", 24, 270,
-              &lv_font_montserrat_14, UiTheme::yellow());
+    makeButton(panel, "RESET DASH", 24, 248, 220, 58, settingsResetEvent,
+               reinterpret_cast<void*>(static_cast<intptr_t>(
+                   SettingsResetTarget::DashLayout)));
+    makeButton(panel, "RESET TRACK", 274, 248, 220, 58, settingsResetEvent,
+               reinterpret_cast<void*>(static_cast<intptr_t>(
+                   SettingsResetTarget::TrackLayout)));
+    makeButton(panel, "FACTORY RESET", 524, 248, 220, 58,
+               settingsResetEvent,
+               reinterpret_cast<void*>(static_cast<intptr_t>(
+                   SettingsResetTarget::Factory)));
 }
 
 void Ui::update(const VehicleState& state, const RuntimeDiagnostics& diagnostics,
@@ -560,32 +574,6 @@ void Ui::saveEditor() {
     if (refresh_layout) showSettings(SettingsCategory::Layouts);
 }
 
-void Ui::updateSettingsControls() {
-    if (!config_ || !brightness_slider_) return;
-    lv_slider_set_value(brightness_slider_, config_->brightness_percent, LV_ANIM_OFF);
-    lv_dropdown_set_selected(source_dropdown_, config_->data_source == DataSource::Can ? 1 : 0);
-    uint16_t bitrate_index = config_->can.bitrate == 125000U ? 0U :
-        (config_->can.bitrate == 250000U ? 1U : (config_->can.bitrate == 500000U ? 2U : 3U));
-    lv_dropdown_set_selected(bitrate_dropdown_, bitrate_index);
-    lv_spinbox_set_value(shift_start_, config_->shift.start_rpm);
-    lv_spinbox_set_value(shift_red_, config_->shift.red_rpm);
-    lv_spinbox_set_value(shift_max_, config_->shift.max_rpm);
-    lv_spinbox_set_value(can_timeout_, config_->can.timeout_ms);
-    lv_dropdown_set_selected(temp_unit_, static_cast<uint16_t>(config_->units.temperature));
-    lv_dropdown_set_selected(pressure_unit_, static_cast<uint16_t>(config_->units.pressure));
-    lv_dropdown_set_selected(speed_unit_, static_cast<uint16_t>(config_->units.speed));
-    lv_dropdown_set_selected(mixture_unit_, static_cast<uint16_t>(config_->units.mixture));
-    for (std::size_t i = 0U; i < layout_labels_.size(); ++i) {
-        const bool track = i >= AppConfig::kDashTileCount;
-        const std::size_t slot = track ? i - AppConfig::kDashTileCount : i;
-        const TileConfig& tile = track ? config_->track_tiles[slot] : config_->dash_tiles[slot];
-        char text[96]; std::snprintf(text, sizeof(text), "Slot %u • %s • %s",
-            static_cast<unsigned>(slot + 1U), parameterDescriptor(tile.parameter).name,
-            tile.visible ? "VISIBLE" : "HIDDEN");
-        lv_label_set_text(layout_labels_[i], text);
-    }
-}
-
 void Ui::showSettingsMessage(const char* message) {
     if (settings_message_) lv_label_set_text(settings_message_, message);
 }
@@ -604,49 +592,65 @@ bool Ui::persistSettings(AppConfig candidate, bool reconfigure_runtime) {
     return true;
 }
 
-void Ui::saveSettings() {
-    if (!config_ || !repository_) return;
-    AppConfig candidate = *config_;
-    candidate.brightness_percent = static_cast<uint8_t>(lv_slider_get_value(brightness_slider_));
-    candidate.data_source = lv_dropdown_get_selected(source_dropdown_) == 1U
-                                ? DataSource::Can : DataSource::Demo;
-    constexpr uint32_t bitrates[] = {125000U, 250000U, 500000U, 1000000U};
-    candidate.can.bitrate = bitrates[lv_dropdown_get_selected(bitrate_dropdown_)];
-    candidate.can.timeout_ms = static_cast<uint32_t>(lv_spinbox_get_value(can_timeout_));
-    candidate.shift.start_rpm = static_cast<uint16_t>(lv_spinbox_get_value(shift_start_));
-    candidate.shift.red_rpm = static_cast<uint16_t>(lv_spinbox_get_value(shift_red_));
-    candidate.shift.max_rpm = static_cast<uint16_t>(lv_spinbox_get_value(shift_max_));
-    candidate.units.temperature = static_cast<TemperatureUnit>(lv_dropdown_get_selected(temp_unit_));
-    candidate.units.pressure = static_cast<PressureUnit>(lv_dropdown_get_selected(pressure_unit_));
-    candidate.units.speed = static_cast<SpeedUnit>(lv_dropdown_get_selected(speed_unit_));
-    candidate.units.mixture = static_cast<MixtureUnit>(lv_dropdown_get_selected(mixture_unit_));
-    if (!candidate.validate().valid) {
-        lv_label_set_text(settings_message_, "Required: start < red <= max"); return;
-    }
-    if (!repository_->saveCandidate(candidate, *config_)) {
-        lv_label_set_text(settings_message_, "SAVE FAILED");
-        board_->setSoftwareBrightness(config_->brightness_percent); return;
-    }
-    runtime_reconfigure_requested_ = true; board_->setSoftwareBrightness(config_->brightness_percent);
-    lv_label_set_text(settings_message_, "SAVED"); updateSettingsControls();
+void Ui::openResetConfirmation(SettingsResetTarget target) {
+    closeResetConfirmation();
+    settings_flow_.requestReset(target);
+    reset_overlay_ = lv_obj_create(lv_layer_top());
+    lv_obj_set_size(reset_overlay_, 600, 260);
+    lv_obj_center(reset_overlay_);
+    lv_obj_set_style_bg_color(reset_overlay_, UiTheme::panel(), 0);
+    lv_obj_set_style_border_color(reset_overlay_, UiTheme::red(), 0);
+    lv_obj_set_style_border_width(reset_overlay_, 3, 0);
+    lv_obj_clear_flag(reset_overlay_, LV_OBJ_FLAG_SCROLLABLE);
+    const char* label = target == SettingsResetTarget::DashLayout
+                            ? "RESET DASH LAYOUT?"
+                        : target == SettingsResetTarget::TrackLayout
+                            ? "RESET TRACK LAYOUT?"
+                            : "FACTORY RESET ALL SETTINGS?";
+    lv_obj_t* title = makeLabel(reset_overlay_, label, 20, 34,
+                                &lv_font_montserrat_24, UiTheme::text());
+    lv_obj_set_width(title, 560);
+    lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, 0);
+    makeLabel(reset_overlay_, "This operation cannot be undone", 164, 98,
+              &lv_font_montserrat_14, UiTheme::muted());
+    makeButton(reset_overlay_, "CANCEL", 40, 166, 220, 56,
+               settingsConfirmEvent, reinterpret_cast<void*>(0));
+    makeButton(reset_overlay_, "CONFIRM", 340, 166, 220, 56,
+               settingsConfirmEvent, reinterpret_cast<void*>(1));
 }
 
-void Ui::resetLayouts() {
-    if (!config_ || !repository_) return;
-    AppConfig candidate = *config_; const AppConfig defaults = AppConfig::defaults();
-    candidate.dash_tiles = defaults.dash_tiles; candidate.track_tiles = defaults.track_tiles;
-    if (repository_->saveCandidate(candidate, *config_)) {
-        update_policy_.markLayoutDirty();
-        lv_label_set_text(settings_message_, "LAYOUTS RESET"); updateSettingsControls();
-    } else lv_label_set_text(settings_message_, "RESET FAILED");
+void Ui::closeResetConfirmation() {
+    if (reset_overlay_) {
+        lv_obj_del_async(reset_overlay_);
+        reset_overlay_ = nullptr;
+    }
+    settings_flow_.cancelReset();
 }
 
-void Ui::factoryReset() {
-    if (!config_ || !repository_) return;
-    if (!repository_->reset(*config_)) { lv_label_set_text(settings_message_, "RESET FAILED"); return; }
-    runtime_reconfigure_requested_ = true; updateSettingsControls();
+void Ui::confirmReset() {
+    if (!repository_ || !config_ || !settings_flow_.resetPending()) return;
+    const SettingsResetTarget target = settings_flow_.pendingReset();
+    bool saved = false;
+    if (target == SettingsResetTarget::DashLayout) {
+        saved = repository_->resetLayout(PageId::Dash, *config_);
+    } else if (target == SettingsResetTarget::TrackLayout) {
+        saved = repository_->resetLayout(PageId::Track, *config_);
+    } else {
+        saved = repository_->reset(*config_);
+    }
+    closeResetConfirmation();
+    if (!saved) {
+        showSettingsMessage("SAVE ERROR");
+        return;
+    }
     update_policy_.markLayoutDirty();
-    board_->setSoftwareBrightness(config_->brightness_percent); load(Page::Dash);
+    if (target == SettingsResetTarget::Factory) {
+        runtime_reconfigure_requested_ = true;
+        if (board_) board_->setSoftwareBrightness(config_->brightness_percent);
+        showSettings(SettingsCategory::Home);
+    } else {
+        showSettingsMessage("SAVED");
+    }
 }
 
 void Ui::editorEvent(lv_event_t* event) {
@@ -748,6 +752,20 @@ void Ui::settingsCategoryEvent(lv_event_t* event) {
     if (!instance_) return;
     instance_->showSettings(static_cast<SettingsCategory>(
         reinterpret_cast<intptr_t>(lv_event_get_user_data(event))));
+}
+
+void Ui::settingsResetEvent(lv_event_t* event) {
+    if (!instance_) return;
+    instance_->openResetConfirmation(static_cast<SettingsResetTarget>(
+        reinterpret_cast<intptr_t>(lv_event_get_user_data(event))));
+}
+
+void Ui::settingsConfirmEvent(lv_event_t* event) {
+    if (!instance_) return;
+    const intptr_t confirm = reinterpret_cast<intptr_t>(
+        lv_event_get_user_data(event));
+    if (confirm != 0) instance_->confirmReset();
+    else instance_->closeResetConfirmation();
 }
 
 void Ui::settingsBackEvent(lv_event_t*) {
