@@ -56,12 +56,11 @@ enum SettingsAction : intptr_t {
     BitrateChanged,
     TimeoutDecrease,
     TimeoutIncrease,
-    ShiftStartDecrease,
-    ShiftStartIncrease,
-    ShiftRedDecrease,
-    ShiftRedIncrease,
-    ShiftMaxDecrease,
-    ShiftMaxIncrease,
+    ShiftStartChanged,
+    ShiftRedChanged,
+    ShiftFlashChanged,
+    ShiftMaxChanged,
+    ShiftFlashEnabledChanged,
     UnitsChanged,
 };
 
@@ -147,7 +146,13 @@ void Ui::clearSettingsWidgets() {
     can_timeout_ = nullptr;
     shift_start_ = nullptr;
     shift_red_ = nullptr;
+    shift_flash_ = nullptr;
     shift_max_ = nullptr;
+    shift_start_value_ = nullptr;
+    shift_red_value_ = nullptr;
+    shift_flash_value_ = nullptr;
+    shift_max_value_ = nullptr;
+    shift_flash_enabled_ = nullptr;
     temp_unit_ = nullptr;
     pressure_unit_ = nullptr;
     speed_unit_ = nullptr;
@@ -298,29 +303,68 @@ void Ui::createDataCanSettings(lv_obj_t* panel) {
 }
 
 void Ui::createShiftSettings(lv_obj_t* panel) {
-    constexpr const char* labels[] = {"START RPM", "RED RPM", "MAX RPM"};
-    lv_obj_t** boxes[] = {&shift_start_, &shift_red_, &shift_max_};
+    constexpr const char* labels[] = {
+        "START RPM", "RED RPM", "FLASH RPM", "MAX RPM"};
+    lv_obj_t** sliders[] = {
+        &shift_start_, &shift_red_, &shift_flash_, &shift_max_};
+    lv_obj_t** value_labels[] = {
+        &shift_start_value_, &shift_red_value_,
+        &shift_flash_value_, &shift_max_value_};
     const int32_t values[] = {config_->shift.start_rpm,
                               config_->shift.red_rpm,
+                              config_->shift.flash_rpm,
                               config_->shift.max_rpm};
-    const intptr_t decreases[] = {ShiftStartDecrease, ShiftRedDecrease,
-                                  ShiftMaxDecrease};
-    const intptr_t increases[] = {ShiftStartIncrease, ShiftRedIncrease,
-                                  ShiftMaxIncrease};
-    for (int index = 0; index < 3; ++index) {
-        const int x = 34 + index * 250;
-        makeLabel(panel, labels[index], x, 32, &lv_font_montserrat_14,
+    const intptr_t actions[] = {ShiftStartChanged, ShiftRedChanged,
+                                ShiftFlashChanged, ShiftMaxChanged};
+    for (int index = 0; index < 4; ++index) {
+        const int y = 12 + index * 64;
+        makeLabel(panel, labels[index], 24, y + 5, &lv_font_montserrat_14,
                   UiTheme::muted());
-        *boxes[index] = makeSpinbox(panel, x, 68, 190, 1000, 15000,
-                                    values[index], 5);
-        lv_spinbox_set_step(*boxes[index], 100);
-        makeButton(panel, "-", x, 128, 88, 48, settingsEvent,
-                   reinterpret_cast<void*>(decreases[index]));
-        makeButton(panel, "+", x + 102, 128, 88, 48, settingsEvent,
-                   reinterpret_cast<void*>(increases[index]));
+        *sliders[index] = lv_slider_create(panel);
+        lv_obj_set_pos(*sliders[index], 160, y + 10);
+        lv_obj_set_size(*sliders[index], 440, 18);
+        lv_slider_set_range(*sliders[index], 1000, 15000);
+        lv_slider_set_value(*sliders[index], values[index], LV_ANIM_OFF);
+        lv_obj_add_event_cb(*sliders[index], settingsEvent,
+                            LV_EVENT_VALUE_CHANGED,
+                            reinterpret_cast<void*>(actions[index]));
+        *value_labels[index] = makeLabel(
+            panel, "", 624, y + 4, &lv_font_montserrat_14, UiTheme::text());
     }
-    makeLabel(panel, "Values are saved after every change", 205, 235,
-              &lv_font_montserrat_14, UiTheme::muted());
+    makeLabel(panel, "FLASH ENABLED", 24, 282, &lv_font_montserrat_14,
+              UiTheme::muted());
+    shift_flash_enabled_ = lv_switch_create(panel);
+    lv_obj_set_pos(shift_flash_enabled_, 174, 278);
+    if (config_->shift.flash_enabled)
+        lv_obj_add_state(shift_flash_enabled_, LV_STATE_CHECKED);
+    lv_obj_add_event_cb(shift_flash_enabled_, settingsEvent,
+                        LV_EVENT_VALUE_CHANGED,
+                        reinterpret_cast<void*>(ShiftFlashEnabledChanged));
+    makeLabel(panel, "Saved when leaving this screen", 420, 284,
+              &lv_font_montserrat_12, UiTheme::muted());
+    refreshShiftControls();
+}
+
+void Ui::refreshShiftControls() {
+    if (!config_) return;
+    lv_obj_t* sliders[] = {
+        shift_start_, shift_red_, shift_flash_, shift_max_};
+    lv_obj_t* labels[] = {
+        shift_start_value_, shift_red_value_,
+        shift_flash_value_, shift_max_value_};
+    const uint16_t values[] = {
+        config_->shift.start_rpm, config_->shift.red_rpm,
+        config_->shift.flash_rpm, config_->shift.max_rpm};
+    for (int index = 0; index < 4; ++index) {
+        if (sliders[index])
+            lv_slider_set_value(sliders[index], values[index], LV_ANIM_OFF);
+        if (labels[index]) {
+            char text[16];
+            std::snprintf(text, sizeof(text), "%u RPM",
+                          static_cast<unsigned>(values[index]));
+            lv_label_set_text(labels[index], text);
+        }
+    }
 }
 
 void Ui::createUnitSettings(lv_obj_t* panel) {
@@ -666,6 +710,7 @@ void Ui::confirmReset() {
     } else {
         *config_ = AppConfig::defaults();
         commit_model_.queueFactoryReset();
+        settings_feedback_ = "SAVING";
         staged = true;
     }
     closeResetConfirmation();
@@ -740,26 +785,27 @@ void Ui::settingsEvent(lv_event_t* event) {
     }
 
     ShiftField field = ShiftField::Start;
-    lv_obj_t* box = nullptr;
-    bool increase = false;
-    if (action == ShiftStartDecrease || action == ShiftStartIncrease) {
-        field = ShiftField::Start; box = instance_->shift_start_;
-        increase = action == ShiftStartIncrease;
-    } else if (action == ShiftRedDecrease || action == ShiftRedIncrease) {
-        field = ShiftField::Red; box = instance_->shift_red_;
-        increase = action == ShiftRedIncrease;
-    } else if (action == ShiftMaxDecrease || action == ShiftMaxIncrease) {
-        field = ShiftField::Maximum; box = instance_->shift_max_;
-        increase = action == ShiftMaxIncrease;
+    lv_obj_t* slider = nullptr;
+    if (action == ShiftStartChanged) {
+        field = ShiftField::Start; slider = instance_->shift_start_;
+    } else if (action == ShiftRedChanged) {
+        field = ShiftField::Red; slider = instance_->shift_red_;
+    } else if (action == ShiftFlashChanged) {
+        field = ShiftField::Flash; slider = instance_->shift_flash_;
+    } else if (action == ShiftMaxChanged) {
+        field = ShiftField::Maximum; slider = instance_->shift_max_;
     }
-    if (box) {
-        if (increase) lv_spinbox_increment(box); else lv_spinbox_decrement(box);
+    if (slider) {
         candidate.shift = SettingsFlowModel::correctedShift(
             candidate.shift, field,
-            static_cast<uint16_t>(lv_spinbox_get_value(box)));
-        lv_spinbox_set_value(instance_->shift_start_, candidate.shift.start_rpm);
-        lv_spinbox_set_value(instance_->shift_red_, candidate.shift.red_rpm);
-        lv_spinbox_set_value(instance_->shift_max_, candidate.shift.max_rpm);
+            static_cast<uint16_t>(lv_slider_get_value(slider)));
+        instance_->stageSettings(candidate, false);
+        instance_->refreshShiftControls();
+        return;
+    }
+    if (action == ShiftFlashEnabledChanged) {
+        candidate.shift.flash_enabled = lv_obj_has_state(
+            instance_->shift_flash_enabled_, LV_STATE_CHECKED);
         instance_->stageSettings(candidate, false);
         return;
     }

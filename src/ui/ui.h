@@ -54,6 +54,7 @@ private:
     void createDisplaySettings(lv_obj_t* panel);
     void createDataCanSettings(lv_obj_t* panel);
     void createShiftSettings(lv_obj_t* panel);
+    void refreshShiftControls();
     void createUnitSettings(lv_obj_t* panel);
     void createLayoutSettings(lv_obj_t* panel);
     void createSystemSettings(lv_obj_t* panel);
@@ -98,7 +99,13 @@ private:
     lv_obj_t* can_timeout_ = nullptr;
     lv_obj_t* shift_start_ = nullptr;
     lv_obj_t* shift_red_ = nullptr;
+    lv_obj_t* shift_flash_ = nullptr;
     lv_obj_t* shift_max_ = nullptr;
+    lv_obj_t* shift_start_value_ = nullptr;
+    lv_obj_t* shift_red_value_ = nullptr;
+    lv_obj_t* shift_flash_value_ = nullptr;
+    lv_obj_t* shift_max_value_ = nullptr;
+    lv_obj_t* shift_flash_enabled_ = nullptr;
     lv_obj_t* temp_unit_ = nullptr;
     lv_obj_t* pressure_unit_ = nullptr;
     lv_obj_t* speed_unit_ = nullptr;

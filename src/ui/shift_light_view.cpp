@@ -2,6 +2,7 @@
 #include "ui/shift_light_model.h"
 #include "ui/ui_theme.h"
 void ShiftLightView::create(lv_obj_t* parent) {
+    state_initialized_ = false;
     for (std::size_t i = 0U; i < segments_.size(); ++i) {
         segments_[i] = lv_obj_create(parent);
         lv_obj_set_pos(segments_[i], 8 + static_cast<int>(i) * 66, 8);
@@ -17,6 +18,10 @@ void ShiftLightView::update(uint16_t rpm, bool rpm_valid, uint32_t now_ms,
     const ShiftSegmentStates states =
         ShiftLightModel::segments(rpm, rpm_valid, now_ms, config);
     for (std::size_t i = 0U; i < segments_.size(); ++i) {
+        if (state_initialized_ && states[i].lit == last_states_[i].lit &&
+            states[i].color == last_states_[i].color) {
+            continue;
+        }
         lv_color_t color = lv_color_hex(0x202830);
         if (states[i].lit) {
             if (states[i].color == ShiftColor::Green) color = UiTheme::green();
@@ -25,4 +30,6 @@ void ShiftLightView::update(uint16_t rpm, bool rpm_valid, uint32_t now_ms,
         }
         lv_obj_set_style_bg_color(segments_[i], color, 0);
     }
+    last_states_ = states;
+    state_initialized_ = true;
 }

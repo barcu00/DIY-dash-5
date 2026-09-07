@@ -6,6 +6,12 @@ namespace {
 constexpr uint16_t kMinimumRpm = 1000U;
 constexpr uint16_t kMaximumRpm = 15000U;
 constexpr uint16_t kRpmGap = 100U;
+
+uint16_t roundedRpm(uint16_t rpm) {
+    const uint32_t bounded = std::min<uint32_t>(rpm, kMaximumRpm);
+    return static_cast<uint16_t>(
+        ((bounded + kRpmGap / 2U) / kRpmGap) * kRpmGap);
+}
 }
 
 void SettingsFlowModel::open(SettingsCategory category) {
@@ -73,6 +79,7 @@ bool SettingsFlowModel::shouldPersist(SettingsInputKind kind,
 
 ShiftLightConfig SettingsFlowModel::correctedShift(
     ShiftLightConfig current, ShiftField field, uint16_t requested_rpm) {
+    requested_rpm = roundedRpm(requested_rpm);
     if (field == ShiftField::Start) {
         current.start_rpm = std::clamp<uint16_t>(
             requested_rpm, kMinimumRpm, kMaximumRpm - 2U * kRpmGap);
