@@ -114,7 +114,7 @@ scripts/tests/test_ui_preview.py
 - Produces: `ParameterId`, `NativeUnit`, `ParameterDescriptor`, `parameterDescriptor(ParameterId)`, `UnitSettings`, `PresentedValue`, `UnitPresenter::present(...)`, `UnitPresenter::toNative(...)`.
 - Preserves: `using VehicleSignal = ParameterId` so the existing decoder and tests can migrate without a flag-day rename.
 
-- [ ] **Step 1: Add failing registry and conversion tests**
+- [x] **Step 1: Add failing registry and conversion tests**
 
 Use these contract examples:
 
@@ -149,7 +149,7 @@ void test_lambda_to_afr_uses_configured_stoich() {
 }
 ```
 
-- [ ] **Step 2: Push the red tests to GitHub Actions**
+- [x] **Step 2: Push the red tests to GitHub Actions**
 
 ```powershell
 git add test/test_parameter_registry test/test_unit_presenter platformio.ini
@@ -161,7 +161,7 @@ Expected GitHub result: `Run native unit tests` fails because the new parameter
 and presenter interfaces do not exist. Record the failing run URL in the task
 notes; do not run `pio` locally.
 
-- [ ] **Step 3: Implement stable types and descriptors**
+- [x] **Step 3: Implement stable types and descriptors**
 
 Define the enum once and keep its numeric order stable:
 
@@ -183,7 +183,7 @@ a fixed `Unknown` descriptor for out-of-range input. Keep all current telemetry
 in its existing native units: °C, bar, km/h, lambda, volts, percent, RPM, and
 integer gear.
 
-- [ ] **Step 4: Implement reversible presentation conversion**
+- [x] **Step 4: Implement reversible presentation conversion**
 
 ```cpp
 struct UnitSettings {
@@ -213,7 +213,7 @@ Use `°F = °C * 9/5 + 32`, `kPa = bar * 100`,
 `AFR = lambda * stoich_afr`. Clamp stoichiometric ratio during configuration
 validation, not inside conversions.
 
-- [ ] **Step 5: Push the green implementation and verify GitHub Actions**
+- [x] **Step 5: Push the green implementation and verify GitHub Actions**
 
 ```powershell
 git add src/telemetry src/ecu src/ui/unit_presenter.* platformio.ini test
@@ -236,7 +236,7 @@ build, packaging tests, and artifact upload all pass.
 - Consumes: `ParameterId`, `UnitSettings` from Task 1.
 - Produces: `PageId`, `TileSize`, `TileGroup`, `TileAddress`, `TileConfig`, `TileWarningConfig`, `ShiftLightConfig`, `CanSettings`, `AppConfig::defaults()`, and `AppConfig::validate()`.
 
-- [ ] **Step 1: Write failing configuration tests**
+- [x] **Step 1: Write failing configuration tests**
 
 ```cpp
 void test_defaults_define_every_dash_and_track_slot() {
@@ -261,13 +261,13 @@ void test_validation_clamps_ranges_and_rejects_bad_shift_order() {
 }
 ```
 
-- [ ] **Step 2: Push the red configuration contract**
+- [x] **Step 2: Push the red configuration contract**
 
 Commit `test: define dashboard configuration defaults`, push
 `dashboard-dev`, and confirm the GitHub native-test step fails on missing
 `AppConfig`. Do not run local tests.
 
-- [ ] **Step 3: Implement the configuration types**
+- [x] **Step 3: Implement the configuration types**
 
 Use fixed arrays so NVS serialization has a bounded footprint:
 
@@ -325,7 +325,7 @@ are source `DEMO`, brightness 100, CAN bitrate 500000, timeout 500 ms,
 shift start 5500 RPM, red zone 7000 RPM, maximum 8000 RPM, metric units, lambda,
 and stoichiometric AFR 14.7. The initial profile ID is an empty safe profile.
 
-- [ ] **Step 4: Implement validation without silently fixing shift order**
+- [x] **Step 4: Implement validation without silently fixing shift order**
 
 `AppConfig::validate()` clamps brightness, decimals (0-3), supported bitrate,
 timeout (100-5000 ms), non-negative hysteresis, delay (0-10000 ms), and
@@ -333,7 +333,7 @@ stoichiometric AFR (fallback 14.7 when outside 5.0-20.0). It returns
 `shift_order_valid=false` for invalid RPM ordering and leaves the last valid
 shift configuration available to the caller instead of reordering values.
 
-- [ ] **Step 5: Push implementation and verify green CI**
+- [x] **Step 5: Push implementation and verify green CI**
 
 Commit `feat: add versioned dashboard configuration`, push, and require the
 complete GitHub workflow to pass.
@@ -354,7 +354,7 @@ complete GitHub workflow to pass.
 - Consumes: `AppConfig`, `TileAddress`, `TileGroup`, `ShiftLightConfig`.
 - Produces: `TileGeometry`, `TilePlacement`, `TileEngine::placements(...)`, `ShiftSegmentState`, `ShiftLightModel::segments(...)`.
 
-- [ ] **Step 1: Write failing packing tests for every group shape**
+- [x] **Step 1: Write failing packing tests for every group shape**
 
 ```cpp
 void test_dash_left_tiles_compact_to_bottom_without_crossing_groups() {
@@ -382,7 +382,7 @@ void test_track_center_all_hidden_produces_no_center_placements() {
 }
 ```
 
-- [ ] **Step 2: Write the failing shared shift-light tests**
+- [x] **Step 2: Write the failing shared shift-light tests**
 
 ```cpp
 void test_both_pages_use_identical_shift_segments() {
@@ -395,12 +395,12 @@ void test_both_pages_use_identical_shift_segments() {
 }
 ```
 
-- [ ] **Step 3: Push the red model tests and confirm GitHub failure**
+- [x] **Step 3: Push the red model tests and confirm GitHub failure**
 
 Commit `test: define tile packing and shift light behavior`, push, and record
 the expected missing-interface failure from GitHub Actions.
 
-- [ ] **Step 4: Implement geometry and bottom packing**
+- [x] **Step 4: Implement geometry and bottom packing**
 
 Use an 8 px outer margin, 8 px gaps, shift strip at `y=8`, content beginning at
 `y=36`, navigation at `y=430` with height 50, and content ending at `y=422`.
@@ -413,14 +413,14 @@ slots in original order, counts visible entries, assigns them to the lowest
 DASH slots retain their two-column order while moving by complete row and then
 within the final row deterministically.
 
-- [ ] **Step 5: Implement one shared 12-segment shift model**
+- [x] **Step 5: Implement one shared 12-segment shift model**
 
 Map RPM below start to zero lit segments, linearly fill segments from start to
 maximum, use green before the red-zone boundary, yellow for the two segments
 immediately before that boundary, and red from the boundary through maximum.
 Clamp RPM above maximum to all segments lit. Both UI pages call this same model.
 
-- [ ] **Step 6: Push green implementation and verify GitHub Actions**
+- [x] **Step 6: Push green implementation and verify GitHub Actions**
 
 Commit `feat: add grouped tile layout and shared shift lights`, push, and require
 all native/model tests plus the target build to pass.
