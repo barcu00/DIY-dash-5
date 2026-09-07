@@ -22,7 +22,7 @@ bool UiUpdatePolicy::takeLayoutDirty() {
 }
 
 bool UiUpdatePolicy::shouldUpdateSettingsStatus(uint32_t now_ms) {
-    if (active_page_ != PageId::Settings) {
+    if (active_page_ != PageId::Settings || interaction_active_) {
         return false;
     }
     if (!settings_status_initialized_ ||
@@ -32,4 +32,15 @@ bool UiUpdatePolicy::shouldUpdateSettingsStatus(uint32_t now_ms) {
         return true;
     }
     return false;
+}
+
+void UiUpdatePolicy::setInteractionActive(bool active) {
+    interaction_active_ = active;
+    if (!active) {
+        settings_status_initialized_ = false;
+    }
+}
+
+bool UiUpdatePolicy::allowModalUpdates() const {
+    return !interaction_active_;
 }

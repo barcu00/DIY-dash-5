@@ -40,6 +40,7 @@ private:
     static void settingsEvent(lv_event_t* event);
     static void warningEvent(lv_event_t* event);
     static void layoutSlotEvent(lv_event_t* event);
+    static void settingsScrollEvent(lv_event_t* event);
     void createDataPage(Page page, const AppConfig& config);
     void createSettings();
     void createNavigation(lv_obj_t* parent, Page active);

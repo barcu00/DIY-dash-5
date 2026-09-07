@@ -3,12 +3,13 @@
 #include <esp_heap_caps.h>
 #include <esp_timer.h>
 
+#include "board/display_tuning.h"
+
 using esp_panel::board::Board;
 using esp_panel::drivers::TouchPoint;
 
 namespace {
 constexpr uint32_t kLvTickMs = 2;
-constexpr uint32_t kBufferLines = 40;
 constexpr uint16_t kExpectedWidth = 800;
 constexpr uint16_t kExpectedHeight = 480;
 }
@@ -49,7 +50,8 @@ bool BoardDisplay::begin() {
 
     lv_init();
 
-    const size_t buffer_pixels = static_cast<size_t>(lcd_->getFrameWidth()) * kBufferLines;
+    const size_t buffer_pixels =
+        DisplayTuning::bufferPixels(lcd_->getFrameWidth());
     const size_t buffer_bytes = buffer_pixels * sizeof(lv_color_t);
 
     draw_buf_1_ = static_cast<lv_color_t*>(heap_caps_malloc(buffer_bytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));

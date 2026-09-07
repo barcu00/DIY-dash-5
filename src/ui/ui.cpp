@@ -120,6 +120,10 @@ void Ui::createSettings() {
     lv_obj_set_style_bg_color(settings_container_, UiTheme::panel(), 0);
     lv_obj_set_style_border_color(settings_container_, UiTheme::border(), 0);
     lv_obj_set_scroll_dir(settings_container_, LV_DIR_VER);
+    lv_obj_add_event_cb(settings_container_, settingsScrollEvent,
+                        LV_EVENT_SCROLL_BEGIN, nullptr);
+    lv_obj_add_event_cb(settings_container_, settingsScrollEvent,
+                        LV_EVENT_SCROLL_END, nullptr);
 
     makeLabel(settings_container_, "DISPLAY", 12, 10, &lv_font_montserrat_14, UiTheme::blue());
     makeLabel(settings_container_, "Brightness (20-100%)", 12, 39, &lv_font_montserrat_14, UiTheme::text());
@@ -222,7 +226,9 @@ void Ui::update(const VehicleState& state, const RuntimeDiagnostics& diagnostics
             static_cast<unsigned>(status.decoder_mappings));
         lv_label_set_text(settings_status_, buffer);
     }
-    updateWarningModal(warnings);
+    if (update_policy_.allowModalUpdates()) {
+        updateWarningModal(warnings);
+    }
 }
 void Ui::navEvent(lv_event_t* event) {
     if (!instance_) return;
@@ -427,6 +433,12 @@ void Ui::layoutSlotEvent(lv_event_t* event) {
         instance_->openEditor({PageId::Dash, static_cast<uint8_t>(index)});
     else instance_->openEditor({PageId::Track,
         static_cast<uint8_t>(index - AppConfig::kDashTileCount)});
+}
+
+void Ui::settingsScrollEvent(lv_event_t* event) {
+    if (!instance_) return;
+    instance_->update_policy_.setInteractionActive(
+        lv_event_get_code(event) == LV_EVENT_SCROLL_BEGIN);
 }
 
 void Ui::spinDecreaseEvent(lv_event_t* event) {
