@@ -6,9 +6,10 @@ The bottom navigation contains DASH, TRACK, and SETTINGS; DIAG is not present.
 ## Tiles and layout
 
 Hold a visible tile for about 600 ms to open its editor. Choose the parameter,
-visibility, decimal places, and optional warning. Save writes that one tile transaction to
-ESP32 NVS before the runtime layout changes. Cancel and failed writes leave the
-active configuration unchanged.
+visibility, decimal places, and optional warning. SAVE TILE applies the draft in
+RAM, closes the editor, and queues one persistent transaction. The application
+loop writes it outside the LVGL callback. Cancel leaves the configuration
+unchanged; a failed persistent write reports `SAVE ERROR` and remains retryable.
 
 Hidden tiles can be reopened from the paged DASH and TRACK slot lists in the
 LAYOUTS category. Each page contains no more than six slots. Hiding a tile
@@ -32,10 +33,12 @@ LIGHT, UNITS, LAYOUTS, and SYSTEM each open as a separate 800x480 screen. The
 firmware creates only the active settings screen, so there is no long scrolling
 list to lay out or redraw.
 
-Changes save automatically. Dropdown and step-button changes are written after
-the selection; brightness changes visually while dragged and are written once
-when the slider is released. `SAVED` confirms a successful write and `SAVE
-ERROR` reports a failed one without blocking the screen.
+Controls change the working configuration in RAM without writing flash. A dirty
+category queues one complete configuration snapshot when the user presses BACK,
+DASH, TRACK, or otherwise leaves that category. Repeated edits are coalesced,
+and an unchanged category performs no write. `SAVING`, `SAVED`, and `SAVE ERROR`
+provide non-modal status; a failed write keeps the RAM values and can be retried
+by leaving again.
 
 ## Available settings
 
@@ -45,9 +48,12 @@ ERROR` reports a failed one without blocking the screen.
 - CAN is receive-only. Available bitrates are 125, 250, 500, and 1000 kbit/s;
   timeout is adjustable from 100 to 5000 ms.
 - The current safe profile is `none`, so no unverified ECU frames are decoded.
-- Shift start, red zone, and maximum RPM are shared by DASH and TRACK and must
-  satisfy `start < red < maximum`. Changing one threshold automatically moves
-  dependent thresholds to the nearest valid 100 RPM separation.
+- START, RED, FLASH, and MAX RPM use four sliders shared by DASH and TRACK and
+  must satisfy `start < red < flash <= maximum`. Values snap to 100 RPM steps,
+  and changing one threshold automatically moves dependent thresholds.
+- FLASH ENABLED controls whether the complete strip alternates red/off at about
+  4 Hz once valid RPM reaches FLASH RPM. Disabling it keeps normal progressive
+  green/yellow/red behavior through MAX RPM.
 - Temperature, pressure, speed, and mixture units affect presentation only.
   Stored telemetry and warning comparisons remain in native units.
 - RESET DASH and RESET TRACK restore only the selected tile layout. FACTORY
@@ -61,3 +67,17 @@ a merged full-flash BIN and component binaries, and renders deterministic UI
 review images. Those checks prove compilation and packaging, not electrical,
 touch, CAN-bus, thermal, or long-duration behavior. Complete the physical
 acceptance checklist in the README after flashing a test board.
+
+## Screen gallery
+
+| DISPLAY | DATA & CAN | UNITS |
+| --- | --- | --- |
+| ![DISPLAY settings](screenshots/ui-preview-settings-display.png) | ![DATA and CAN settings](screenshots/ui-preview-settings-can.png) | ![UNITS settings](screenshots/ui-preview-settings-units.png) |
+
+| LAYOUTS | SYSTEM |
+| --- | --- |
+| ![LAYOUTS settings](screenshots/ui-preview-settings-layouts.png) | ![SYSTEM settings](screenshots/ui-preview-settings-system.png) |
+
+| Tile editor | Warning modal |
+| --- | --- |
+| ![Tile editor](screenshots/ui-preview-tile-editor.png) | ![Warning modal](screenshots/ui-preview-warning.png) |
