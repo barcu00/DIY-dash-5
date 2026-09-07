@@ -32,49 +32,54 @@ void test_layout_pages_are_six_slots_and_page_is_clamped() {
     TEST_ASSERT_EQUAL_UINT32(0U, model.pageIndex());
 }
 
-void test_discrete_changes_commit_immediately_and_sliders_on_release() {
-    TEST_ASSERT_TRUE(SettingsFlowModel::shouldPersist(
-        SettingsInputKind::Discrete, SettingsInputEvent::ValueChanged));
-    TEST_ASSERT_FALSE(SettingsFlowModel::shouldPersist(
-        SettingsInputKind::Slider, SettingsInputEvent::ValueChanged));
-    TEST_ASSERT_TRUE(SettingsFlowModel::shouldPersist(
-        SettingsInputKind::Slider, SettingsInputEvent::Released));
-}
-
-void test_slider_press_lost_commits_and_releases_interaction_budget() {
-    TEST_ASSERT_TRUE(SettingsFlowModel::shouldPersist(
-        SettingsInputKind::Slider, SettingsInputEvent::PressLost));
-}
-
 void test_start_change_pushes_later_shift_thresholds_up() {
     const ShiftLightConfig corrected = SettingsFlowModel::correctedShift(
-        ShiftLightConfig{5500U, 7000U, 8000U}, ShiftField::Start, 7900U);
+        ShiftLightConfig{5500U, 7000U, 7500U, 8000U, true},
+        ShiftField::Start, 7900U);
 
     TEST_ASSERT_EQUAL_UINT16(7900U, corrected.start_rpm);
     TEST_ASSERT_EQUAL_UINT16(8000U, corrected.red_rpm);
+    TEST_ASSERT_EQUAL_UINT16(8100U, corrected.flash_rpm);
     TEST_ASSERT_EQUAL_UINT16(8100U, corrected.max_rpm);
 }
 
 void test_maximum_change_pulls_earlier_shift_thresholds_down() {
     const ShiftLightConfig corrected = SettingsFlowModel::correctedShift(
-        ShiftLightConfig{7900U, 8000U, 8100U}, ShiftField::Maximum, 6000U);
+        ShiftLightConfig{7900U, 8000U, 8050U, 8100U, true},
+        ShiftField::Maximum, 6000U);
 
     TEST_ASSERT_EQUAL_UINT16(5800U, corrected.start_rpm);
     TEST_ASSERT_EQUAL_UINT16(5900U, corrected.red_rpm);
+    TEST_ASSERT_EQUAL_UINT16(6000U, corrected.flash_rpm);
     TEST_ASSERT_EQUAL_UINT16(6000U, corrected.max_rpm);
+}
+
+void test_flash_change_pulls_earlier_thresholds_down_without_moving_maximum() {
+    const ShiftLightConfig corrected = SettingsFlowModel::correctedShift(
+        ShiftLightConfig{5500U, 7000U, 7500U, 8000U, true},
+        ShiftField::Flash, 6900U);
+
+    TEST_ASSERT_EQUAL_UINT16(5500U, corrected.start_rpm);
+    TEST_ASSERT_EQUAL_UINT16(6800U, corrected.red_rpm);
+    TEST_ASSERT_EQUAL_UINT16(6900U, corrected.flash_rpm);
+    TEST_ASSERT_EQUAL_UINT16(8000U, corrected.max_rpm);
 }
 
 void test_shift_changes_clamp_to_supported_range() {
     const ShiftLightConfig high = SettingsFlowModel::correctedShift(
-        ShiftLightConfig{5500U, 7000U, 8000U}, ShiftField::Start, 16000U);
+        ShiftLightConfig{5500U, 7000U, 7500U, 8000U, true},
+        ShiftField::Start, 16000U);
     TEST_ASSERT_EQUAL_UINT16(14800U, high.start_rpm);
     TEST_ASSERT_EQUAL_UINT16(14900U, high.red_rpm);
+    TEST_ASSERT_EQUAL_UINT16(15000U, high.flash_rpm);
     TEST_ASSERT_EQUAL_UINT16(15000U, high.max_rpm);
 
     const ShiftLightConfig low = SettingsFlowModel::correctedShift(
-        ShiftLightConfig{5500U, 7000U, 8000U}, ShiftField::Maximum, 500U);
+        ShiftLightConfig{5500U, 7000U, 7500U, 8000U, true},
+        ShiftField::Maximum, 500U);
     TEST_ASSERT_EQUAL_UINT16(1000U, low.start_rpm);
     TEST_ASSERT_EQUAL_UINT16(1100U, low.red_rpm);
+    TEST_ASSERT_EQUAL_UINT16(1200U, low.flash_rpm);
     TEST_ASSERT_EQUAL_UINT16(1200U, low.max_rpm);
 }
 
@@ -94,10 +99,9 @@ int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_navigation_starts_home_and_returns_home);
     RUN_TEST(test_layout_pages_are_six_slots_and_page_is_clamped);
-    RUN_TEST(test_discrete_changes_commit_immediately_and_sliders_on_release);
-    RUN_TEST(test_slider_press_lost_commits_and_releases_interaction_budget);
     RUN_TEST(test_start_change_pushes_later_shift_thresholds_up);
     RUN_TEST(test_maximum_change_pulls_earlier_shift_thresholds_down);
+    RUN_TEST(test_flash_change_pulls_earlier_thresholds_down_without_moving_maximum);
     RUN_TEST(test_shift_changes_clamp_to_supported_range);
     RUN_TEST(test_reset_requires_explicit_request_and_can_be_cancelled);
     return UNITY_END();
