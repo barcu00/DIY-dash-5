@@ -1,0 +1,57 @@
+#include <cstddef>
+
+#include <unity.h>
+
+// Production change caught: an omitted descriptor or an incorrect stable
+// parameter-to-metadata mapping.
+
+#include "telemetry/parameter_registry.h"
+
+void test_registry_describes_every_stable_parameter() {
+    TEST_ASSERT_EQUAL_UINT32(12U, parameterCount());
+
+    for (std::size_t i = 0U; i < parameterCount(); ++i) {
+        const auto id = static_cast<ParameterId>(i);
+        const ParameterDescriptor& descriptor = parameterDescriptor(id);
+        TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(id),
+                                static_cast<uint8_t>(descriptor.id));
+        TEST_ASSERT_NOT_NULL(descriptor.name);
+        TEST_ASSERT_NOT_NULL(descriptor.short_name);
+        TEST_ASSERT_TRUE(descriptor.name[0] != '\0');
+        TEST_ASSERT_TRUE(descriptor.short_name[0] != '\0');
+    }
+}
+
+void test_registry_preserves_core_names_units_and_decimals() {
+    const ParameterDescriptor& rpm = parameterDescriptor(ParameterId::Rpm);
+    TEST_ASSERT_EQUAL_STRING("Engine speed", rpm.name);
+    TEST_ASSERT_EQUAL_STRING("RPM", rpm.short_name);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(NativeUnit::Rpm),
+                            static_cast<uint8_t>(rpm.native_unit));
+    TEST_ASSERT_EQUAL_UINT8(0U, rpm.default_decimals);
+
+    const ParameterDescriptor& oil =
+        parameterDescriptor(ParameterId::OilPressure);
+    TEST_ASSERT_EQUAL_STRING("Oil pressure", oil.name);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(NativeUnit::Bar),
+                            static_cast<uint8_t>(oil.native_unit));
+    TEST_ASSERT_EQUAL_UINT8(1U, oil.default_decimals);
+}
+
+void test_registry_returns_unknown_descriptor_for_invalid_id() {
+    const ParameterDescriptor& descriptor =
+        parameterDescriptor(static_cast<ParameterId>(255U));
+
+    TEST_ASSERT_EQUAL_STRING("Unknown", descriptor.name);
+    TEST_ASSERT_EQUAL_STRING("---", descriptor.short_name);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(NativeUnit::None),
+                            static_cast<uint8_t>(descriptor.native_unit));
+}
+
+int main(int, char**) {
+    UNITY_BEGIN();
+    RUN_TEST(test_registry_describes_every_stable_parameter);
+    RUN_TEST(test_registry_preserves_core_names_units_and_decimals);
+    RUN_TEST(test_registry_returns_unknown_descriptor_for_invalid_id);
+    return UNITY_END();
+}
