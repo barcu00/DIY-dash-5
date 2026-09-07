@@ -11,8 +11,29 @@
 #include "settings/config_repository.h"
 
 namespace {
+struct LegacyShiftLightConfigV1 {
+    uint16_t start_rpm = 5500U;
+    uint16_t red_rpm = 7000U;
+    uint16_t max_rpm = 8000U;
+};
+
+struct LegacyAppConfigV1 {
+    uint32_t schema_version = 1U;
+    DataSource data_source = DataSource::Demo;
+    uint8_t brightness_percent = 100U;
+    CanSettings can{};
+    LegacyShiftLightConfigV1 shift{};
+    UnitSettings units{};
+    std::array<TileConfig, AppConfig::kDashTileCount> dash_tiles{};
+    std::array<TileConfig, AppConfig::kTrackTileCount> track_tiles{};
+};
+
 class MemoryBackend : public ConfigBackend {
 public:
+    std::size_t storedSize() const override {
+        return has_value ? stored_size : 0U;
+    }
+
     bool read(void* data, std::size_t size) override {
         if (!has_value || size != stored_size) {
             return false;
@@ -91,6 +112,41 @@ void test_valid_configuration_round_trips_through_backend() {
                             static_cast<uint8_t>(repository.load(reloaded)));
     TEST_ASSERT_EQUAL_UINT8(40U, reloaded.brightness_percent);
     TEST_ASSERT_FALSE(reloaded.dash_tiles[3].visible);
+}
+
+void test_schema_v1_is_migrated_without_losing_user_settings() {
+    MemoryBackend backend;
+    const AppConfig defaults = AppConfig::defaults();
+    LegacyAppConfigV1 legacy;
+    legacy.data_source = DataSource::Can;
+    legacy.brightness_percent = 40U;
+    legacy.can = defaults.can;
+    legacy.shift = LegacyShiftLightConfigV1{5000U, 6500U, 7800U};
+    legacy.units = defaults.units;
+    legacy.dash_tiles = defaults.dash_tiles;
+    legacy.track_tiles = defaults.track_tiles;
+    legacy.dash_tiles[3].visible = false;
+    legacy.track_tiles[2].decimals = 2U;
+    TEST_ASSERT_TRUE(backend.write(&legacy, sizeof(legacy)));
+    ConfigRepository repository(backend);
+    AppConfig loaded{};
+
+    const LoadResult result = repository.load(loaded);
+
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(LoadResult::Migrated),
+                            static_cast<uint8_t>(result));
+    TEST_ASSERT_EQUAL_UINT32(AppConfig::kSchemaVersion, loaded.schema_version);
+    TEST_ASSERT_EQUAL_UINT8(40U, loaded.brightness_percent);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DataSource::Can),
+                            static_cast<uint8_t>(loaded.data_source));
+    TEST_ASSERT_EQUAL_UINT16(5000U, loaded.shift.start_rpm);
+    TEST_ASSERT_EQUAL_UINT16(6500U, loaded.shift.red_rpm);
+    TEST_ASSERT_EQUAL_UINT16(7800U, loaded.shift.flash_rpm);
+    TEST_ASSERT_EQUAL_UINT16(7800U, loaded.shift.max_rpm);
+    TEST_ASSERT_TRUE(loaded.shift.flash_enabled);
+    TEST_ASSERT_FALSE(loaded.dash_tiles[3].visible);
+    TEST_ASSERT_EQUAL_UINT8(2U, loaded.track_tiles[2].decimals);
+    TEST_ASSERT_EQUAL_UINT32(sizeof(AppConfig), backend.stored_size);
 }
 
 void test_failed_save_keeps_previous_runtime_configuration() {
@@ -181,6 +237,7 @@ int main(int, char**) {
     RUN_TEST(test_missing_configuration_loads_safe_defaults);
     RUN_TEST(test_schema_mismatch_loads_safe_defaults);
     RUN_TEST(test_valid_configuration_round_trips_through_backend);
+    RUN_TEST(test_schema_v1_is_migrated_without_losing_user_settings);
     RUN_TEST(test_failed_save_keeps_previous_runtime_configuration);
     RUN_TEST(test_invalid_candidate_is_not_written_or_applied);
     RUN_TEST(test_reset_erases_storage_and_restores_defaults_only_after_success);

@@ -43,7 +43,9 @@ void test_defaults_use_demo_metric_and_shared_shift_configuration() {
     TEST_ASSERT_EQUAL_STRING("none", config.can.profile_id.data());
     TEST_ASSERT_EQUAL_UINT16(5500U, config.shift.start_rpm);
     TEST_ASSERT_EQUAL_UINT16(7000U, config.shift.red_rpm);
+    TEST_ASSERT_EQUAL_UINT16(7500U, config.shift.flash_rpm);
     TEST_ASSERT_EQUAL_UINT16(8000U, config.shift.max_rpm);
+    TEST_ASSERT_TRUE(config.shift.flash_enabled);
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(TemperatureUnit::Celsius),
                             static_cast<uint8_t>(config.units.temperature));
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(PressureUnit::Bar),
@@ -111,6 +113,32 @@ void test_validation_rejects_red_zone_equal_to_maximum() {
     TEST_ASSERT_FALSE(result.shift_order_valid);
 }
 
+void test_validation_accepts_flash_equal_to_maximum() {
+    AppConfig config = AppConfig::defaults();
+    config.shift.start_rpm = 5500U;
+    config.shift.red_rpm = 7000U;
+    config.shift.flash_rpm = 8000U;
+    config.shift.max_rpm = 8000U;
+
+    const ValidationResult result = config.validate();
+
+    TEST_ASSERT_TRUE(result.valid);
+    TEST_ASSERT_TRUE(result.shift_order_valid);
+}
+
+void test_validation_rejects_flash_not_above_red_zone() {
+    AppConfig config = AppConfig::defaults();
+    config.shift.start_rpm = 5500U;
+    config.shift.red_rpm = 7000U;
+    config.shift.flash_rpm = 7000U;
+    config.shift.max_rpm = 8000U;
+
+    const ValidationResult result = config.validate();
+
+    TEST_ASSERT_FALSE(result.valid);
+    TEST_ASSERT_FALSE(result.shift_order_valid);
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_defaults_define_approved_dash_and_track_slots);
@@ -118,5 +146,7 @@ int main(int, char**) {
     RUN_TEST(test_validation_normalizes_unsafe_persisted_values);
     RUN_TEST(test_validation_rejects_invalid_shift_order_without_reordering_it);
     RUN_TEST(test_validation_rejects_red_zone_equal_to_maximum);
+    RUN_TEST(test_validation_accepts_flash_equal_to_maximum);
+    RUN_TEST(test_validation_rejects_flash_not_above_red_zone);
     return UNITY_END();
 }
