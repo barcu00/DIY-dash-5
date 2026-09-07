@@ -17,7 +17,7 @@ bool App::begin() {
         return false;
     }
 
-    ui_.begin(config_, config_repository_, board_);
+    ui_.begin(config_, board_);
     telemetry_.update(now);
     const UiRuntimeStatus status{
         telemetry_.canStatus(), telemetry_.demoActive(),
@@ -41,8 +41,19 @@ void App::loop() {
     }
 
     const uint32_t now = millis();
-    if (ui_.takeRuntimeReconfigureRequest()) {
-        applyRuntimeConfig(now);
+    ConfigCommitRequest commit;
+    if (ui_.takeConfigCommit(commit)) {
+        const bool saved = commit.kind == ConfigCommitKind::FactoryReset
+                               ? config_repository_.reset(config_)
+                               : config_repository_.saveCandidate(
+                                     commit.candidate, config_);
+        if (saved && commit.reconfigure_runtime) {
+            applyRuntimeConfig(now);
+        }
+        if (board_.lock()) {
+            ui_.completeConfigCommit(commit.revision, saved);
+            board_.unlock();
+        }
     }
     CanFrame frame;
     for (uint8_t drained = 0U; drained < 32U && can_.poll(frame); ++drained) {

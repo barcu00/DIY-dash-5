@@ -83,9 +83,8 @@ void Ui::styleScreen(lv_obj_t* screen) {
     lv_obj_set_style_text_color(screen, UiTheme::text(), 0);
     lv_obj_clear_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
 }
-void Ui::begin(AppConfig& config, ConfigRepository& repository,
-               BoardDisplay& board) {
-    instance_ = this; config_ = &config; repository_ = &repository; board_ = &board;
+void Ui::begin(AppConfig& config, BoardDisplay& board) {
+    instance_ = this; config_ = &config; board_ = &board;
     createDataPage(Page::Dash, config); createDataPage(Page::Track, config);
     board.setSoftwareBrightness(config.brightness_percent);
     update_policy_.takeLayoutDirty();
@@ -160,7 +159,7 @@ void Ui::clearSettingsWidgets() {
 lv_obj_t* Ui::createSettingsPanel(const char* title) {
     makeLabel(settings_, title, 310, 20, &lv_font_montserrat_24,
               UiTheme::text());
-    settings_message_ = makeLabel(settings_, "", 660, 27,
+    settings_message_ = makeLabel(settings_, settings_feedback_, 660, 27,
                                   &lv_font_montserrat_12,
                                   UiTheme::yellow());
     lv_obj_t* panel = lv_obj_create(settings_);
@@ -471,7 +470,13 @@ void Ui::update(const VehicleState& state, const RuntimeDiagnostics& diagnostics
 }
 void Ui::navEvent(lv_event_t* event) {
     if (!instance_) return;
-    instance_->load(static_cast<Page>(reinterpret_cast<intptr_t>(lv_event_get_user_data(event))));
+    const Page destination = static_cast<Page>(
+        reinterpret_cast<intptr_t>(lv_event_get_user_data(event)));
+    if (instance_->current_page_ == Page::Settings &&
+        instance_->settings_flow_.category() != SettingsCategory::Home) {
+        instance_->queueSettingsOnExit();
+    }
+    instance_->load(destination);
 }
 void Ui::tileEvent(lv_event_t* event) {
     if (!instance_) return;
@@ -487,10 +492,15 @@ void Ui::load(Page page) {
     if (page == Page::Settings) showSettings(SettingsCategory::Home);
 }
 
-bool Ui::takeRuntimeReconfigureRequest() {
-    const bool requested = runtime_reconfigure_requested_;
-    runtime_reconfigure_requested_ = false;
-    return requested;
+bool Ui::takeConfigCommit(ConfigCommitRequest& request) {
+    return commit_model_.take(request);
+}
+
+void Ui::completeConfigCommit(uint32_t revision, bool success) {
+    commit_model_.complete(revision, success);
+    settings_feedback_ = success ? "SAVED" : "SAVE ERROR";
+    showSettingsMessage(settings_feedback_);
+    lv_obj_invalidate(lv_scr_act());
 }
 
 void Ui::openEditor(TileAddress address) {
@@ -555,7 +565,7 @@ void Ui::closeEditor() {
 }
 
 void Ui::saveEditor() {
-    if (!config_ || !repository_ || !editor_.isOpen()) return;
+    if (!config_ || !editor_.isOpen()) return;
     editor_.setParameter(static_cast<ParameterId>(lv_dropdown_get_selected(editor_parameter_)));
     editor_.setVisible(lv_obj_has_state(editor_visible_, LV_STATE_CHECKED));
     editor_.setDecimals(static_cast<uint8_t>(lv_dropdown_get_selected(editor_decimals_)));
@@ -567,14 +577,14 @@ void Ui::saveEditor() {
     warning.delay_ms = static_cast<uint16_t>(lv_spinbox_get_value(editor_delay_));
     editor_.setWarning(warning);
     AppConfig candidate = *config_;
-    if (!editor_.applyTo(candidate) || !repository_->saveCandidate(candidate, *config_)) {
+    if (!editor_.applyTo(candidate) || !stageSettings(candidate, false)) {
         lv_label_set_text(editor_message_, "SAVE FAILED"); return;
     }
-    runtime_reconfigure_requested_ = true;
     update_policy_.markLayoutDirty();
     const bool refresh_layout = current_page_ == Page::Settings &&
         settings_flow_.category() == SettingsCategory::Layouts;
     closeEditor();
+    queueSettingsOnExit();
     if (refresh_layout) showSettings(SettingsCategory::Layouts);
 }
 
@@ -582,18 +592,28 @@ void Ui::showSettingsMessage(const char* message) {
     if (settings_message_) lv_label_set_text(settings_message_, message);
 }
 
-bool Ui::persistSettings(AppConfig candidate, bool reconfigure_runtime) {
-    if (!repository_ || !config_ || !candidate.validate().valid ||
-        !repository_->saveCandidate(candidate, *config_)) {
+bool Ui::stageSettings(AppConfig candidate, bool reconfigure_runtime) {
+    if (!config_ || !candidate.validate().valid) {
         showSettingsMessage("SAVE ERROR");
         if (board_ && config_)
             board_->setSoftwareBrightness(config_->brightness_percent);
         return false;
     }
-    runtime_reconfigure_requested_ |= reconfigure_runtime;
+    if (std::memcmp(&candidate, config_, sizeof(candidate)) == 0) {
+        return true;
+    }
+    *config_ = candidate;
+    commit_model_.markDirty(reconfigure_runtime);
     if (board_) board_->setSoftwareBrightness(config_->brightness_percent);
-    showSettingsMessage("SAVED");
+    settings_feedback_ = "UNSAVED";
+    showSettingsMessage(settings_feedback_);
     return true;
+}
+
+void Ui::queueSettingsOnExit() {
+    if (!config_ || !commit_model_.queueOnExit(*config_)) return;
+    settings_feedback_ = "SAVING";
+    showSettingsMessage(settings_feedback_);
 }
 
 void Ui::openResetConfirmation(SettingsResetTarget target) {
@@ -632,28 +652,33 @@ void Ui::closeResetConfirmation() {
 }
 
 void Ui::confirmReset() {
-    if (!repository_ || !config_ || !settings_flow_.resetPending()) return;
+    if (!config_ || !settings_flow_.resetPending()) return;
     const SettingsResetTarget target = settings_flow_.pendingReset();
-    bool saved = false;
+    bool staged = false;
     if (target == SettingsResetTarget::DashLayout) {
-        saved = repository_->resetLayout(PageId::Dash, *config_);
+        AppConfig candidate = *config_;
+        candidate.dash_tiles = AppConfig::defaults().dash_tiles;
+        staged = stageSettings(candidate, false);
     } else if (target == SettingsResetTarget::TrackLayout) {
-        saved = repository_->resetLayout(PageId::Track, *config_);
+        AppConfig candidate = *config_;
+        candidate.track_tiles = AppConfig::defaults().track_tiles;
+        staged = stageSettings(candidate, false);
     } else {
-        saved = repository_->reset(*config_);
+        *config_ = AppConfig::defaults();
+        commit_model_.queueFactoryReset();
+        staged = true;
     }
     closeResetConfirmation();
-    if (!saved) {
+    if (!staged) {
         showSettingsMessage("SAVE ERROR");
         return;
     }
     update_policy_.markLayoutDirty();
     if (target == SettingsResetTarget::Factory) {
-        runtime_reconfigure_requested_ = true;
         if (board_) board_->setSoftwareBrightness(config_->brightness_percent);
         showSettings(SettingsCategory::Home);
     } else {
-        showSettingsMessage("SAVED");
+        queueSettingsOnExit();
     }
 }
 
@@ -686,21 +711,21 @@ void Ui::settingsEvent(lv_event_t* event) {
         instance_->update_policy_.setInteractionActive(false);
         candidate.brightness_percent = static_cast<uint8_t>(
             lv_slider_get_value(instance_->brightness_slider_));
-        instance_->persistSettings(candidate, false);
+        instance_->stageSettings(candidate, false);
         return;
     }
     if (action == SourceChanged) {
         candidate.data_source = lv_dropdown_get_selected(
             instance_->source_dropdown_) == 1U ? DataSource::Can
                                                 : DataSource::Demo;
-        instance_->persistSettings(candidate, true);
+        instance_->stageSettings(candidate, true);
         return;
     }
     if (action == BitrateChanged) {
         constexpr uint32_t bitrates[] = {125000U, 250000U, 500000U, 1000000U};
         candidate.can.bitrate = bitrates[lv_dropdown_get_selected(
             instance_->bitrate_dropdown_)];
-        instance_->persistSettings(candidate, true);
+        instance_->stageSettings(candidate, true);
         return;
     }
     if (action == TimeoutDecrease || action == TimeoutIncrease) {
@@ -710,7 +735,7 @@ void Ui::settingsEvent(lv_event_t* event) {
             lv_spinbox_increment(instance_->can_timeout_);
         candidate.can.timeout_ms = static_cast<uint32_t>(
             lv_spinbox_get_value(instance_->can_timeout_));
-        instance_->persistSettings(candidate, true);
+        instance_->stageSettings(candidate, true);
         return;
     }
 
@@ -735,7 +760,7 @@ void Ui::settingsEvent(lv_event_t* event) {
         lv_spinbox_set_value(instance_->shift_start_, candidate.shift.start_rpm);
         lv_spinbox_set_value(instance_->shift_red_, candidate.shift.red_rpm);
         lv_spinbox_set_value(instance_->shift_max_, candidate.shift.max_rpm);
-        instance_->persistSettings(candidate, false);
+        instance_->stageSettings(candidate, false);
         return;
     }
 
@@ -748,7 +773,7 @@ void Ui::settingsEvent(lv_event_t* event) {
             lv_dropdown_get_selected(instance_->speed_unit_));
         candidate.units.mixture = static_cast<MixtureUnit>(
             lv_dropdown_get_selected(instance_->mixture_unit_));
-        instance_->persistSettings(candidate, false);
+        instance_->stageSettings(candidate, false);
     }
 }
 
@@ -774,6 +799,7 @@ void Ui::settingsConfirmEvent(lv_event_t* event) {
 
 void Ui::settingsBackEvent(lv_event_t*) {
     if (!instance_) return;
+    instance_->queueSettingsOnExit();
     instance_->settings_flow_.backToHome();
     instance_->showSettings(SettingsCategory::Home);
 }

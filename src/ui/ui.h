@@ -7,8 +7,8 @@
 #include "board/board_display.h"
 #include "can/can_status.h"
 #include "settings/app_config.h"
-#include "settings/config_repository.h"
 #include "telemetry/vehicle_state.h"
+#include "ui/settings_commit_model.h"
 #include "ui/tile_editor_model.h"
 #include "ui/shift_light_view.h"
 #include "ui/settings_flow_model.h"
@@ -25,12 +25,12 @@ struct UiRuntimeStatus {
 };
 class Ui {
 public:
-    void begin(AppConfig& config, ConfigRepository& repository,
-               BoardDisplay& board);
+    void begin(AppConfig& config, BoardDisplay& board);
     void update(const VehicleState& state, const RuntimeDiagnostics& diagnostics,
                 const UiRuntimeStatus& status, const AppConfig& config,
                 TileWarningEngine& warnings);
-    bool takeRuntimeReconfigureRequest();
+    bool takeConfigCommit(ConfigCommitRequest& request);
+    void completeConfigCommit(uint32_t revision, bool success);
     static void spinDecreaseEvent(lv_event_t* event);
     static void spinIncreaseEvent(lv_event_t* event);
 private:
@@ -64,7 +64,8 @@ private:
     void openEditor(TileAddress address);
     void closeEditor();
     void saveEditor();
-    bool persistSettings(AppConfig candidate, bool reconfigure_runtime);
+    bool stageSettings(AppConfig candidate, bool reconfigure_runtime);
+    void queueSettingsOnExit();
     void showSettingsMessage(const char* message);
     void openResetConfirmation(SettingsResetTarget target);
     void closeResetConfirmation();
@@ -84,10 +85,10 @@ private:
     UiUpdatePolicy update_policy_{};
     SettingsFlowModel settings_flow_{};
     AppConfig* config_ = nullptr;
-    ConfigRepository* repository_ = nullptr;
     BoardDisplay* board_ = nullptr;
+    SettingsCommitModel commit_model_{};
     TileEditorModel editor_{};
-    bool runtime_reconfigure_requested_ = false;
+    const char* settings_feedback_ = "";
     lv_obj_t* settings_message_ = nullptr;
     lv_obj_t* brightness_slider_ = nullptr;
     lv_obj_t* brightness_value_ = nullptr;
