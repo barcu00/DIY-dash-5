@@ -41,6 +41,11 @@ void test_discrete_changes_commit_immediately_and_sliders_on_release() {
         SettingsInputKind::Slider, SettingsInputEvent::Released));
 }
 
+void test_slider_press_lost_commits_and_releases_interaction_budget() {
+    TEST_ASSERT_TRUE(SettingsFlowModel::shouldPersist(
+        SettingsInputKind::Slider, SettingsInputEvent::PressLost));
+}
+
 void test_start_change_pushes_later_shift_thresholds_up() {
     const ShiftLightConfig corrected = SettingsFlowModel::correctedShift(
         ShiftLightConfig{5500U, 7000U, 8000U}, ShiftField::Start, 7900U);
@@ -90,6 +95,7 @@ int main(int, char**) {
     RUN_TEST(test_navigation_starts_home_and_returns_home);
     RUN_TEST(test_layout_pages_are_six_slots_and_page_is_clamped);
     RUN_TEST(test_discrete_changes_commit_immediately_and_sliders_on_release);
+    RUN_TEST(test_slider_press_lost_commits_and_releases_interaction_budget);
     RUN_TEST(test_start_change_pushes_later_shift_thresholds_up);
     RUN_TEST(test_maximum_change_pulls_earlier_shift_thresholds_down);
     RUN_TEST(test_shift_changes_clamp_to_supported_range);
