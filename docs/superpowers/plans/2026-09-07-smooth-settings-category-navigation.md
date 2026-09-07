@@ -22,6 +22,11 @@
 - All tests and firmware builds run in GitHub Actions, never in the local Codex environment.
 - Every RED or GREEN verification step pushes the commit and inspects the workflow for that exact SHA.
 
+**Execution amendment:** The planned source-text contract was replaced during
+plan review with behavior checks against the rendered 800x480 SETTINGS outputs,
+the platform-independent flow model, and the compiled Waveshare firmware. This
+avoids a brittle test that merely searches implementation text.
+
 ---
 
 ## File Structure

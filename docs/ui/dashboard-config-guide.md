@@ -10,8 +10,9 @@ visibility, decimal places, and optional warning. Save writes that one tile tran
 ESP32 NVS before the runtime layout changes. Cancel and failed writes leave the
 active configuration unchanged.
 
-Hidden tiles can be reopened from the complete DASH and TRACK slot lists in
-SETTINGS. Hiding a tile compacts only its own logical group toward the bottom:
+Hidden tiles can be reopened from the paged DASH and TRACK slot lists in the
+LAYOUTS category. Each page contains no more than six slots. Hiding a tile
+compacts only its own logical group toward the bottom:
 left, center-wide, center-small, or right on DASH; left, center-wide, or right
 on TRACK. Wide tile labels and values are centered.
 
@@ -24,7 +25,19 @@ but the related visible tile stays red until the value returns through the safe
 hysteresis boundary. A hidden tile can still raise its warning. Invalid data
 does not raise a warning.
 
-## Global settings
+## Settings categories
+
+SETTINGS opens a fixed six-button home screen. DISPLAY, DATA & CAN, SHIFT
+LIGHT, UNITS, LAYOUTS, and SYSTEM each open as a separate 800x480 screen. The
+firmware creates only the active settings screen, so there is no long scrolling
+list to lay out or redraw.
+
+Changes save automatically. Dropdown and step-button changes are written after
+the selection; brightness changes visually while dragged and are written once
+when the slider is released. `SAVED` confirms a successful write and `SAVE
+ERROR` reports a failed one without blocking the screen.
+
+## Available settings
 
 - Brightness uses a software overlay from 20 to 100 percent; there is no off
   switch.
@@ -33,11 +46,13 @@ does not raise a warning.
   timeout is adjustable from 100 to 5000 ms.
 - The current safe profile is `none`, so no unverified ECU frames are decoded.
 - Shift start, red zone, and maximum RPM are shared by DASH and TRACK and must
-  satisfy `start < red <= maximum`.
+  satisfy `start < red < maximum`. Changing one threshold automatically moves
+  dependent thresholds to the nearest valid 100 RPM separation.
 - Temperature, pressure, speed, and mixture units affect presentation only.
   Stored telemetry and warning comparisons remain in native units.
-- Reset Layouts restores only tile layouts. Factory Reset clears only the
-  `diy_dash` application namespace and restores all defaults.
+- RESET DASH and RESET TRACK restore only the selected tile layout. FACTORY
+  RESET clears only the `diy_dash` application namespace and restores all
+  defaults. Every reset requires explicit confirmation.
 
 ## Build and hardware validation
 
