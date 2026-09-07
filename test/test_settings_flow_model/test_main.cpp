@@ -73,6 +73,18 @@ void test_shift_changes_clamp_to_supported_range() {
     TEST_ASSERT_EQUAL_UINT16(1200U, low.max_rpm);
 }
 
+void test_reset_requires_explicit_request_and_can_be_cancelled() {
+    SettingsFlowModel model;
+
+    TEST_ASSERT_FALSE(model.resetPending());
+    model.requestReset(SettingsResetTarget::TrackLayout);
+    TEST_ASSERT_TRUE(model.resetPending());
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(SettingsResetTarget::TrackLayout),
+                            static_cast<uint8_t>(model.pendingReset()));
+    model.cancelReset();
+    TEST_ASSERT_FALSE(model.resetPending());
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_navigation_starts_home_and_returns_home);
@@ -81,5 +93,6 @@ int main(int, char**) {
     RUN_TEST(test_start_change_pushes_later_shift_thresholds_up);
     RUN_TEST(test_maximum_change_pulls_earlier_shift_thresholds_down);
     RUN_TEST(test_shift_changes_clamp_to_supported_range);
+    RUN_TEST(test_reset_requires_explicit_request_and_can_be_cancelled);
     return UNITY_END();
 }

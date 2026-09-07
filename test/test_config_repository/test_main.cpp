@@ -133,6 +133,49 @@ void test_reset_erases_storage_and_restores_defaults_only_after_success() {
     TEST_ASSERT_EQUAL_UINT8(30U, runtime.brightness_percent);
 }
 
+void test_reset_dash_layout_preserves_track_and_other_settings() {
+    MemoryBackend backend;
+    ConfigRepository repository(backend);
+    AppConfig runtime = AppConfig::defaults();
+    runtime.brightness_percent = 40U;
+    runtime.dash_tiles[0].visible = false;
+    runtime.track_tiles[0].visible = false;
+
+    TEST_ASSERT_TRUE(repository.resetLayout(PageId::Dash, runtime));
+
+    TEST_ASSERT_TRUE(runtime.dash_tiles[0].visible);
+    TEST_ASSERT_FALSE(runtime.track_tiles[0].visible);
+    TEST_ASSERT_EQUAL_UINT8(40U, runtime.brightness_percent);
+}
+
+void test_reset_track_layout_preserves_dash_and_other_settings() {
+    MemoryBackend backend;
+    ConfigRepository repository(backend);
+    AppConfig runtime = AppConfig::defaults();
+    runtime.data_source = DataSource::Can;
+    runtime.dash_tiles[0].visible = false;
+    runtime.track_tiles[0].visible = false;
+
+    TEST_ASSERT_TRUE(repository.resetLayout(PageId::Track, runtime));
+
+    TEST_ASSERT_FALSE(runtime.dash_tiles[0].visible);
+    TEST_ASSERT_TRUE(runtime.track_tiles[0].visible);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DataSource::Can),
+                            static_cast<uint8_t>(runtime.data_source));
+}
+
+void test_failed_layout_reset_keeps_runtime_configuration() {
+    MemoryBackend backend;
+    backend.fail_writes = true;
+    ConfigRepository repository(backend);
+    AppConfig runtime = AppConfig::defaults();
+    runtime.dash_tiles[0].visible = false;
+
+    TEST_ASSERT_FALSE(repository.resetLayout(PageId::Dash, runtime));
+
+    TEST_ASSERT_FALSE(runtime.dash_tiles[0].visible);
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_missing_configuration_loads_safe_defaults);
@@ -141,5 +184,8 @@ int main(int, char**) {
     RUN_TEST(test_failed_save_keeps_previous_runtime_configuration);
     RUN_TEST(test_invalid_candidate_is_not_written_or_applied);
     RUN_TEST(test_reset_erases_storage_and_restores_defaults_only_after_success);
+    RUN_TEST(test_reset_dash_layout_preserves_track_and_other_settings);
+    RUN_TEST(test_reset_track_layout_preserves_dash_and_other_settings);
+    RUN_TEST(test_failed_layout_reset_keeps_runtime_configuration);
     return UNITY_END();
 }
