@@ -71,6 +71,8 @@ than reinterpret the layout.
 ### TRACK
 
 ```text
+                    shift-light strip
+
   left column       center column                 right column
   4 small tiles     4 centered wide tiles         4 small tiles
 
@@ -78,7 +80,10 @@ than reinterpret the layout.
 ```
 
 All twelve TRACK slots are configurable. The left, center, and right columns
-are independent compacting groups.
+are independent compacting groups. TRACK uses the same shift-light strip as
+DASH, with identical LED count, colors, RPM progression, dimensions, spacing,
+and behavior. Both screens read the same persisted start RPM, red-zone RPM, and
+maximum RPM settings.
 
 ### Group compaction
 
@@ -462,6 +467,7 @@ milestone.
 ### Phase B: UI and warnings
 
 - approved DASH and TRACK views;
+- identical shift-light strip on DASH and TRACK;
 - single-tap tile editor and hidden-slot restoration;
 - warning state machine, modal, and tile highlighting;
 - SETTINGS sections;
@@ -505,6 +511,7 @@ Native tests cover:
 - hidden-slot restoration model;
 - unit conversions and native-threshold preservation;
 - shift-light ordering validation;
+- identical DASH/TRACK shift-light progression from the shared settings;
 - warning direction, delay, hysteresis, acknowledgement, rearming, stale data,
   hidden tiles, multiple-alarm priority, and deterministic ties;
 - every supported decoder frame fixture;
@@ -524,6 +531,8 @@ at least DASH, TRACK, SETTINGS, the tile editor, and the warning modal.
 ## Definition of done
 
 - DASH and TRACK match the approved structures and compact each group downward.
+- DASH and TRACK display the same shift-light strip driven by one shared
+  configuration.
 - Wide-tile content is centered.
 - Every logical tile can change parameter, presentation, visibility, and warning
   settings through the shared editor.
