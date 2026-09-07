@@ -7,7 +7,9 @@
 #include "board/board_display.h"
 #include "can/can_status.h"
 #include "settings/app_config.h"
+#include "settings/config_repository.h"
 #include "telemetry/vehicle_state.h"
+#include "ui/tile_editor_model.h"
 #include "ui/shift_light_view.h"
 #include "ui/tile_view.h"
 struct UiRuntimeStatus {
@@ -21,19 +23,35 @@ struct UiRuntimeStatus {
 };
 class Ui {
 public:
-    void begin(const AppConfig& config);
+    void begin(AppConfig& config, ConfigRepository& repository,
+               BoardDisplay& board);
     void update(const VehicleState& state, const RuntimeDiagnostics& diagnostics,
                 const UiRuntimeStatus& status, const AppConfig& config,
-                const TileWarningEngine& warnings);
+                TileWarningEngine& warnings);
+    bool takeRuntimeReconfigureRequest();
+    static void spinDecreaseEvent(lv_event_t* event);
+    static void spinIncreaseEvent(lv_event_t* event);
 private:
     enum class Page : uint8_t { Dash, Track, Settings };
     static void navEvent(lv_event_t* event);
     static void tileEvent(lv_event_t* event);
+    static void editorEvent(lv_event_t* event);
+    static void settingsEvent(lv_event_t* event);
+    static void warningEvent(lv_event_t* event);
+    static void layoutSlotEvent(lv_event_t* event);
     void createDataPage(Page page, const AppConfig& config);
     void createSettings();
     void createNavigation(lv_obj_t* parent, Page active);
     void applyLayout(Page page, const AppConfig& config);
     void load(Page page);
+    void openEditor(TileAddress address);
+    void closeEditor();
+    void saveEditor();
+    void saveSettings();
+    void resetLayouts();
+    void factoryReset();
+    void updateSettingsControls();
+    void updateWarningModal(TileWarningEngine& warnings);
     static void styleScreen(lv_obj_t* screen);
     static Ui* instance_;
     Page current_page_ = Page::Dash;
@@ -45,4 +63,38 @@ private:
     std::array<TileView, AppConfig::kTrackTileCount> track_tiles_{};
     ShiftLightView dash_shift_{};
     ShiftLightView track_shift_{};
+    AppConfig* config_ = nullptr;
+    ConfigRepository* repository_ = nullptr;
+    BoardDisplay* board_ = nullptr;
+    TileEditorModel editor_{};
+    bool runtime_reconfigure_requested_ = false;
+    lv_obj_t* settings_container_ = nullptr;
+    lv_obj_t* settings_message_ = nullptr;
+    lv_obj_t* brightness_slider_ = nullptr;
+    lv_obj_t* source_dropdown_ = nullptr;
+    lv_obj_t* bitrate_dropdown_ = nullptr;
+    lv_obj_t* can_timeout_ = nullptr;
+    lv_obj_t* shift_start_ = nullptr;
+    lv_obj_t* shift_red_ = nullptr;
+    lv_obj_t* shift_max_ = nullptr;
+    lv_obj_t* temp_unit_ = nullptr;
+    lv_obj_t* pressure_unit_ = nullptr;
+    lv_obj_t* speed_unit_ = nullptr;
+    lv_obj_t* mixture_unit_ = nullptr;
+    std::array<lv_obj_t*, AppConfig::kDashTileCount + AppConfig::kTrackTileCount>
+        layout_labels_{};
+    lv_obj_t* editor_overlay_ = nullptr;
+    lv_obj_t* editor_parameter_ = nullptr;
+    lv_obj_t* editor_visible_ = nullptr;
+    lv_obj_t* editor_decimals_ = nullptr;
+    lv_obj_t* editor_warning_ = nullptr;
+    lv_obj_t* editor_direction_ = nullptr;
+    lv_obj_t* editor_threshold_ = nullptr;
+    lv_obj_t* editor_hysteresis_ = nullptr;
+    lv_obj_t* editor_delay_ = nullptr;
+    lv_obj_t* editor_message_ = nullptr;
+    lv_obj_t* warning_panel_ = nullptr;
+    lv_obj_t* warning_text_ = nullptr;
+    TileWarningEngine* warning_engine_ = nullptr;
+    TileAddress warning_address_{};
 };

@@ -150,6 +150,24 @@ void BoardDisplay::incrementUiUpdates() {
     ++ui_updates_;
 }
 
+void BoardDisplay::setSoftwareBrightness(uint8_t percent) {
+    percent = constrain(percent, 20U, 100U);
+    if (brightness_layer_ == nullptr) {
+        brightness_layer_ = lv_obj_create(lv_layer_top());
+        lv_obj_set_pos(brightness_layer_, 0, 0);
+        lv_obj_set_size(brightness_layer_, kExpectedWidth, kExpectedHeight);
+        lv_obj_set_style_bg_color(brightness_layer_, lv_color_black(), 0);
+        lv_obj_set_style_border_width(brightness_layer_, 0, 0);
+        lv_obj_set_style_radius(brightness_layer_, 0, 0);
+        lv_obj_clear_flag(brightness_layer_, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_clear_flag(brightness_layer_, LV_OBJ_FLAG_SCROLLABLE);
+    }
+    const uint8_t opacity = static_cast<uint8_t>(
+        ((100U - percent) * static_cast<uint16_t>(LV_OPA_80)) / 80U);
+    lv_obj_set_style_bg_opa(brightness_layer_, opacity, 0);
+    lv_obj_move_foreground(brightness_layer_);
+}
+
 void BoardDisplay::flushCallback(lv_disp_drv_t* drv, const lv_area_t* area, lv_color_t* color_map) {
     auto* self = static_cast<BoardDisplay*>(drv->user_data);
     if (self == nullptr || self->lcd_ == nullptr) {

@@ -3,38 +3,25 @@
 #include <Arduino.h>
 
 bool App::begin() {
+    config_repository_.load(config_);
     if (!board_.begin()) {
         Serial.println("[DIY Dash] FATAL: display subsystem unavailable");
         return false;
     }
 
     const uint32_t now = millis();
-    const DataSource selected_source = DashboardConfig::kDemoEnabled
-                                           ? DataSource::Demo
-                                           : DataSource::Can;
-    telemetry_.selectSource(selected_source, now);
-    const bool can_ready = selected_source == DataSource::Can
-                               ? can_.begin(DashboardConfig::kCanBitrate)
-                               : false;
-    telemetry_.setCanInitialized(can_ready, now);
-    Serial.printf("[DIY Dash] CAN: %s, TX GPIO%u, RX GPIO%u, %u bit/s\n",
-                  can_ready ? "READY" : "INIT FAILED",
-                  DashboardConfig::kCanTxGpio, DashboardConfig::kCanRxGpio,
-                  static_cast<unsigned>(DashboardConfig::kCanBitrate));
-    Serial.printf("[DIY Dash] Decoder mappings: %u; DEMO fallback: %s\n",
-                  static_cast<unsigned>(decoder_.definitionCount()),
-                  DashboardConfig::kDemoEnabled ? "ENABLED" : "DISABLED");
+    applyRuntimeConfig(now);
 
     if (!board_.lock()) {
         Serial.println("[DIY Dash] FATAL: cannot lock LVGL");
         return false;
     }
 
-    ui_.begin(config_);
+    ui_.begin(config_, config_repository_, board_);
     telemetry_.update(now);
     const UiRuntimeStatus status{
         telemetry_.canStatus(), telemetry_.demoActive(),
-        DashboardConfig::kCanBitrate, DashboardConfig::kCanTimeoutMs,
+        config_.can.bitrate, config_.can.timeout_ms,
         telemetry_.mappingCount(),
         can_.receivedFrames(), can_.rejectedFrames()};
     warnings_.evaluate(config_, telemetry_.state(), now);
@@ -54,6 +41,9 @@ void App::loop() {
     }
 
     const uint32_t now = millis();
+    if (ui_.takeRuntimeReconfigureRequest()) {
+        applyRuntimeConfig(now);
+    }
     CanFrame frame;
     for (uint8_t drained = 0U; drained < 32U && can_.poll(frame); ++drained) {
         telemetry_.accept(frame, now);
@@ -66,7 +56,7 @@ void App::loop() {
             board_.incrementUiUpdates();
             const UiRuntimeStatus status{
                 telemetry_.canStatus(), telemetry_.demoActive(),
-                DashboardConfig::kCanBitrate, DashboardConfig::kCanTimeoutMs,
+                config_.can.bitrate, config_.can.timeout_ms,
                 telemetry_.mappingCount(),
                 can_.receivedFrames(), can_.rejectedFrames()};
             ui_.update(telemetry_.state(), board_.diagnostics(), status,
@@ -78,4 +68,18 @@ void App::loop() {
 
     board_.service();
     delay(2);
+}
+
+void App::applyRuntimeConfig(uint32_t now_ms) {
+    can_.stop();
+    telemetry_.setCanTimeout(config_.can.timeout_ms);
+    telemetry_.selectSource(config_.data_source, now_ms);
+    const bool can_ready = config_.data_source == DataSource::Can
+                               ? can_.begin(config_.can.bitrate)
+                               : false;
+    telemetry_.setCanInitialized(can_ready, now_ms);
+    Serial.printf("[DIY Dash] Source: %s; CAN listen-only: %s; %u bit/s\n",
+                  config_.data_source == DataSource::Can ? "CAN" : "DEMO",
+                  can_ready ? "READY" : "INACTIVE",
+                  static_cast<unsigned>(config_.can.bitrate));
 }

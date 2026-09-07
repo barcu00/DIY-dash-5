@@ -12,6 +12,7 @@ public:
     TelemetryManager(const EcuCanDecoder& decoder, uint32_t can_timeout_ms);
 
     void selectSource(DataSource source, uint32_t now_ms);
+    void setCanTimeout(uint32_t timeout_ms);
     void setCanInitialized(bool initialized, uint32_t now_ms);
     bool accept(const CanFrame& frame, uint32_t now_ms);
     void update(uint32_t now_ms);

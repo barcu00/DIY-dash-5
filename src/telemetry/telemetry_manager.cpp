@@ -25,6 +25,10 @@ void TelemetryManager::selectSource(DataSource source, uint32_t now_ms) {
                       : CanStatus::Disabled;
 }
 
+void TelemetryManager::setCanTimeout(uint32_t timeout_ms) {
+    can_timeout_ms_ = timeout_ms;
+}
+
 void TelemetryManager::setCanInitialized(bool initialized, uint32_t now_ms) {
     can_initialized_ = initialized;
     started_ms_ = now_ms;
