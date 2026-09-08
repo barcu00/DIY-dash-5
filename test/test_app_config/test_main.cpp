@@ -145,14 +145,14 @@ void test_validation_rejects_unsnapped_or_out_of_range_shift_values() {
         ShiftLightConfig{5500U, 5501U, 5502U, 5502U, true};
     TEST_ASSERT_FALSE(unsnapped.validate().valid);
 
-    AppConfig below_range = AppConfig::defaults();
-    below_range.shift =
-        ShiftLightConfig{900U, 1100U, 1200U, 1200U, true};
-    TEST_ASSERT_FALSE(below_range.validate().valid);
+    AppConfig zero_start = AppConfig::defaults();
+    zero_start.shift =
+        ShiftLightConfig{0U, 100U, 200U, 200U, true};
+    TEST_ASSERT_TRUE(zero_start.validate().valid);
 
     AppConfig above_range = AppConfig::defaults();
     above_range.shift =
-        ShiftLightConfig{14000U, 14500U, 15100U, 15100U, true};
+        ShiftLightConfig{9000U, 9500U, 10100U, 10100U, true};
     TEST_ASSERT_FALSE(above_range.validate().valid);
 }
 

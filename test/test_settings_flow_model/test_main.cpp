@@ -69,18 +69,18 @@ void test_shift_changes_clamp_to_supported_range() {
     const ShiftLightConfig high = SettingsFlowModel::correctedShift(
         ShiftLightConfig{5500U, 7000U, 7500U, 8000U, true},
         ShiftField::Start, 16000U);
-    TEST_ASSERT_EQUAL_UINT16(14800U, high.start_rpm);
-    TEST_ASSERT_EQUAL_UINT16(14900U, high.red_rpm);
-    TEST_ASSERT_EQUAL_UINT16(15000U, high.flash_rpm);
-    TEST_ASSERT_EQUAL_UINT16(15000U, high.max_rpm);
+    TEST_ASSERT_EQUAL_UINT16(9800U, high.start_rpm);
+    TEST_ASSERT_EQUAL_UINT16(9900U, high.red_rpm);
+    TEST_ASSERT_EQUAL_UINT16(10000U, high.flash_rpm);
+    TEST_ASSERT_EQUAL_UINT16(10000U, high.max_rpm);
 
     const ShiftLightConfig low = SettingsFlowModel::correctedShift(
         ShiftLightConfig{5500U, 7000U, 7500U, 8000U, true},
         ShiftField::Maximum, 500U);
-    TEST_ASSERT_EQUAL_UINT16(1000U, low.start_rpm);
-    TEST_ASSERT_EQUAL_UINT16(1100U, low.red_rpm);
-    TEST_ASSERT_EQUAL_UINT16(1200U, low.flash_rpm);
-    TEST_ASSERT_EQUAL_UINT16(1200U, low.max_rpm);
+    TEST_ASSERT_EQUAL_UINT16(0U, low.start_rpm);
+    TEST_ASSERT_EQUAL_UINT16(100U, low.red_rpm);
+    TEST_ASSERT_EQUAL_UINT16(200U, low.flash_rpm);
+    TEST_ASSERT_EQUAL_UINT16(200U, low.max_rpm);
 }
 
 void test_slider_request_is_rounded_to_the_nearest_hundred_rpm() {
