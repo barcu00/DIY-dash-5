@@ -90,6 +90,44 @@ void test_unselected_unit_family_keeps_native_value_and_unit() {
     TEST_ASSERT_EQUAL_STRING("V", shown.unit);
 }
 
+void test_extended_native_units_have_unambiguous_labels() {
+    const UnitSettings settings;
+
+    TEST_ASSERT_EQUAL_STRING(
+        "deg", UnitPresenter::present(ParameterId::IgnitionTiming, 12.5f,
+                                       settings).unit);
+    TEST_ASSERT_EQUAL_STRING(
+        "ms", UnitPresenter::present(ParameterId::InjectorPulseWidth, 3.2f,
+                                      settings).unit);
+    TEST_ASSERT_EQUAL_STRING(
+        "g/s", UnitPresenter::present(ParameterId::MassAirFlow, 125.0f,
+                                       settings).unit);
+}
+
+void test_extended_parameters_reuse_their_unit_family_settings() {
+    UnitSettings settings;
+    settings.temperature = TemperatureUnit::Fahrenheit;
+    settings.pressure = PressureUnit::Kpa;
+    settings.speed = SpeedUnit::Mph;
+    settings.mixture = MixtureUnit::Afr;
+    settings.stoich_afr = 14.7f;
+
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, 1832.0f,
+        UnitPresenter::present(ParameterId::Egt1, 1000.0f, settings).value);
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, 101.3f,
+        UnitPresenter::present(ParameterId::BarometricPressure, 1.013f,
+                               settings).value);
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, 62.1371192f,
+        UnitPresenter::present(ParameterId::WheelSpeedRf, 100.0f,
+                               settings).value);
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, 14.7f,
+        UnitPresenter::present(ParameterId::Lambda2, 1.0f, settings).value);
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_temperature_presents_fahrenheit_and_round_trips_to_celsius);
@@ -98,5 +136,7 @@ int main(int, char**) {
     RUN_TEST(test_speed_presents_mph_and_round_trips_to_kph);
     RUN_TEST(test_lambda_presents_afr_using_configured_stoich_and_round_trips);
     RUN_TEST(test_unselected_unit_family_keeps_native_value_and_unit);
+    RUN_TEST(test_extended_native_units_have_unambiguous_labels);
+    RUN_TEST(test_extended_parameters_reuse_their_unit_family_settings);
     return UNITY_END();
 }

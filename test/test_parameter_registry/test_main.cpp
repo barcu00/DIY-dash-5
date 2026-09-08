@@ -8,7 +8,7 @@
 #include "telemetry/parameter_registry.h"
 
 void test_registry_describes_every_stable_parameter() {
-    TEST_ASSERT_EQUAL_UINT32(12U, parameterCount());
+    TEST_ASSERT_EQUAL_UINT32(35U, parameterCount());
 
     for (std::size_t i = 0U; i < parameterCount(); ++i) {
         const auto id = static_cast<ParameterId>(i);
@@ -36,6 +36,29 @@ void test_registry_preserves_core_names_units_and_decimals() {
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(NativeUnit::Bar),
                             static_cast<uint8_t>(oil.native_unit));
     TEST_ASSERT_EQUAL_UINT8(1U, oil.default_decimals);
+
+    const ParameterDescriptor& ignition =
+        parameterDescriptor(ParameterId::IgnitionTiming);
+    TEST_ASSERT_EQUAL_STRING("Ignition timing", ignition.name);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(NativeUnit::Degrees),
+                            static_cast<uint8_t>(ignition.native_unit));
+
+    const ParameterDescriptor& pulse =
+        parameterDescriptor(ParameterId::InjectorPulseWidth);
+    TEST_ASSERT_EQUAL_STRING("INJ PW", pulse.short_name);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(NativeUnit::Milliseconds),
+                            static_cast<uint8_t>(pulse.native_unit));
+
+    const ParameterDescriptor& airflow =
+        parameterDescriptor(ParameterId::MassAirFlow);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(NativeUnit::GramsPerSecond),
+                            static_cast<uint8_t>(airflow.native_unit));
+
+    TEST_ASSERT_EQUAL_STRING(
+        "Wheel speed LF",
+        parameterDescriptor(ParameterId::WheelSpeedLf).name);
+    TEST_ASSERT_EQUAL_STRING(
+        "EGT 8", parameterDescriptor(ParameterId::Egt8).short_name);
 }
 
 void test_registry_returns_unknown_descriptor_for_invalid_id() {

@@ -3,6 +3,9 @@
 #include "telemetry/mock_telemetry.h"
 
 static void assert_ranges(const VehicleState& s) {
+    for (std::size_t i = 0U; i < parameterCount(); ++i) {
+        TEST_ASSERT_TRUE(s.get(static_cast<VehicleSignal>(i)).valid);
+    }
     const float rpm = s.get(VehicleSignal::Rpm).value;
     const float gear = s.get(VehicleSignal::Gear).value;
     const float speed = s.get(VehicleSignal::Speed).value;
@@ -18,6 +21,11 @@ static void assert_ranges(const VehicleState& s) {
     TEST_ASSERT_TRUE(s.get(VehicleSignal::FuelPressure).value >= 3.0f && s.get(VehicleSignal::FuelPressure).value <= 4.5f);
     TEST_ASSERT_TRUE(s.get(VehicleSignal::BatteryVoltage).value >= 12.8f && s.get(VehicleSignal::BatteryVoltage).value <= 14.4f);
     TEST_ASSERT_TRUE(s.get(VehicleSignal::Tps).value >= 0.0f && s.get(VehicleSignal::Tps).value <= 100.0f);
+    TEST_ASSERT_TRUE(s.get(VehicleSignal::BarometricPressure).value >= 0.8f && s.get(VehicleSignal::BarometricPressure).value <= 1.2f);
+    TEST_ASSERT_TRUE(s.get(VehicleSignal::BoostTarget).value >= 0.0f && s.get(VehicleSignal::BoostTarget).value <= 2.0f);
+    TEST_ASSERT_TRUE(s.get(VehicleSignal::EthanolContent).value >= 0.0f && s.get(VehicleSignal::EthanolContent).value <= 100.0f);
+    TEST_ASSERT_TRUE(s.get(VehicleSignal::Egt8).value >= 400.0f && s.get(VehicleSignal::Egt8).value <= 1000.0f);
+    TEST_ASSERT_TRUE(s.get(VehicleSignal::WheelSpeedRr).value >= 0.0f && s.get(VehicleSignal::WheelSpeedRr).value <= 200.0f);
 }
 
 void test_reset_has_valid_idle_state() {
