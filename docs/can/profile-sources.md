@@ -32,6 +32,27 @@ were used only to compare translations.
   oil, intake temperatures), DLC 8. No VAN, diagnostics, ABS frames, status
   flags, or uncertain signals are decoded.
 
+## Selectable and mapped parameters
+
+The tile editor exposes 35 stable numeric parameters. A profile maps only the
+channels its pinned source substantiates; every other selection stays invalid
+and is rendered as `---`.
+
+| Profile | Additional mapped channels beyond the original core set |
+|---|---|
+| ECUMaster EMU Black | injector pulse width, lambda 2, ignition timing, accelerator position, ethanol content, boost target, EGT 1-2 |
+| rusEFI verbose | lambda 2, ignition timing, injector duty/pulse width, accelerator position, mass airflow, fuel temperature, ethanol content, EGT 1-8 |
+| MaxxECU Default 1.3 | barometric pressure, lambda 2, ignition timing, injector duty/pulse width, ethanol content, coolant pressure, boost target, EGT 1-8 |
+| Haltech Broadcast 2.0 | barometric/coolant pressure, boost target, lambda 2, ignition timing, injector duty/pulse width, fuel temperature |
+| Speeduino Haltech mode | barometric pressure, boost target, lambda 2, ignition timing, injector duty/pulse width, fuel temperature; fields explicitly transmitted as placeholders stay unsupported |
+| Link Generic Dash (experimental) | barometric pressure, lambda 2, ignition timing, injector duty/pulse width, accelerator position, ethanol content, mass airflow, individual wheel speeds |
+| PSA C2 VTS engine (experimental) | no speculative additions: RPM, TPS, coolant, oil and intake temperature only |
+
+Fuel temperature, ethanol, lambda 2, ignition angle, injection, airflow, EGT,
+and wheel-speed fields use their documented native engineering units. Unit
+preferences convert temperature, pressure, speed, and lambda only for display;
+warning comparisons continue to use native values.
+
 ## Verification boundary
 
 Vendor/project protocol fixtures prove the translation in software. Link and

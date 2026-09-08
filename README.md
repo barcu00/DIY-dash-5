@@ -7,9 +7,10 @@ and renders telemetry through LVGL 8.4.
 
 The current test-board firmware provides configurable DASH and TRACK layouts,
 persistent tile warnings, fixed non-scrolling SETTINGS pages, and a shared
-four-stage shift-light strip. Its generic CAN decoder accepts only verified
-protocol definitions, while a clearly labelled DEMO source supports display
-and UI bring-up before a real ECU profile is installed.
+four-threshold shift-light strip. Its table-driven CAN decoder includes five
+source-pinned standalone ECU profiles plus separately labelled experimental
+Link and Citroën C2 profiles. A clearly labelled DEMO source supports display
+and UI bring-up without a connected ECU.
 
 ## UI preview
 
@@ -132,11 +133,12 @@ bounded rate.
 
 ## VehicleState
 
-`VehicleState` is the only telemetry model consumed by the UI. It stores typed
-signal slots for RPM, MAP/boost, lambda, TPS, CLT, IAT, oil pressure, oil
-temperature, battery voltage, speed, gear, and fuel pressure. Every slot has a
-value, update timestamp, and validity flag; the complete snapshot also declares
-whether it came from CAN, DEMO, or no source.
+`VehicleState` is the only telemetry model consumed by the UI. Its 35 selectable
+parameters cover the original engine channels plus barometric/boost/coolant
+pressure, fuel temperature, ethanol, second lambda, ignition, injector duty and
+pulse width, accelerator position, mass airflow, EGT 1-8, and four individual
+wheel speeds. Every slot has a value, update timestamp, and validity flag; the
+complete snapshot also declares whether it came from CAN, DEMO, or no source.
 
 Resetting the source clears every signal. This prevents stale CAN measurements
 from appearing alongside generated DEMO data. Invalid values are rendered as
@@ -144,7 +146,7 @@ from appearing alongside generated DEMO data. Invalid values are rendered as
 
 ## CAN decoder framework
 
-`EcuCanDecoder` is table-driven. Each future `SignalDefinition` declares:
+`EcuCanDecoder` is table-driven. Each compiled `CanSignalDefinition` declares:
 
 - CAN ID and standard/extended format
 - byte offset
@@ -152,14 +154,15 @@ from appearing alongside generated DEMO data. Invalid values are rendered as
 - signed/unsigned 8-, 16-, or 32-bit raw type
 - scale and additive offset
 - destination `VehicleSignal`
-- unit metadata
 - signal timeout
 
-The decoder validates frame type and DLC before reading. The shipped profile is
-empty, so it cannot manufacture or misinterpret ECUMaster values. Adding EMU
-Black, EMU Classic, or another ECU requires authoritative CAN IDs, offsets,
-endianness, raw types, scaling, offsets, timeouts, range validation, and fixture
-tests. It does not require UI changes.
+The decoder validates standard/extended format, remote-frame status, exact DLC,
+optional frame discriminators, and every signal range before atomically applying
+a frame. SETTINGS exposes `none`, ECUMaster EMU Black, rusEFI verbose, MaxxECU
+Default 1.3, Haltech Broadcast 2.0, Speeduino Haltech mode, and the experimental
+Link Generic Dash and PSA C2 VTS engine profiles. Unsupported values remain
+invalid and render as `---`. Exact source revisions and mapped scope are in
+[`docs/can/profile-sources.md`](docs/can/profile-sources.md).
 
 ## CAN and DEMO status
 
@@ -186,7 +189,9 @@ See `docs/ui/dashboard-config-guide.md` for controls and safety limitations.
 The DASH and TRACK shift-light strips share four ordered thresholds:
 `START < RED < FLASH <= MAX`. Above the independent FLASH threshold, an enabled
 flash option alternates the complete strip between red and off at approximately
-4 Hz.
+4 Hz. All sliders span 0-10000 RPM in 100 RPM steps. Normal progression always
+uses four green, four yellow, and four red segments; thresholds control when the
+fixed color zones illuminate.
 
 ## Serial diagnostics
 
@@ -214,8 +219,6 @@ or timing behavior. After flashing the target board, verify:
 
 ## Next milestone
 
-Expand the selectable telemetry registry and add authoritative CAN datasets for
-ECUMaster, rusEFI, MaxxECU, PSA/Citroen C2 1.6 16V VTS engine data, and other
-requested standalone ECUs. Every mapping must include verified IDs, offsets,
-endianness, types, scaling, timeouts, validation ranges, and native fixtures;
-unknown frames remain unsupported rather than guessed.
+Capture and compare real traffic from each target ECU, especially the 2005
+Citroën C2 VTS and Link Generic Dash streams, then promote only hardware-verified
+experimental mappings. Unknown frames remain unsupported rather than guessed.

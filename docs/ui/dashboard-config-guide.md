@@ -47,13 +47,19 @@ by leaving again.
 - Source is explicitly CAN or DEMO. CAN never automatically falls back to DEMO.
 - CAN is receive-only. Available bitrates are 125, 250, 500, and 1000 kbit/s;
   timeout is adjustable from 100 to 5000 ms.
-- The current safe profile is `none`, so no unverified ECU frames are decoded.
+- The profile picker offers `none`, five source-pinned standalone ECU profiles,
+  and separately marked experimental Link and PSA C2 profiles. Selecting `none`
+  is the safe no-decoder state. A parameter not supplied by the active profile
+  displays `---`.
 - START, RED, FLASH, and MAX RPM use four sliders shared by DASH and TRACK and
   must satisfy `start < red < flash <= maximum`. Values snap to 100 RPM steps,
-  and changing one threshold automatically moves dependent thresholds.
+  span 0-10000 RPM, and changing one threshold automatically moves dependent
+  thresholds. Existing stored values above 10000 RPM are normalized without
+  discarding unrelated settings.
 - FLASH ENABLED controls whether the complete strip alternates red/off at about
   4 Hz once valid RPM reaches FLASH RPM. Disabling it keeps normal progressive
-  green/yellow/red behavior through MAX RPM.
+  behavior through MAX RPM. The 12 physical segments always use four green,
+  four yellow, and four red positions.
 - Temperature, pressure, speed, and mixture units affect presentation only.
   Stored telemetry and warning comparisons remain in native units.
 - RESET DASH and RESET TRACK restore only the selected tile layout. FACTORY
