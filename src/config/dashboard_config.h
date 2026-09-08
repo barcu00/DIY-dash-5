@@ -5,6 +5,7 @@
 namespace DashboardConfig {
 constexpr uint32_t kCanBitrate = 1000000U;
 constexpr uint32_t kCanTimeoutMs = 1500U;
+constexpr uint32_t kUiUpdateIntervalMs = 20U;
 constexpr bool kDemoEnabled = true;
 constexpr uint8_t kCanTxGpio = 15U;
 constexpr uint8_t kCanRxGpio = 16U;

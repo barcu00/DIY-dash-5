@@ -63,7 +63,7 @@ void App::loop() {
     }
     telemetry_.update(now);
 
-    if (now - last_ui_update_ms_ >= 50U) {
+    if (now - last_ui_update_ms_ >= DashboardConfig::kUiUpdateIntervalMs) {
         warnings_.evaluate(config_, telemetry_.state(), now);
         if (board_.lock()) {
             board_.incrementUiUpdates();

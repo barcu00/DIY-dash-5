@@ -15,6 +15,28 @@ float wave(uint32_t elapsed_ms, float period_s, float phase = 0.0f) {
 float lerp(float low, float high, float t) {
     return low + (high - low) * std::clamp(t, 0.0f, 1.0f);
 }
+
+float smoothStep(float value) {
+    const float t = std::clamp(value, 0.0f, 1.0f);
+    return t * t * (3.0f - 2.0f * t);
+}
+
+float demoEngineCycle(uint32_t elapsed_ms) {
+    constexpr uint32_t kCycleMs = 10000U;
+    constexpr uint32_t kRiseEndMs = 4000U;
+    constexpr uint32_t kHoldEndMs = 6000U;
+    const uint32_t phase_ms = elapsed_ms % kCycleMs;
+    if (phase_ms < kRiseEndMs) {
+        return smoothStep(static_cast<float>(phase_ms) /
+                          static_cast<float>(kRiseEndMs));
+    }
+    if (phase_ms < kHoldEndMs) {
+        return 1.0f;
+    }
+    return 1.0f - smoothStep(
+        static_cast<float>(phase_ms - kHoldEndMs) /
+        static_cast<float>(kCycleMs - kHoldEndMs));
+}
 }  // namespace
 
 MockTelemetry::MockTelemetry() {
@@ -58,13 +80,12 @@ void MockTelemetry::reset() {
 }
 
 void MockTelemetry::update(uint32_t elapsed_ms) {
-    const float throttle_wave = wave(elapsed_ms, 8.0f);
+    const float throttle_wave = demoEngineCycle(elapsed_ms);
     const float load_wave = wave(elapsed_ms, 11.0f, 0.8f);
     const float thermal_wave = wave(elapsed_ms, 37.0f, 1.4f);
 
     const float tps = lerp(0.0f, 100.0f, throttle_wave);
-    const float rpm = static_cast<float>(std::lround(
-        lerp(900.0f, 7800.0f, throttle_wave)));
+    const float rpm = lerp(900.0f, 7800.0f, throttle_wave);
     const float speed = lerp(0.0f, 190.0f,
                              wave(elapsed_ms, 24.0f, -1.0f));
     const int gear = std::clamp(1 + static_cast<int>(speed / 36.0f), 1, 6);

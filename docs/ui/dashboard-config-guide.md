@@ -57,7 +57,7 @@ by leaving again.
   thresholds. Existing stored values above 10000 RPM are normalized without
   discarding unrelated settings.
 - FLASH ENABLED controls whether the complete strip alternates red/off at about
-  4 Hz once valid RPM reaches FLASH RPM. Disabling it keeps normal progressive
+  8 Hz once valid RPM reaches FLASH RPM. Disabling it keeps normal progressive
   behavior through MAX RPM. The 12 physical segments always use four green,
   four yellow, and four red positions.
 - Temperature, pressure, speed, and mixture units affect presentation only.
