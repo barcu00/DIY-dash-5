@@ -23,6 +23,8 @@ struct LegacyAppConfigV1 {
     std::array<TileConfig, AppConfig::kTrackTileCount> track_tiles{};
 };
 
+bool normalizeLegacyShiftRange(ShiftLightConfig& shift);
+
 LoadResult migrateV1(ConfigBackend& backend, AppConfig& config) {
     LegacyAppConfigV1 legacy{};
     if (!backend.read(&legacy, sizeof(legacy)) || legacy.schema_version != 1U) {
@@ -41,6 +43,7 @@ LoadResult migrateV1(ConfigBackend& backend, AppConfig& config) {
     migrated.units = legacy.units;
     migrated.dash_tiles = legacy.dash_tiles;
     migrated.track_tiles = legacy.track_tiles;
+    normalizeLegacyShiftRange(migrated.shift);
     if (!migrated.validate().valid) {
         return LoadResult::DefaultsUsed;
     }
@@ -62,12 +65,16 @@ bool normalizeLegacyShiftRange(ShiftLightConfig& shift) {
     shift.max_rpm = std::min<uint16_t>(shift.max_rpm,
                                         kCurrentMaximumShiftRpm);
     shift.flash_rpm = std::min<uint16_t>(shift.flash_rpm, shift.max_rpm);
+    const uint16_t red_limit = shift.flash_rpm >= kShiftRpmStep
+        ? static_cast<uint16_t>(shift.flash_rpm - kShiftRpmStep)
+        : 0U;
     shift.red_rpm = std::min<uint16_t>(
-        shift.red_rpm,
-        static_cast<uint16_t>(shift.flash_rpm - kShiftRpmStep));
+        shift.red_rpm, red_limit);
+    const uint16_t start_limit = shift.red_rpm >= kShiftRpmStep
+        ? static_cast<uint16_t>(shift.red_rpm - kShiftRpmStep)
+        : 0U;
     shift.start_rpm = std::min<uint16_t>(
-        shift.start_rpm,
-        static_cast<uint16_t>(shift.red_rpm - kShiftRpmStep));
+        shift.start_rpm, start_limit);
     return true;
 }
 }  // namespace
@@ -99,7 +106,9 @@ LoadResult ConfigRepository::load(AppConfig& config) {
 
     config = candidate;
     if (normalized) {
-        (void)backend_.write(&config, sizeof(config));
+        return backend_.write(&config, sizeof(config))
+            ? LoadResult::Loaded
+            : LoadResult::MigrationWriteFailed;
     }
     return LoadResult::Loaded;
 }

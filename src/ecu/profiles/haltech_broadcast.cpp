@@ -12,7 +12,7 @@ const CanSignalDefinition kData1[] = {
     {ParameterId::Tps, 4U, RawType::Unsigned16, ByteOrder::Big, 0.1f, 0.0f,
      0.0f, 100.0f, kFast},
     {ParameterId::CoolantPressure, 6U, RawType::Unsigned16, ByteOrder::Big,
-     0.001f, 0.0f, 0.0f, 30.0f, kFast},
+     0.001f, -1.013f, -1.013f, 30.0f, kFast},
 };
 const CanSignalDefinition kData2[] = {
     {ParameterId::FuelPressure, 0U, RawType::Unsigned16, ByteOrder::Big,
@@ -39,8 +39,8 @@ const CanSignalDefinition kLambda[] = {
 const CanSignalDefinition kVss[] = {
     {ParameterId::Speed, 0U, RawType::Unsigned16, ByteOrder::Big, 0.1f, 0.0f,
      0.0f, 500.0f, kMedium},
-    {ParameterId::Gear, 3U, RawType::Unsigned8, ByteOrder::Big, 1.0f, 0.0f,
-     0.0f, 20.0f, kMedium},
+    {ParameterId::Gear, 3U, RawType::Signed8, ByteOrder::Big, 1.0f, 0.0f,
+     -128.0f, 20.0f, kMedium},
 };
 const CanSignalDefinition kData4[] = {
     {ParameterId::BatteryVoltage, 0U, RawType::Unsigned16, ByteOrder::Big,

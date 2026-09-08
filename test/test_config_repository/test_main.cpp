@@ -134,6 +134,21 @@ void test_schema_v2_shift_values_above_new_limit_are_normalized_in_place() {
     TEST_ASSERT_FALSE(loaded.dash_tiles[3].visible);
 }
 
+void test_schema_v2_normalization_write_failure_is_reported() {
+    MemoryBackend backend;
+    AppConfig stored = AppConfig::defaults();
+    stored.shift = ShiftLightConfig{8500U, 9500U, 10500U, 12000U, true};
+    TEST_ASSERT_TRUE(backend.write(&stored, sizeof(stored)));
+    backend.fail_writes = true;
+    ConfigRepository repository(backend);
+    AppConfig loaded{};
+
+    TEST_ASSERT_EQUAL_UINT8(
+        static_cast<uint8_t>(LoadResult::MigrationWriteFailed),
+        static_cast<uint8_t>(repository.load(loaded)));
+    TEST_ASSERT_EQUAL_UINT16(10000U, loaded.shift.max_rpm);
+}
+
 void test_schema_v1_is_migrated_without_losing_user_settings() {
     MemoryBackend backend;
     const AppConfig defaults = AppConfig::defaults();
@@ -309,6 +324,7 @@ int main(int, char**) {
     RUN_TEST(test_schema_mismatch_loads_safe_defaults);
     RUN_TEST(test_valid_configuration_round_trips_through_backend);
     RUN_TEST(test_schema_v2_shift_values_above_new_limit_are_normalized_in_place);
+    RUN_TEST(test_schema_v2_normalization_write_failure_is_reported);
     RUN_TEST(test_schema_v1_is_migrated_without_losing_user_settings);
     RUN_TEST(test_schema_v1_high_shift_values_are_normalized_without_losing_settings);
     RUN_TEST(test_failed_v1_rewrite_reports_failure_but_keeps_migrated_runtime);

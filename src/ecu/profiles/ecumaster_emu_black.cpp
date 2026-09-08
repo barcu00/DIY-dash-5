@@ -32,8 +32,6 @@ const CanSignalDefinition kFrame603[] = {
      0.5f, 0.0f, -100.0f, 100.0f, kFastTimeout},
     {ParameterId::Lambda, 2U, RawType::Unsigned8, ByteOrder::Little,
      0.0078125f, 0.0f, 0.0f, 2.0f, kFastTimeout},
-    {ParameterId::Lambda2, 3U, RawType::Unsigned8, ByteOrder::Little,
-     0.0078125f, 0.0f, 0.0f, 2.0f, kFastTimeout},
     {ParameterId::Egt1, 4U, RawType::Unsigned16, ByteOrder::Little, 1.0f,
      0.0f, 0.0f, 1300.0f, kFastTimeout},
     {ParameterId::Egt2, 6U, RawType::Unsigned16, ByteOrder::Little, 1.0f,

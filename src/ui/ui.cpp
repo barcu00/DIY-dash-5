@@ -3,6 +3,7 @@
 #include <cstring>
 #include "ecu/can_profile_registry.h"
 #include "ui/tile_engine.h"
+#include "ui/parameter_options.h"
 #include "ui/ui_theme.h"
 #include "telemetry/parameter_registry.h"
 #include "ui/unit_presenter.h"
@@ -144,6 +145,7 @@ void Ui::clearSettingsWidgets() {
     brightness_value_ = nullptr;
     source_dropdown_ = nullptr;
     profile_dropdown_ = nullptr;
+    profile_recommendation_ = nullptr;
     bitrate_dropdown_ = nullptr;
     can_timeout_ = nullptr;
     shift_start_ = nullptr;
@@ -306,8 +308,9 @@ void Ui::createDataCanSettings(lv_obj_t* panel) {
                       "Recommended: %u kbit/s",
                       static_cast<unsigned>(selected->default_bitrate / 1000U));
     }
-    makeLabel(panel, recommendation, 208, 100,
-              &lv_font_montserrat_12, UiTheme::muted());
+    profile_recommendation_ = makeLabel(
+        panel, recommendation, 208, 100,
+        &lv_font_montserrat_12, UiTheme::muted());
 
     makeLabel(panel, "BITRATE", 392, 26, &lv_font_montserrat_12,
               UiTheme::muted());
@@ -600,8 +603,11 @@ void Ui::openEditor(TileAddress address) {
     makeLabel(editor_overlay_, "Parameter", 20, 64, &lv_font_montserrat_12, UiTheme::muted());
     editor_parameter_ = lv_dropdown_create(editor_overlay_); lv_obj_set_pos(editor_parameter_, 20, 84);
     lv_obj_set_size(editor_parameter_, 250, 42);
-    lv_dropdown_set_options(editor_parameter_,
-        "RPM\nMAP\nLAMBDA\nTPS\nCLT\nIAT\nOIL PRESS\nOIL TEMP\nBATTERY\nSPEED\nGEAR\nFUEL PRESS");
+    char parameter_options[1024]{};
+    if (!ParameterOptions::write(parameter_options, sizeof(parameter_options))) {
+        std::strncpy(parameter_options, "RPM", sizeof(parameter_options) - 1U);
+    }
+    lv_dropdown_set_options(editor_parameter_, parameter_options);
     lv_dropdown_set_selected(editor_parameter_, static_cast<uint16_t>(tile.parameter));
     editor_visible_ = lv_checkbox_create(editor_overlay_); lv_obj_set_pos(editor_visible_, 300, 92);
     lv_checkbox_set_text(editor_visible_, "Visible");
@@ -836,6 +842,16 @@ void Ui::settingsEvent(lv_event_t* event) {
         const char* id = profile == nullptr ? "none" : profile->id;
         std::strncpy(candidate.can.profile_id.data(), id,
                      candidate.can.profile_id.size() - 1U);
+        if (instance_->profile_recommendation_ != nullptr) {
+            char recommendation[48] = "Recommended: select a profile";
+            if (profile != nullptr) {
+                std::snprintf(
+                    recommendation, sizeof(recommendation),
+                    "Recommended: %u kbit/s",
+                    static_cast<unsigned>(profile->default_bitrate / 1000U));
+            }
+            lv_label_set_text(instance_->profile_recommendation_, recommendation);
+        }
         instance_->stageSettings(candidate, true);
         return;
     }

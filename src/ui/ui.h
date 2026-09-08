@@ -98,6 +98,7 @@ private:
     lv_obj_t* brightness_value_ = nullptr;
     lv_obj_t* source_dropdown_ = nullptr;
     lv_obj_t* profile_dropdown_ = nullptr;
+    lv_obj_t* profile_recommendation_ = nullptr;
     lv_obj_t* bitrate_dropdown_ = nullptr;
     lv_obj_t* can_timeout_ = nullptr;
     lv_obj_t* shift_start_ = nullptr;

@@ -40,7 +40,7 @@ and is rendered as `---`.
 
 | Profile | Additional mapped channels beyond the original core set |
 |---|---|
-| ECUMaster EMU Black | injector pulse width, lambda 2, ignition timing, accelerator position, ethanol content, boost target, EGT 1-2 |
+| ECUMaster EMU Black | injector pulse width, ignition timing, accelerator position, ethanol content, boost target, EGT 1-2; byte 3 of `0x603` is lambda correction and is not exposed as lambda 2 |
 | rusEFI verbose | lambda 2, ignition timing, injector duty/pulse width, accelerator position, mass airflow, fuel temperature, ethanol content, EGT 1-8 |
 | MaxxECU Default 1.3 | barometric pressure, lambda 2, ignition timing, injector duty/pulse width, ethanol content, coolant pressure, boost target, EGT 1-8 |
 | Haltech Broadcast 2.0 | barometric/coolant pressure, boost target, lambda 2, ignition timing, injector duty/pulse width, fuel temperature |
