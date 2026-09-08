@@ -68,7 +68,7 @@ void test_same_parameter_preserves_edited_warning() {
     TileWarningConfig warning;
     warning.enabled = true;
     warning.direction = WarningDirection::Above;
-    warning.threshold_native = 7200.0f;
+    warning.threshold_native = 900.0f;
     warning.hysteresis_native = 200.0f;
     warning.delay_ms = 250U;
 
@@ -77,7 +77,7 @@ void test_same_parameter_preserves_edited_warning() {
 
     TEST_ASSERT_TRUE(config.track_tiles[4].warning.enabled);
     TEST_ASSERT_FLOAT_WITHIN(
-        0.001f, 7200.0f, config.track_tiles[4].warning.threshold_native);
+        0.001f, 900.0f, config.track_tiles[4].warning.threshold_native);
     TEST_ASSERT_EQUAL_UINT16(250U, config.track_tiles[4].warning.delay_ms);
 }
 
