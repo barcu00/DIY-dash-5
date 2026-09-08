@@ -12,6 +12,8 @@ const CanSignalDefinition kFrame600[] = {
      -40.0f, 127.0f, kFastTimeout},
     {ParameterId::Map, 4U, RawType::Unsigned16, ByteOrder::Little, 0.01f, 0.0f,
      0.0f, 6.0f, kFastTimeout},
+    {ParameterId::InjectorPulseWidth, 6U, RawType::Unsigned16,
+     ByteOrder::Little, 0.016129032f, 0.0f, 0.0f, 100.0f, kFastTimeout},
 };
 const CanSignalDefinition kFrame602[] = {
     {ParameterId::Speed, 0U, RawType::Unsigned16, ByteOrder::Little, 1.0f, 0.0f,
@@ -26,14 +28,32 @@ const CanSignalDefinition kFrame602[] = {
      -40.0f, 250.0f, kFastTimeout},
 };
 const CanSignalDefinition kFrame603[] = {
+    {ParameterId::IgnitionTiming, 0U, RawType::Signed8, ByteOrder::Little,
+     0.5f, 0.0f, -100.0f, 100.0f, kFastTimeout},
     {ParameterId::Lambda, 2U, RawType::Unsigned8, ByteOrder::Little,
      0.0078125f, 0.0f, 0.0f, 2.0f, kFastTimeout},
+    {ParameterId::Lambda2, 3U, RawType::Unsigned8, ByteOrder::Little,
+     0.0078125f, 0.0f, 0.0f, 2.0f, kFastTimeout},
+    {ParameterId::Egt1, 4U, RawType::Unsigned16, ByteOrder::Little, 1.0f,
+     0.0f, 0.0f, 1300.0f, kFastTimeout},
+    {ParameterId::Egt2, 6U, RawType::Unsigned16, ByteOrder::Little, 1.0f,
+     0.0f, 0.0f, 1300.0f, kFastTimeout},
 };
 const CanSignalDefinition kFrame604[] = {
     {ParameterId::Gear, 0U, RawType::Unsigned8, ByteOrder::Little, 1.0f, 0.0f,
      0.0f, 7.0f, kFastTimeout},
     {ParameterId::BatteryVoltage, 2U, RawType::Unsigned16, ByteOrder::Little,
      0.027f, 0.0f, 0.0f, 20.0f, kFastTimeout},
+    {ParameterId::EthanolContent, 7U, RawType::Unsigned8, ByteOrder::Little,
+     1.0f, 0.0f, 0.0f, 100.0f, kFastTimeout},
+};
+const CanSignalDefinition kFrame605[] = {
+    {ParameterId::AcceleratorPosition, 0U, RawType::Unsigned8,
+     ByteOrder::Little, 0.5f, 0.0f, 0.0f, 100.0f, kFastTimeout},
+};
+const CanSignalDefinition kFrame607[] = {
+    {ParameterId::BoostTarget, 0U, RawType::Unsigned16, ByteOrder::Little,
+     0.01f, 0.0f, 0.0f, 6.0f, kFastTimeout},
 };
 const CanFrameDefinition kFrames[] = {
     {0x600U, false, 8U, 0U, 0U, 0U, kFrame600,
@@ -44,6 +64,10 @@ const CanFrameDefinition kFrames[] = {
      sizeof(kFrame603) / sizeof(kFrame603[0])},
     {0x604U, false, 8U, 0U, 0U, 0U, kFrame604,
      sizeof(kFrame604) / sizeof(kFrame604[0])},
+    {0x605U, false, 8U, 0U, 0U, 0U, kFrame605,
+     sizeof(kFrame605) / sizeof(kFrame605[0])},
+    {0x607U, false, 8U, 0U, 0U, 0U, kFrame607,
+     sizeof(kFrame607) / sizeof(kFrame607[0])},
 };
 }  // namespace
 

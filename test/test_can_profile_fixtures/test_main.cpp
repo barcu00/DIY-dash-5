@@ -236,15 +236,23 @@ void test_haltech_and_speeduino_compatible_frames_decode_big_endian() {
 }
 
 void test_haltech_family_extended_broadcast_channels_decode() {
-    for (const char* profile : {"haltech_broadcast_2_0", "speeduino_haltech"}) {
-        VehicleState injection = decode(
-            profile,
-            CanFrame{0x362U, 8U,
-                     {0x01U, 0xF4U, 0U, 0U, 0x00U, 0xC8U, 0U, 0U},
-                     false, false});
-        assertValue(injection, ParameterId::InjectorDuty, 50.0f);
-        assertValue(injection, ParameterId::IgnitionTiming, 20.0f);
+    VehicleState haltech_injection = decode(
+        "haltech_broadcast_2_0",
+        CanFrame{0x362U, 8U,
+                 {0x01U, 0xF4U, 0U, 0U, 0x00U, 0xC8U, 0U, 0U},
+                 false, false});
+    assertValue(haltech_injection, ParameterId::InjectorDuty, 50.0f);
+    assertValue(haltech_injection, ParameterId::IgnitionTiming, 20.0f);
 
+    VehicleState speeduino_injection = decode(
+        "speeduino_haltech",
+        CanFrame{0x362U, 8U,
+                 {0x00U, 0x32U, 0U, 0U, 0x00U, 0xC8U, 0U, 0U},
+                 false, false});
+    assertValue(speeduino_injection, ParameterId::InjectorDuty, 50.0f);
+    assertValue(speeduino_injection, ParameterId::IgnitionTiming, 20.0f);
+
+    for (const char* profile : {"haltech_broadcast_2_0", "speeduino_haltech"}) {
         VehicleState pulse = decode(
             profile,
             CanFrame{0x364U, 8U,
