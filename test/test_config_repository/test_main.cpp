@@ -169,6 +169,31 @@ void test_schema_v1_is_migrated_without_losing_user_settings() {
     TEST_ASSERT_EQUAL_UINT32(sizeof(AppConfig), backend.stored_size);
 }
 
+void test_schema_v1_high_shift_values_are_normalized_without_losing_settings() {
+    MemoryBackend backend;
+    const AppConfig defaults = AppConfig::defaults();
+    LegacyAppConfigV1 legacy;
+    legacy.brightness_percent = 40U;
+    legacy.can = defaults.can;
+    legacy.shift = LegacyShiftLightConfigV1{9000U, 11000U, 13000U};
+    legacy.units = defaults.units;
+    legacy.dash_tiles = defaults.dash_tiles;
+    legacy.track_tiles = defaults.track_tiles;
+    legacy.dash_tiles[3].visible = false;
+    TEST_ASSERT_TRUE(backend.write(&legacy, sizeof(legacy)));
+    ConfigRepository repository(backend);
+    AppConfig loaded{};
+
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(LoadResult::Migrated),
+                            static_cast<uint8_t>(repository.load(loaded)));
+    TEST_ASSERT_EQUAL_UINT16(9000U, loaded.shift.start_rpm);
+    TEST_ASSERT_EQUAL_UINT16(9900U, loaded.shift.red_rpm);
+    TEST_ASSERT_EQUAL_UINT16(10000U, loaded.shift.flash_rpm);
+    TEST_ASSERT_EQUAL_UINT16(10000U, loaded.shift.max_rpm);
+    TEST_ASSERT_EQUAL_UINT8(40U, loaded.brightness_percent);
+    TEST_ASSERT_FALSE(loaded.dash_tiles[3].visible);
+}
+
 void test_failed_v1_rewrite_reports_failure_but_keeps_migrated_runtime() {
     MemoryBackend backend;
     const AppConfig defaults = AppConfig::defaults();
@@ -285,6 +310,7 @@ int main(int, char**) {
     RUN_TEST(test_valid_configuration_round_trips_through_backend);
     RUN_TEST(test_schema_v2_shift_values_above_new_limit_are_normalized_in_place);
     RUN_TEST(test_schema_v1_is_migrated_without_losing_user_settings);
+    RUN_TEST(test_schema_v1_high_shift_values_are_normalized_without_losing_settings);
     RUN_TEST(test_failed_v1_rewrite_reports_failure_but_keeps_migrated_runtime);
     RUN_TEST(test_failed_save_keeps_previous_runtime_configuration);
     RUN_TEST(test_invalid_candidate_is_not_written_or_applied);

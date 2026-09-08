@@ -65,6 +65,7 @@ void test_ecumaster_extended_engine_channels_decode_to_native_units() {
     assertValue(combustion, ParameterId::IgnitionTiming, 10.0f);
     assertValue(combustion, ParameterId::Egt1, 900.0f);
     assertValue(combustion, ParameterId::Egt2, 950.0f);
+    TEST_ASSERT_FALSE(combustion.get(ParameterId::Lambda2).valid);
 
     VehicleState status = decode(
         "ecumaster_emu_black",
@@ -269,6 +270,26 @@ void test_haltech_family_extended_broadcast_channels_decode() {
     }
 }
 
+void test_haltech_coolant_pressure_uses_atmospheric_offset() {
+    VehicleState state = decode(
+        "haltech_broadcast_2_0",
+        CanFrame{0x360U, 8U,
+                 {0x0FU, 0xA0U, 0x05U, 0xDCU,
+                  0x01U, 0xF4U, 0x09U, 0xD8U},
+                 false, false});
+    assertValue(state, ParameterId::CoolantPressure, 1.507f, 0.001f);
+}
+
+void test_haltech_reverse_gear_does_not_discard_vehicle_speed() {
+    VehicleState state = decode(
+        "haltech_broadcast_2_0",
+        CanFrame{0x370U, 8U,
+                 {0x03U, 0xE8U, 0U, 0xFFU, 0U, 0U, 0U, 0U},
+                 false, false});
+    assertValue(state, ParameterId::Speed, 100.0f);
+    assertValue(state, ParameterId::Gear, -1.0f);
+}
+
 void test_link_indexed_frames_require_the_discriminator() {
     VehicleState rpm = decode(
         "link_generic_dash_experimental",
@@ -376,6 +397,8 @@ int main(int, char**) {
     RUN_TEST(test_maxxecu_documented_extended_channels_decode_to_native_units);
     RUN_TEST(test_haltech_and_speeduino_compatible_frames_decode_big_endian);
     RUN_TEST(test_haltech_family_extended_broadcast_channels_decode);
+    RUN_TEST(test_haltech_coolant_pressure_uses_atmospheric_offset);
+    RUN_TEST(test_haltech_reverse_gear_does_not_discard_vehicle_speed);
     RUN_TEST(test_link_indexed_frames_require_the_discriminator);
     RUN_TEST(test_link_experimental_profile_exposes_documented_extra_channels);
     RUN_TEST(test_psa_profile_decodes_only_corroborated_engine_sensors);
