@@ -290,6 +290,15 @@ def editor_page():
         draw.text((x, y - 20), title, fill=C["muted"], font=F12)
         draw.rounded_rectangle((x, y, min(x + 150, 726), y + 42), 5, fill="#18222C", outline=C["border"])
         draw.text((x + 10, y + 12), value, fill=C["text"], font=F14)
+    for x, y, button_width in ((222, 190, 65), (402, 190, 65),
+                               (582, 190, 65), (342, 318, 60),
+                               (492, 318, 60), (642, 318, 55)):
+        for offset, label in ((0, "−"), (button_width + 6, "+")):
+            left = x + offset
+            draw.rounded_rectangle((left, y, left + button_width, y + 34), 5,
+                                   fill="#153B57")
+            draw.text((left + button_width / 2, y + 17), label,
+                      fill=C["text"], font=F18, anchor="mm")
     draw.text((292, 80), "☑ Visible", fill=C["text"], font=F14)
     draw.text((32, 134), "☑ Temperature bar", fill=C["text"], font=F14)
     draw.text((32, 260), "☑ Enable WARNING", fill=C["text"], font=F14)
