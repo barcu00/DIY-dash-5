@@ -35,8 +35,20 @@ bool validDraft(const TileConfig& tile) {
                static_cast<uint8_t>(WarningDirection::Below) &&
            std::isfinite(tile.warning.threshold_native) &&
            std::isfinite(tile.warning.hysteresis_native) &&
+           tile.warning.threshold_native >= 0.0f &&
+           tile.warning.threshold_native <= 999.0f &&
            tile.warning.hysteresis_native >= 0.0f &&
-           tile.warning.delay_ms <= 10000U;
+           tile.warning.hysteresis_native <= 999.0f &&
+           tile.warning.delay_ms <= 10000U &&
+           std::isfinite(tile.temperature_bar.minimum_native) &&
+           std::isfinite(tile.temperature_bar.ready_native) &&
+           std::isfinite(tile.temperature_bar.maximum_native) &&
+           tile.temperature_bar.minimum_native >= -999.0f &&
+           tile.temperature_bar.minimum_native <
+               tile.temperature_bar.ready_native &&
+           tile.temperature_bar.ready_native <
+               tile.temperature_bar.maximum_native &&
+           tile.temperature_bar.maximum_native <= 999.0f;
 }
 }  // namespace
 
@@ -64,8 +76,9 @@ const TileEditorDraft& TileEditorModel::draft() const {
 }
 
 void TileEditorModel::setParameter(ParameterId parameter) {
-    if (open_) {
+    if (open_ && draft_.tile.parameter != parameter) {
         draft_.tile.parameter = parameter;
+        draft_.tile.temperature_bar = defaultTemperatureBarConfig(parameter);
     }
 }
 
@@ -84,6 +97,13 @@ void TileEditorModel::setDecimals(uint8_t decimals) {
 void TileEditorModel::setWarning(const TileWarningConfig& warning) {
     if (open_) {
         draft_.tile.warning = warning;
+    }
+}
+
+void TileEditorModel::setTemperatureBar(
+    const TemperatureBarConfig& temperature_bar) {
+    if (open_) {
+        draft_.tile.temperature_bar = temperature_bar;
     }
 }
 

@@ -6,6 +6,7 @@
 #include "telemetry/vehicle_state.h"
 #include "ui/display_signal_filter.h"
 #include "ui/tile_layout.h"
+#include "ui/temperature_bar_model.h"
 class TileView {
 public:
     void create(lv_obj_t* parent, TileAddress address, lv_event_cb_t callback);
@@ -20,6 +21,7 @@ private:
     lv_obj_t* title_ = nullptr;
     lv_obj_t* value_ = nullptr;
     lv_obj_t* unit_ = nullptr;
+    lv_obj_t* temperature_bar_ = nullptr;
     TileAddress address_{};
     DisplaySignalFilter display_filter_{};
     std::array<char, 32> last_value_text_{};
@@ -32,4 +34,8 @@ private:
     bool last_raw_valid_ = false;
     bool warning_initialized_ = false;
     bool last_warning_active_ = false;
+    bool temperature_bar_initialized_ = false;
+    uint16_t last_temperature_fill_ = 0U;
+    TemperatureBarZone last_temperature_zone_ =
+        TemperatureBarZone::Unavailable;
 };

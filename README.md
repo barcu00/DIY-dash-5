@@ -181,7 +181,10 @@ tiles on each side, two centered wide tiles, and four center-small tiles. TRACK
 contains four small tiles on each side and four centered wide tiles. Both pages
 share the same configurable shift-light strip. Holding a tile for about 600 ms
 opens its persistent editor for parameter, visibility, decimals, and a fully
-configurable warning. SETTINGS changes are applied in RAM while controls are
+configurable warning. Temperature tiles can also show a continuous color bar
+with per-tile MIN, READY, and MAX values. Coolant and oil temperature bars are
+enabled by default; IAT, fuel-temperature, and EGT bars remain optional.
+Warning thresholds and hysteresis use a 0.0-999.0 range in 0.1 steps. SETTINGS changes are applied in RAM while controls are
 used and written once when the user leaves the screen. Flash writes run outside
 LVGL callbacks to avoid interrupting active RGB-panel rendering.
 See `docs/ui/dashboard-config-guide.md` for controls and safety limitations.

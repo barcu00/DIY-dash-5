@@ -67,6 +67,7 @@ private:
     void openEditor(TileAddress address);
     void closeEditor();
     void saveEditor();
+    void loadEditorTemperatureControls(const TemperatureBarConfig& config);
     bool stageSettings(AppConfig candidate, bool reconfigure_runtime);
     void queueSettingsOnExit();
     void showCommitFeedback(const char* message);
@@ -124,6 +125,10 @@ private:
     lv_obj_t* editor_visible_ = nullptr;
     lv_obj_t* editor_decimals_ = nullptr;
     lv_obj_t* editor_warning_ = nullptr;
+    lv_obj_t* editor_temperature_bar_ = nullptr;
+    lv_obj_t* editor_temperature_minimum_ = nullptr;
+    lv_obj_t* editor_temperature_ready_ = nullptr;
+    lv_obj_t* editor_temperature_maximum_ = nullptr;
     lv_obj_t* editor_direction_ = nullptr;
     lv_obj_t* editor_threshold_ = nullptr;
     lv_obj_t* editor_hysteresis_ = nullptr;

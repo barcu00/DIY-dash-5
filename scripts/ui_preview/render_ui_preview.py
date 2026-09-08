@@ -75,7 +75,20 @@ def tile(draw, rect, title, value, unit="", centered=False, warning=False):
         draw.text((x + 12, y + 10), title, fill=C["muted"], font=F12)
         draw.text((x + w / 2, y + 54), value, fill=C["text"], font=F24,
                   anchor="mm")
-        draw.text((x + w - 8, y + h - 8), unit, fill=C["muted"], font=F12, anchor="rs")
+        unit_y = y + h - 19 if title in ("CLT", "OIL TEMP") else y + h - 8
+        draw.text((x + w - 8, unit_y), unit, fill=C["muted"], font=F12, anchor="rs")
+    if title in ("CLT", "OIL TEMP"):
+        temperature = float(value)
+        fraction = max(0.0, min(1.0, (temperature - 40.0) / 90.0))
+        color = C["blue"] if temperature < 75.0 else (
+            C["red"] if temperature >= 130.0 else (
+                C["yellow"] if temperature >= 116.25 else C["green"]))
+        draw.rounded_rectangle((x + 12, y + h - 11, x + w - 12, y + h - 4),
+                               3, fill=C["border"])
+        fill_x = x + 12 + int((w - 24) * fraction)
+        if fill_x > x + 12:
+            draw.rounded_rectangle((x + 12, y + h - 11, fill_x, y + h - 4),
+                                   3, fill=color)
 
 
 def data_page(track=False):
@@ -266,20 +279,25 @@ def editor_page():
     image = data_page(False).convert("RGBA")
     shade = Image.new("RGBA", image.size, (0, 0, 0, 145)); image.alpha_composite(shade)
     draw = ImageDraw.Draw(image)
-    draw.rounded_rectangle((40, 35, 760, 445), 10, fill=C["panel"], outline=C["blue"], width=2)
-    draw.text((64, 55), "TILE SETTINGS", fill=C["text"], font=F24)
-    fields = ((64, 116, "Parameter", "RPM ▾"), (524, 116, "Decimals", "0 ▾"),
-              (64, 236, "Direction", "Above ▾"), (234, 236, "Threshold", "7500.00"),
-              (404, 236, "Hysteresis", "200.00"), (574, 236, "Delay ms", "300"))
+    draw.rounded_rectangle((10, 6, 790, 474), 10, fill=C["panel"], outline=C["blue"], width=2)
+    draw.text((32, 18), "TILE SETTINGS", fill=C["text"], font=F24)
+    fields = ((32, 70, "Parameter", "CLT ▾"), (622, 70, "Decimals", "0 ▾"),
+              (222, 146, "MIN", "40.0"), (402, 146, "READY", "75.0"),
+              (582, 146, "MAX", "130.0"), (202, 272, "Direction", "Above ▾"),
+              (342, 272, "Threshold", "110.0"),
+              (492, 272, "Hysteresis", "2.0"), (642, 272, "Delay ms", "300"))
     for x, y, title, value in fields:
         draw.text((x, y - 20), title, fill=C["muted"], font=F12)
         draw.rounded_rectangle((x, y, min(x + 150, 726), y + 42), 5, fill="#18222C", outline=C["border"])
         draw.text((x + 10, y + 12), value, fill=C["text"], font=F14)
-    draw.text((350, 125), "☑ Visible", fill=C["text"], font=F14)
-    draw.text((64, 190), "☑ Enable WARNING", fill=C["text"], font=F14)
-    for x, text in ((64, "CANCEL"), (556, "SAVE TILE")):
-        draw.rounded_rectangle((x, 370, x + 160, 420), 5, fill="#153B57")
-        draw.text((x + 80, 395), text, fill=C["text"], font=F14, anchor="mm")
+    draw.text((292, 80), "☑ Visible", fill=C["text"], font=F14)
+    draw.text((32, 134), "☑ Temperature bar", fill=C["text"], font=F14)
+    draw.text((32, 260), "☑ Enable WARNING", fill=C["text"], font=F14)
+    draw.text((32, 365), "Temperature: MIN < READY < MAX. Alarm range: 0.0–999.0.",
+              fill=C["muted"], font=F12)
+    for x, text, width in ((32, "CANCEL", 180), (572, "SAVE TILE", 190)):
+        draw.rounded_rectangle((x, 396, x + width, 444), 5, fill="#153B57")
+        draw.text((x + width / 2, 420), text, fill=C["text"], font=F14, anchor="mm")
     return image.convert("RGB")
 
 

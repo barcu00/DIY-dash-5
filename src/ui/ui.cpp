@@ -603,57 +603,90 @@ void Ui::openEditor(TileAddress address) {
     editor_.open(address, *config_);
     const TileConfig& tile = editor_.draft().tile;
     editor_overlay_ = lv_obj_create(lv_layer_top());
-    lv_obj_set_size(editor_overlay_, 720, 410); lv_obj_center(editor_overlay_);
+    lv_obj_set_size(editor_overlay_, 780, 468); lv_obj_center(editor_overlay_);
     lv_obj_set_style_bg_color(editor_overlay_, UiTheme::panel(), 0);
     lv_obj_set_style_border_color(editor_overlay_, UiTheme::blue(), 0);
     lv_obj_set_style_border_width(editor_overlay_, 2, 0);
     lv_obj_clear_flag(editor_overlay_, LV_OBJ_FLAG_SCROLLABLE);
-    makeLabel(editor_overlay_, "TILE SETTINGS", 20, 14, &lv_font_montserrat_24, UiTheme::text());
+    makeLabel(editor_overlay_, "TILE SETTINGS", 20, 8, &lv_font_montserrat_24, UiTheme::text());
 
-    makeLabel(editor_overlay_, "Parameter", 20, 64, &lv_font_montserrat_12, UiTheme::muted());
-    editor_parameter_ = lv_dropdown_create(editor_overlay_); lv_obj_set_pos(editor_parameter_, 20, 84);
-    lv_obj_set_size(editor_parameter_, 250, 42);
+    makeLabel(editor_overlay_, "Parameter", 20, 44, &lv_font_montserrat_12, UiTheme::muted());
+    editor_parameter_ = lv_dropdown_create(editor_overlay_); lv_obj_set_pos(editor_parameter_, 20, 62);
+    lv_obj_set_size(editor_parameter_, 230, 42);
     char parameter_options[1024]{};
     if (!ParameterOptions::write(parameter_options, sizeof(parameter_options))) {
         std::strncpy(parameter_options, "RPM", sizeof(parameter_options) - 1U);
     }
     lv_dropdown_set_options(editor_parameter_, parameter_options);
     lv_dropdown_set_selected(editor_parameter_, static_cast<uint16_t>(tile.parameter));
-    editor_visible_ = lv_checkbox_create(editor_overlay_); lv_obj_set_pos(editor_visible_, 300, 92);
+    lv_obj_add_event_cb(editor_parameter_, editorEvent, LV_EVENT_VALUE_CHANGED,
+                        reinterpret_cast<void*>(3));
+    editor_visible_ = lv_checkbox_create(editor_overlay_); lv_obj_set_pos(editor_visible_, 280, 70);
     lv_checkbox_set_text(editor_visible_, "Visible");
     if (tile.visible) lv_obj_add_state(editor_visible_, LV_STATE_CHECKED);
-    makeLabel(editor_overlay_, "Decimals", 480, 64, &lv_font_montserrat_12, UiTheme::muted());
-    editor_decimals_ = lv_dropdown_create(editor_overlay_); lv_obj_set_pos(editor_decimals_, 480, 84);
-    lv_obj_set_size(editor_decimals_, 150, 42); lv_dropdown_set_options(editor_decimals_, "0\n1\n2\n3");
+    makeLabel(editor_overlay_, "Decimals", 610, 44, &lv_font_montserrat_12, UiTheme::muted());
+    editor_decimals_ = lv_dropdown_create(editor_overlay_); lv_obj_set_pos(editor_decimals_, 610, 62);
+    lv_obj_set_size(editor_decimals_, 130, 42); lv_dropdown_set_options(editor_decimals_, "0\n1\n2\n3");
     lv_dropdown_set_selected(editor_decimals_, tile.decimals);
 
-    editor_warning_ = lv_checkbox_create(editor_overlay_); lv_obj_set_pos(editor_warning_, 20, 152);
+    editor_temperature_bar_ = lv_checkbox_create(editor_overlay_);
+    lv_obj_set_pos(editor_temperature_bar_, 20, 126);
+    lv_checkbox_set_text(editor_temperature_bar_, "Temperature bar");
+    makeLabel(editor_overlay_, "MIN", 210, 120, &lv_font_montserrat_12, UiTheme::muted());
+    editor_temperature_minimum_ = makeSpinbox(
+        editor_overlay_, 210, 138, 140, -9990, 9990, 0, 4, 1);
+    lv_spinbox_set_step(editor_temperature_minimum_, 1);
+    makeStepper(editor_overlay_, editor_temperature_minimum_, 210, 180, 65);
+    makeLabel(editor_overlay_, "READY", 390, 120, &lv_font_montserrat_12, UiTheme::muted());
+    editor_temperature_ready_ = makeSpinbox(
+        editor_overlay_, 390, 138, 140, -9990, 9990, 0, 4, 1);
+    lv_spinbox_set_step(editor_temperature_ready_, 1);
+    makeStepper(editor_overlay_, editor_temperature_ready_, 390, 180, 65);
+    makeLabel(editor_overlay_, "MAX", 570, 120, &lv_font_montserrat_12, UiTheme::muted());
+    editor_temperature_maximum_ = makeSpinbox(
+        editor_overlay_, 570, 138, 140, -9990, 9990, 0, 4, 1);
+    lv_spinbox_set_step(editor_temperature_maximum_, 1);
+    makeStepper(editor_overlay_, editor_temperature_maximum_, 570, 180, 65);
+    loadEditorTemperatureControls(tile.temperature_bar);
+
+    editor_warning_ = lv_checkbox_create(editor_overlay_); lv_obj_set_pos(editor_warning_, 20, 252);
     lv_checkbox_set_text(editor_warning_, "Enable WARNING");
     if (tile.warning.enabled) lv_obj_add_state(editor_warning_, LV_STATE_CHECKED);
-    makeLabel(editor_overlay_, "Direction", 20, 194, &lv_font_montserrat_12, UiTheme::muted());
-    editor_direction_ = lv_dropdown_create(editor_overlay_); lv_obj_set_pos(editor_direction_, 20, 214);
-    lv_obj_set_size(editor_direction_, 150, 42); lv_dropdown_set_options(editor_direction_, "Above\nBelow");
+    makeLabel(editor_overlay_, "Direction", 190, 246, &lv_font_montserrat_12, UiTheme::muted());
+    editor_direction_ = lv_dropdown_create(editor_overlay_); lv_obj_set_pos(editor_direction_, 190, 264);
+    lv_obj_set_size(editor_direction_, 120, 42); lv_dropdown_set_options(editor_direction_, "Above\nBelow");
     lv_dropdown_set_selected(editor_direction_, static_cast<uint16_t>(tile.warning.direction));
-    makeLabel(editor_overlay_, "Threshold", 190, 194, &lv_font_montserrat_12, UiTheme::muted());
-    editor_threshold_ = makeSpinbox(editor_overlay_, 190, 214, 150, -99999, 99999,
-        static_cast<int32_t>(tile.warning.threshold_native * 100.0f), 5, 2);
-    lv_spinbox_set_step(editor_threshold_, 10); makeStepper(editor_overlay_, editor_threshold_, 190, 260, 65);
-    makeLabel(editor_overlay_, "Hysteresis", 360, 194, &lv_font_montserrat_12, UiTheme::muted());
-    editor_hysteresis_ = makeSpinbox(editor_overlay_, 360, 214, 150, 0, 99999,
-        static_cast<int32_t>(tile.warning.hysteresis_native * 100.0f), 5, 2);
-    lv_spinbox_set_step(editor_hysteresis_, 10); makeStepper(editor_overlay_, editor_hysteresis_, 360, 260, 65);
-    makeLabel(editor_overlay_, "Delay ms", 530, 194, &lv_font_montserrat_12, UiTheme::muted());
-    editor_delay_ = makeSpinbox(editor_overlay_, 530, 214, 150, 0, 10000,
+    makeLabel(editor_overlay_, "Threshold", 330, 246, &lv_font_montserrat_12, UiTheme::muted());
+    editor_threshold_ = makeSpinbox(editor_overlay_, 330, 264, 130, 0, 9990,
+        static_cast<int32_t>(tile.warning.threshold_native * 10.0f), 4, 1);
+    lv_spinbox_set_step(editor_threshold_, 1); makeStepper(editor_overlay_, editor_threshold_, 330, 306, 60);
+    makeLabel(editor_overlay_, "Hysteresis", 480, 246, &lv_font_montserrat_12, UiTheme::muted());
+    editor_hysteresis_ = makeSpinbox(editor_overlay_, 480, 264, 130, 0, 9990,
+        static_cast<int32_t>(tile.warning.hysteresis_native * 10.0f), 4, 1);
+    lv_spinbox_set_step(editor_hysteresis_, 1); makeStepper(editor_overlay_, editor_hysteresis_, 480, 306, 60);
+    makeLabel(editor_overlay_, "Delay ms", 630, 246, &lv_font_montserrat_12, UiTheme::muted());
+    editor_delay_ = makeSpinbox(editor_overlay_, 630, 264, 120, 0, 10000,
         tile.warning.delay_ms, 5);
-    lv_spinbox_set_step(editor_delay_, 100); makeStepper(editor_overlay_, editor_delay_, 530, 260, 65);
-    makeLabel(editor_overlay_, "Use − / + to adjust threshold, hysteresis and delay.", 20, 304,
+    lv_spinbox_set_step(editor_delay_, 100); makeStepper(editor_overlay_, editor_delay_, 630, 306, 55);
+    makeLabel(editor_overlay_, "Temperature: MIN < READY < MAX. Alarm range: 0.0–999.0.", 20, 354,
               &lv_font_montserrat_12, UiTheme::muted());
-    makeButton(editor_overlay_, "CANCEL", 20, 326, 180, 48, editorEvent,
+    makeButton(editor_overlay_, "CANCEL", 20, 388, 180, 48, editorEvent,
                reinterpret_cast<void*>(1));
-    makeButton(editor_overlay_, "SAVE TILE", 500, 326, 180, 48, editorEvent,
+    makeButton(editor_overlay_, "SAVE TILE", 560, 388, 190, 48, editorEvent,
                reinterpret_cast<void*>(2));
-    editor_message_ = makeLabel(editor_overlay_, "", 225, 342,
+    editor_message_ = makeLabel(editor_overlay_, "", 235, 404,
                                 &lv_font_montserrat_14, UiTheme::red());
+}
+
+void Ui::loadEditorTemperatureControls(const TemperatureBarConfig& config) {
+    if (config.enabled) lv_obj_add_state(editor_temperature_bar_, LV_STATE_CHECKED);
+    else lv_obj_clear_state(editor_temperature_bar_, LV_STATE_CHECKED);
+    lv_spinbox_set_value(editor_temperature_minimum_,
+                         static_cast<int32_t>(config.minimum_native * 10.0f));
+    lv_spinbox_set_value(editor_temperature_ready_,
+                         static_cast<int32_t>(config.ready_native * 10.0f));
+    lv_spinbox_set_value(editor_temperature_maximum_,
+                         static_cast<int32_t>(config.maximum_native * 10.0f));
 }
 
 void Ui::closeEditor() {
@@ -669,10 +702,20 @@ void Ui::saveEditor() {
     TileWarningConfig warning;
     warning.enabled = lv_obj_has_state(editor_warning_, LV_STATE_CHECKED);
     warning.direction = static_cast<WarningDirection>(lv_dropdown_get_selected(editor_direction_));
-    warning.threshold_native = static_cast<float>(lv_spinbox_get_value(editor_threshold_)) / 100.0f;
-    warning.hysteresis_native = static_cast<float>(lv_spinbox_get_value(editor_hysteresis_)) / 100.0f;
+    warning.threshold_native = static_cast<float>(lv_spinbox_get_value(editor_threshold_)) / 10.0f;
+    warning.hysteresis_native = static_cast<float>(lv_spinbox_get_value(editor_hysteresis_)) / 10.0f;
     warning.delay_ms = static_cast<uint16_t>(lv_spinbox_get_value(editor_delay_));
     editor_.setWarning(warning);
+    TemperatureBarConfig temperature_bar;
+    temperature_bar.enabled = lv_obj_has_state(
+        editor_temperature_bar_, LV_STATE_CHECKED);
+    temperature_bar.minimum_native = static_cast<float>(
+        lv_spinbox_get_value(editor_temperature_minimum_)) / 10.0f;
+    temperature_bar.ready_native = static_cast<float>(
+        lv_spinbox_get_value(editor_temperature_ready_)) / 10.0f;
+    temperature_bar.maximum_native = static_cast<float>(
+        lv_spinbox_get_value(editor_temperature_maximum_)) / 10.0f;
+    editor_.setTemperatureBar(temperature_bar);
     AppConfig candidate = *config_;
     if (!editor_.applyTo(candidate) || !stageSettings(candidate, false)) {
         lv_label_set_text(editor_message_, "SAVE FAILED"); return;
@@ -809,6 +852,12 @@ void Ui::editorEvent(lv_event_t* event) {
     const intptr_t action = reinterpret_cast<intptr_t>(lv_event_get_user_data(event));
     if (action == 1) instance_->closeEditor();
     if (action == 2) instance_->saveEditor();
+    if (action == 3) {
+        const ParameterId parameter = static_cast<ParameterId>(
+            lv_dropdown_get_selected(instance_->editor_parameter_));
+        instance_->loadEditorTemperatureControls(
+            defaultTemperatureBarConfig(parameter));
+    }
 }
 
 void Ui::settingsEvent(lv_event_t* event) {
@@ -1005,12 +1054,12 @@ void Ui::updateWarningModal(TileWarningEngine& warnings) {
     const PresentedValue threshold = UnitPresenter::present(modal->parameter, modal->threshold_native, config_->units);
     char text[256];
     if (modal->remaining_count) {
-        std::snprintf(text, sizeof(text), "WARNING\n%s\n%.2f %s\nLimit: %.2f %s\nMore warnings: %u",
+        std::snprintf(text, sizeof(text), "WARNING\n%s\n%.1f %s\nLimit: %.1f %s\nMore warnings: %u",
             parameterDescriptor(modal->parameter).name, static_cast<double>(current.value), current.unit,
             static_cast<double>(threshold.value), threshold.unit,
             static_cast<unsigned>(modal->remaining_count));
     } else {
-        std::snprintf(text, sizeof(text), "WARNING\n%s\n%.2f %s\nLimit: %.2f %s",
+        std::snprintf(text, sizeof(text), "WARNING\n%s\n%.1f %s\nLimit: %.1f %s",
             parameterDescriptor(modal->parameter).name, static_cast<double>(current.value), current.unit,
             static_cast<double>(threshold.value), threshold.unit);
     }

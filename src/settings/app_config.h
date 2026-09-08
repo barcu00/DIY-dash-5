@@ -60,12 +60,22 @@ struct TileWarningConfig {
     uint16_t delay_ms = 0U;
 };
 
+struct TemperatureBarConfig {
+    bool enabled = false;
+    float minimum_native = 40.0f;
+    float ready_native = 75.0f;
+    float maximum_native = 130.0f;
+};
+
 struct TileConfig {
     ParameterId parameter = ParameterId::Rpm;
     bool visible = true;
     uint8_t decimals = 0U;
     TileWarningConfig warning{};
+    TemperatureBarConfig temperature_bar{};
 };
+
+TemperatureBarConfig defaultTemperatureBarConfig(ParameterId parameter);
 
 struct ValidationResult {
     bool valid = true;
@@ -73,7 +83,7 @@ struct ValidationResult {
 };
 
 struct AppConfig {
-    static constexpr uint32_t kSchemaVersion = 2U;
+    static constexpr uint32_t kSchemaVersion = 3U;
     static constexpr std::size_t kDashTileCount = 14U;
     static constexpr std::size_t kTrackTileCount = 12U;
 

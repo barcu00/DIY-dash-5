@@ -18,6 +18,7 @@ public:
     void setVisible(bool visible);
     void setDecimals(uint8_t decimals);
     void setWarning(const TileWarningConfig& warning);
+    void setTemperatureBar(const TemperatureBarConfig& temperature_bar);
 
     bool applyTo(AppConfig& config);
 

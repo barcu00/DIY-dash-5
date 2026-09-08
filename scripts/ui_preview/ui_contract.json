@@ -22,7 +22,12 @@
     "layout_slots_per_page": 6,
     "shift_slider_count": 4,
     "shift_flash_switch": true,
-    "shift_step_rpm": 100
+    "shift_step_rpm": 100,
+    "temperature_bar_style": "continuous",
+    "temperature_bar_defaults": [40.0, 75.0, 130.0],
+    "alarm_minimum": 0.0,
+    "alarm_maximum": 999.0,
+    "alarm_decimals": 1
   },
   "colors": {
     "background": "#07090D",

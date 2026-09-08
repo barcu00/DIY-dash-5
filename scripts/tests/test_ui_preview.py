@@ -45,6 +45,12 @@ class PreviewContractTest(unittest.TestCase):
         self.assertEqual(4, settings["shift_slider_count"])
         self.assertTrue(settings["shift_flash_switch"])
         self.assertEqual(100, settings["shift_step_rpm"])
+        self.assertEqual("continuous", settings["temperature_bar_style"])
+        self.assertEqual([40.0, 75.0, 130.0],
+                         settings["temperature_bar_defaults"])
+        self.assertEqual(0.0, settings["alarm_minimum"])
+        self.assertEqual(999.0, settings["alarm_maximum"])
+        self.assertEqual(1, settings["alarm_decimals"])
 
     def test_shift_settings_uses_sliders_without_step_buttons(self):
         source = SCRIPT_ROOT.parent / "src/ui/ui.cpp"
