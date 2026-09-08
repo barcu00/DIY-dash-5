@@ -81,6 +81,41 @@ void test_same_parameter_preserves_edited_warning() {
     TEST_ASSERT_EQUAL_UINT16(250U, config.track_tiles[4].warning.delay_ms);
 }
 
+void test_apply_preserves_temperature_bar_settings_for_selected_tile() {
+    AppConfig config = AppConfig::defaults();
+    TileEditorModel editor;
+    TEST_ASSERT_TRUE(editor.open({PageId::Dash, 3U}, config));
+    const TemperatureBarConfig bar{true, 30.0f, 72.5f, 118.0f};
+
+    editor.setTemperatureBar(bar);
+    TEST_ASSERT_TRUE(editor.applyTo(config));
+
+    TEST_ASSERT_TRUE(config.dash_tiles[3].temperature_bar.enabled);
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, 30.0f, config.dash_tiles[3].temperature_bar.minimum_native);
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, 72.5f, config.dash_tiles[3].temperature_bar.ready_native);
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, 118.0f, config.dash_tiles[3].temperature_bar.maximum_native);
+}
+
+void test_parameter_change_uses_safe_temperature_bar_defaults() {
+    AppConfig config = AppConfig::defaults();
+    TileEditorModel editor;
+    TEST_ASSERT_TRUE(editor.open({PageId::Dash, 0U}, config));
+
+    editor.setParameter(ParameterId::Clt);
+    TEST_ASSERT_TRUE(editor.applyTo(config));
+
+    TEST_ASSERT_TRUE(config.dash_tiles[0].temperature_bar.enabled);
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, 40.0f, config.dash_tiles[0].temperature_bar.minimum_native);
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, 75.0f, config.dash_tiles[0].temperature_bar.ready_native);
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, 130.0f, config.dash_tiles[0].temperature_bar.maximum_native);
+}
+
 void test_apply_rejects_invalid_draft_without_mutating_config() {
     AppConfig config = AppConfig::defaults();
     const TileConfig original = config.track_tiles[0];
@@ -100,6 +135,8 @@ int main(int, char**) {
     RUN_TEST(test_apply_changes_only_selected_tile);
     RUN_TEST(test_parameter_change_disables_previous_warning_on_apply);
     RUN_TEST(test_same_parameter_preserves_edited_warning);
+    RUN_TEST(test_apply_preserves_temperature_bar_settings_for_selected_tile);
+    RUN_TEST(test_parameter_change_uses_safe_temperature_bar_defaults);
     RUN_TEST(test_apply_rejects_invalid_draft_without_mutating_config);
     return UNITY_END();
 }

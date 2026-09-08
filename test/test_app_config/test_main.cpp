@@ -57,6 +57,21 @@ void test_defaults_use_demo_metric_and_shared_shift_configuration() {
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 14.7f, config.units.stoich_afr);
 }
 
+void test_defaults_enable_temperature_bars_only_for_coolant_and_oil() {
+    const AppConfig config = AppConfig::defaults();
+
+    TEST_ASSERT_TRUE(config.dash_tiles[3].temperature_bar.enabled);
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, 40.0f, config.dash_tiles[3].temperature_bar.minimum_native);
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, 75.0f, config.dash_tiles[3].temperature_bar.ready_native);
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, 130.0f, config.dash_tiles[3].temperature_bar.maximum_native);
+    TEST_ASSERT_TRUE(config.dash_tiles[12].temperature_bar.enabled);
+    TEST_ASSERT_FALSE(config.dash_tiles[10].temperature_bar.enabled);
+    TEST_ASSERT_FALSE(config.track_tiles[9].temperature_bar.enabled);
+}
+
 void test_validation_normalizes_unsafe_persisted_values() {
     AppConfig config = AppConfig::defaults();
     config.data_source = DataSource::None;
@@ -66,8 +81,12 @@ void test_validation_normalizes_unsafe_persisted_values() {
     config.units.stoich_afr = 0.0f;
     config.dash_tiles[0].parameter = static_cast<ParameterId>(255U);
     config.dash_tiles[0].decimals = 9U;
-    config.dash_tiles[0].warning.hysteresis_native = -1.0f;
+    config.dash_tiles[0].warning.threshold_native = -1.0f;
+    config.dash_tiles[0].warning.hysteresis_native = 1200.0f;
     config.dash_tiles[0].warning.delay_ms = 60000U;
+    config.dash_tiles[3].temperature_bar.minimum_native = 200.0f;
+    config.dash_tiles[3].temperature_bar.ready_native = -10.0f;
+    config.dash_tiles[3].temperature_bar.maximum_native = 1000.0f;
     std::memset(config.can.profile_id.data(), 'x', config.can.profile_id.size());
 
     const ValidationResult result = config.validate();
@@ -84,9 +103,18 @@ void test_validation_normalizes_unsafe_persisted_values() {
                             static_cast<uint8_t>(config.dash_tiles[0].parameter));
     TEST_ASSERT_EQUAL_UINT8(3U, config.dash_tiles[0].decimals);
     TEST_ASSERT_FLOAT_WITHIN(
-        0.001f, 0.0f, config.dash_tiles[0].warning.hysteresis_native);
+        0.001f, 0.0f, config.dash_tiles[0].warning.threshold_native);
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, 999.0f, config.dash_tiles[0].warning.hysteresis_native);
     TEST_ASSERT_EQUAL_UINT16(10000U,
                              config.dash_tiles[0].warning.delay_ms);
+    TEST_ASSERT_FALSE(config.dash_tiles[3].temperature_bar.enabled);
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, 40.0f, config.dash_tiles[3].temperature_bar.minimum_native);
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, 75.0f, config.dash_tiles[3].temperature_bar.ready_native);
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, 130.0f, config.dash_tiles[3].temperature_bar.maximum_native);
     TEST_ASSERT_EQUAL_CHAR('\0', config.can.profile_id.back());
 }
 
@@ -160,6 +188,7 @@ int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_defaults_define_approved_dash_and_track_slots);
     RUN_TEST(test_defaults_use_demo_metric_and_shared_shift_configuration);
+    RUN_TEST(test_defaults_enable_temperature_bars_only_for_coolant_and_oil);
     RUN_TEST(test_validation_normalizes_unsafe_persisted_values);
     RUN_TEST(test_validation_rejects_invalid_shift_order_without_reordering_it);
     RUN_TEST(test_validation_rejects_red_zone_equal_to_maximum);
