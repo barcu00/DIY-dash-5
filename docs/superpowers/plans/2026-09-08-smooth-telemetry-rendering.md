@@ -15,7 +15,7 @@
 - Run all tests and firmware builds only in GitHub Actions.
 - Target the Waveshare ESP32-S3 Touch LCD 5 at 800x480 RGB565.
 - Render dirty regions at 25 ms, evaluate shift logic at 5 ms, and keep warnings and shift activation on raw telemetry.
-- Preserve the configured 8 Hz shift-light flash and the existing 2-second peak-RPM hold.
+- Preserve the configured 4 Hz shift-light flash and the existing 2-second peak-RPM hold.
 - Do not raise the board's official 16 MHz RGB pixel clock.
 
 ---

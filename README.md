@@ -189,7 +189,7 @@ See `docs/ui/dashboard-config-guide.md` for controls and safety limitations.
 The DASH and TRACK shift-light strips share four ordered thresholds:
 `START < RED < FLASH <= MAX`. Above the independent FLASH threshold, an enabled
 flash option alternates the complete strip between red and off at approximately
-8 Hz. All sliders span 0-10000 RPM in 100 RPM steps. Normal progression always
+4 Hz. All sliders span 0-10000 RPM in 100 RPM steps. Normal progression always
 uses four green, four yellow, and four red segments; thresholds control when the
 fixed color zones illuminate.
 
@@ -198,7 +198,7 @@ the RGB panel. Fast tiles update at 40 Hz, medium tiles at 20 Hz, and slow tiles
 at 10 Hz with elapsed-time interpolation between raw samples. DEMO engine speed
 uses a smooth ten-second cycle with a four-second rise, two seconds held at
 7800 RPM, and a four-second fall. Warning decisions and the shift strip use raw
-telemetry; the strip is evaluated independently at 200 Hz and flashes at 8 Hz.
+telemetry; the strip is evaluated independently at 200 Hz and flashes at 4 Hz.
 
 ## Serial diagnostics
 

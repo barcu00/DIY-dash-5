@@ -27,12 +27,12 @@ Each tile also caches its last formatted value, unit, and warning-border state. 
 
 ## Shift light
 
-The shift-light model is evaluated independently every 5 ms. Flash phase is derived from absolute monotonic time, preserving an 8 Hz full-cycle frequency without accumulated timing drift. The active page owns one shallow custom-drawn strip object; a state change invalidates that strip once, rather than mutating twelve LVGL child objects.
+The shift-light model is evaluated independently every 5 ms. Flash phase is derived from absolute monotonic time, preserving a 4 Hz full-cycle frequency without accumulated timing drift. The active page owns one shallow custom-drawn strip object; a state change invalidates that strip once, rather than mutating twelve LVGL child objects.
 
-At 8 Hz, a complete cycle lasts 125 ms and each red/off phase lasts approximately 62.5 ms. The physical panel can show roughly two to three scans per phase. Peak-RPM hold remains a display concern and never feeds the shift-light model.
+At 4 Hz, a complete cycle lasts 250 ms and each red/off phase lasts 125 ms. The physical panel can show roughly five scans per phase. Peak-RPM hold remains a display concern and never feeds the shift-light model.
 
 ## Verification
 
-Native tests verify deadline behavior, parameter cadence classes, interpolation and reset behavior, and the existing exact 8 Hz phase contract. GitHub Actions is the only environment used to run tests and build firmware. The board build additionally compiles the LVGL custom widget and produces the flashable merged binary.
+Native tests verify deadline behavior, parameter cadence classes, interpolation and reset behavior, and the exact 4 Hz phase contract. GitHub Actions is the only environment used to run tests and build firmware. The board build additionally compiles the LVGL custom widget and produces the flashable merged binary.
 
-Hardware acceptance after flashing requires stable menu interaction, visually even value motion, an independent 8 Hz strip above the flash threshold, immediate warning response, and no display corruption. Runtime timing instrumentation will expose missed render and shift deadlines for board-side diagnosis.
+Hardware acceptance after flashing requires stable menu interaction, visually even value motion, an independent 4 Hz strip above the flash threshold, immediate warning response, and no display corruption. Runtime timing instrumentation will expose missed render and shift deadlines for board-side diagnosis.
