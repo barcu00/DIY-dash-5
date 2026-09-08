@@ -114,6 +114,26 @@ void test_valid_configuration_round_trips_through_backend() {
     TEST_ASSERT_FALSE(reloaded.dash_tiles[3].visible);
 }
 
+void test_schema_v2_shift_values_above_new_limit_are_normalized_in_place() {
+    MemoryBackend backend;
+    AppConfig stored = AppConfig::defaults();
+    stored.brightness_percent = 40U;
+    stored.dash_tiles[3].visible = false;
+    stored.shift = ShiftLightConfig{8500U, 9500U, 10500U, 12000U, true};
+    TEST_ASSERT_TRUE(backend.write(&stored, sizeof(stored)));
+    ConfigRepository repository(backend);
+    AppConfig loaded{};
+
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(LoadResult::Loaded),
+                            static_cast<uint8_t>(repository.load(loaded)));
+    TEST_ASSERT_EQUAL_UINT16(8500U, loaded.shift.start_rpm);
+    TEST_ASSERT_EQUAL_UINT16(9500U, loaded.shift.red_rpm);
+    TEST_ASSERT_EQUAL_UINT16(10000U, loaded.shift.flash_rpm);
+    TEST_ASSERT_EQUAL_UINT16(10000U, loaded.shift.max_rpm);
+    TEST_ASSERT_EQUAL_UINT8(40U, loaded.brightness_percent);
+    TEST_ASSERT_FALSE(loaded.dash_tiles[3].visible);
+}
+
 void test_schema_v1_is_migrated_without_losing_user_settings() {
     MemoryBackend backend;
     const AppConfig defaults = AppConfig::defaults();
@@ -263,6 +283,7 @@ int main(int, char**) {
     RUN_TEST(test_missing_configuration_loads_safe_defaults);
     RUN_TEST(test_schema_mismatch_loads_safe_defaults);
     RUN_TEST(test_valid_configuration_round_trips_through_backend);
+    RUN_TEST(test_schema_v2_shift_values_above_new_limit_are_normalized_in_place);
     RUN_TEST(test_schema_v1_is_migrated_without_losing_user_settings);
     RUN_TEST(test_failed_v1_rewrite_reports_failure_but_keeps_migrated_runtime);
     RUN_TEST(test_failed_save_keeps_previous_runtime_configuration);
