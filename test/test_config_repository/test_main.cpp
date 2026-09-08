@@ -196,6 +196,29 @@ void test_schema_v2_normalization_write_failure_is_reported() {
     TEST_ASSERT_EQUAL_UINT16(10000U, loaded.shift.max_rpm);
 }
 
+void test_schema_v2_custom_layout_gets_bar_defaults_for_its_parameters() {
+    MemoryBackend backend;
+    LegacyAppConfigV2 stored = legacyV2Defaults();
+    stored.dash_tiles[0].parameter = ParameterId::Clt;
+    stored.dash_tiles[3].parameter = ParameterId::Iat;
+    TEST_ASSERT_TRUE(backend.write(&stored, sizeof(stored)));
+    ConfigRepository repository(backend);
+    AppConfig loaded{};
+
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(LoadResult::Migrated),
+                            static_cast<uint8_t>(repository.load(loaded)));
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(ParameterId::Clt),
+                            static_cast<uint8_t>(loaded.dash_tiles[0].parameter));
+    TEST_ASSERT_TRUE(loaded.dash_tiles[0].temperature_bar.enabled);
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, 75.0f, loaded.dash_tiles[0].temperature_bar.ready_native);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(ParameterId::Iat),
+                            static_cast<uint8_t>(loaded.dash_tiles[3].parameter));
+    TEST_ASSERT_FALSE(loaded.dash_tiles[3].temperature_bar.enabled);
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, 40.0f, loaded.dash_tiles[3].temperature_bar.ready_native);
+}
+
 void test_schema_v1_is_migrated_without_losing_user_settings() {
     MemoryBackend backend;
     const AppConfig defaults = AppConfig::defaults();
@@ -372,6 +395,7 @@ int main(int, char**) {
     RUN_TEST(test_valid_configuration_round_trips_through_backend);
     RUN_TEST(test_schema_v2_shift_values_above_new_limit_are_normalized_in_place);
     RUN_TEST(test_schema_v2_normalization_write_failure_is_reported);
+    RUN_TEST(test_schema_v2_custom_layout_gets_bar_defaults_for_its_parameters);
     RUN_TEST(test_schema_v1_is_migrated_without_losing_user_settings);
     RUN_TEST(test_schema_v1_high_shift_values_are_normalized_without_losing_settings);
     RUN_TEST(test_failed_v1_rewrite_reports_failure_but_keeps_migrated_runtime);
