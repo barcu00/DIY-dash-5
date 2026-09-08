@@ -77,10 +77,10 @@ void test_shift_changes_clamp_to_supported_range() {
     const ShiftLightConfig low = SettingsFlowModel::correctedShift(
         ShiftLightConfig{5500U, 7000U, 7500U, 8000U, true},
         ShiftField::Maximum, 500U);
-    TEST_ASSERT_EQUAL_UINT16(0U, low.start_rpm);
-    TEST_ASSERT_EQUAL_UINT16(100U, low.red_rpm);
-    TEST_ASSERT_EQUAL_UINT16(200U, low.flash_rpm);
-    TEST_ASSERT_EQUAL_UINT16(200U, low.max_rpm);
+    TEST_ASSERT_EQUAL_UINT16(300U, low.start_rpm);
+    TEST_ASSERT_EQUAL_UINT16(400U, low.red_rpm);
+    TEST_ASSERT_EQUAL_UINT16(500U, low.flash_rpm);
+    TEST_ASSERT_EQUAL_UINT16(500U, low.max_rpm);
 }
 
 void test_slider_request_is_rounded_to_the_nearest_hundred_rpm() {
