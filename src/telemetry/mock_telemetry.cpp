@@ -35,6 +35,26 @@ void MockTelemetry::reset() {
     state_.set(VehicleSignal::FuelPressure, 3.50f, 0U);
     state_.set(VehicleSignal::BatteryVoltage, 13.80f, 0U);
     state_.set(VehicleSignal::Tps, 0.0f, 0U);
+    state_.set(VehicleSignal::BarometricPressure, 1.013f, 0U);
+    state_.set(VehicleSignal::BoostTarget, 0.40f, 0U);
+    state_.set(VehicleSignal::CoolantPressure, 1.10f, 0U);
+    state_.set(VehicleSignal::FuelTemperature, 28.0f, 0U);
+    state_.set(VehicleSignal::EthanolContent, 10.0f, 0U);
+    state_.set(VehicleSignal::Lambda2, 1.00f, 0U);
+    state_.set(VehicleSignal::IgnitionTiming, 10.0f, 0U);
+    state_.set(VehicleSignal::InjectorDuty, 5.0f, 0U);
+    state_.set(VehicleSignal::InjectorPulseWidth, 1.8f, 0U);
+    state_.set(VehicleSignal::AcceleratorPosition, 0.0f, 0U);
+    state_.set(VehicleSignal::MassAirFlow, 4.0f, 0U);
+    for (uint8_t i = 0U; i < 8U; ++i) {
+        state_.set(static_cast<VehicleSignal>(
+                       static_cast<uint8_t>(VehicleSignal::Egt1) + i),
+                   450.0f + 5.0f * i, 0U);
+    }
+    state_.set(VehicleSignal::WheelSpeedLf, 0.0f, 0U);
+    state_.set(VehicleSignal::WheelSpeedLr, 0.0f, 0U);
+    state_.set(VehicleSignal::WheelSpeedRf, 0.0f, 0U);
+    state_.set(VehicleSignal::WheelSpeedRr, 0.0f, 0U);
 }
 
 void MockTelemetry::update(uint32_t elapsed_ms) {
@@ -67,6 +87,40 @@ void MockTelemetry::update(uint32_t elapsed_ms) {
     state_.set(VehicleSignal::FuelPressure, lerp(3.0f, 4.5f, load_wave), elapsed_ms);
     state_.set(VehicleSignal::BatteryVoltage,
                lerp(12.8f, 14.4f, wave(elapsed_ms, 13.0f, 2.0f)), elapsed_ms);
+    state_.set(VehicleSignal::BarometricPressure,
+               lerp(0.98f, 1.03f, thermal_wave), elapsed_ms);
+    state_.set(VehicleSignal::BoostTarget,
+               lerp(0.4f, 1.8f, throttle_wave), elapsed_ms);
+    state_.set(VehicleSignal::CoolantPressure,
+               lerp(0.9f, 1.8f, thermal_wave), elapsed_ms);
+    state_.set(VehicleSignal::FuelTemperature,
+               lerp(25.0f, 60.0f, thermal_wave), elapsed_ms);
+    state_.set(VehicleSignal::EthanolContent, 10.0f, elapsed_ms);
+    state_.set(VehicleSignal::Lambda2,
+               lerp(1.04f, 0.80f, throttle_wave), elapsed_ms);
+    state_.set(VehicleSignal::IgnitionTiming,
+               lerp(-5.0f, 35.0f, load_wave), elapsed_ms);
+    state_.set(VehicleSignal::InjectorDuty,
+               lerp(5.0f, 85.0f, throttle_wave), elapsed_ms);
+    state_.set(VehicleSignal::InjectorPulseWidth,
+               lerp(1.5f, 14.0f, throttle_wave), elapsed_ms);
+    state_.set(VehicleSignal::AcceleratorPosition, tps, elapsed_ms);
+    state_.set(VehicleSignal::MassAirFlow,
+               lerp(4.0f, 320.0f, load_wave), elapsed_ms);
+    for (uint8_t i = 0U; i < 8U; ++i) {
+        state_.set(static_cast<VehicleSignal>(
+                       static_cast<uint8_t>(VehicleSignal::Egt1) + i),
+                   lerp(450.0f + 3.0f * i, 950.0f + 3.0f * i,
+                        throttle_wave),
+                   elapsed_ms);
+    }
+    state_.set(VehicleSignal::WheelSpeedLf, speed, elapsed_ms);
+    state_.set(VehicleSignal::WheelSpeedLr,
+               std::clamp(speed * 0.995f, 0.0f, 200.0f), elapsed_ms);
+    state_.set(VehicleSignal::WheelSpeedRf,
+               std::clamp(speed * 1.002f, 0.0f, 200.0f), elapsed_ms);
+    state_.set(VehicleSignal::WheelSpeedRr,
+               std::clamp(speed * 0.998f, 0.0f, 200.0f), elapsed_ms);
 }
 
 const VehicleState& MockTelemetry::state() const {

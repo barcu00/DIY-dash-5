@@ -14,6 +14,9 @@ const char* nativeUnitText(NativeUnit unit) {
         case NativeUnit::Volt: return "V";
         case NativeUnit::Kph: return "km/h";
         case NativeUnit::Gear: return "";
+        case NativeUnit::Degrees: return "deg";
+        case NativeUnit::Milliseconds: return "ms";
+        case NativeUnit::GramsPerSecond: return "g/s";
         case NativeUnit::None: return "";
     }
     return "";
