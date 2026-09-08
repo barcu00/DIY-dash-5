@@ -193,9 +193,12 @@ flash option alternates the complete strip between red and off at approximately
 uses four green, four yellow, and four red segments; thresholds control when the
 fixed color zones illuminate.
 
-Visible DASH and TRACK telemetry is refreshed at 50 Hz. DEMO engine speed uses
-a smooth ten-second cycle with a four-second rise, two seconds held at 7800 RPM,
-and a four-second fall so the high-RPM shift-light behavior remains observable.
+Visible DASH and TRACK telemetry uses a stable 40 Hz render cadence matched to
+the RGB panel. Fast tiles update at 40 Hz, medium tiles at 20 Hz, and slow tiles
+at 10 Hz with elapsed-time interpolation between raw samples. DEMO engine speed
+uses a smooth ten-second cycle with a four-second rise, two seconds held at
+7800 RPM, and a four-second fall. Warning decisions and the shift strip use raw
+telemetry; the strip is evaluated independently at 200 Hz and flashes at 8 Hz.
 
 ## Serial diagnostics
 

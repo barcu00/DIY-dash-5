@@ -29,6 +29,8 @@ public:
     void update(const VehicleState& state, const RuntimeDiagnostics& diagnostics,
                 const UiRuntimeStatus& status, const AppConfig& config,
                 TileWarningEngine& warnings);
+    void updateShiftLight(const VehicleState& state, uint32_t now_ms,
+                          const ShiftLightConfig& config);
     bool takeConfigCommit(ConfigCommitRequest& request);
     void completeConfigCommit(uint32_t revision, bool success);
     static void spinDecreaseEvent(lv_event_t* event);

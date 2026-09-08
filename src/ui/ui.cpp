@@ -505,21 +505,17 @@ void Ui::update(const VehicleState& state, const RuntimeDiagnostics& diagnostics
         applyLayout(Page::Dash, config);
         applyLayout(Page::Track, config);
     }
-    const SignalValue& rpm = state.get(ParameterId::Rpm);
-    const uint16_t rpm_value = rpm.valid && rpm.value > 0.0f ? static_cast<uint16_t>(rpm.value) : 0U;
     if (update_policy_.shouldUpdateData(PageId::Dash)) {
         for (std::size_t i = 0U; i < dash_tiles_.size(); ++i)
             dash_tiles_[i].update(config.dash_tiles[i], config.units, state,
-                warnings.isHighlighted({PageId::Dash, static_cast<uint8_t>(i)}));
-        dash_shift_.update(rpm_value, rpm.valid, diagnostics.uptime_ms,
-                           config.shift);
+                warnings.isHighlighted({PageId::Dash, static_cast<uint8_t>(i)}),
+                diagnostics.uptime_ms);
     }
     if (update_policy_.shouldUpdateData(PageId::Track)) {
         for (std::size_t i = 0U; i < track_tiles_.size(); ++i)
             track_tiles_[i].update(config.track_tiles[i], config.units, state,
-                warnings.isHighlighted({PageId::Track, static_cast<uint8_t>(i)}));
-        track_shift_.update(rpm_value, rpm.valid, diagnostics.uptime_ms,
-                            config.shift);
+                warnings.isHighlighted({PageId::Track, static_cast<uint8_t>(i)}),
+                diagnostics.uptime_ms);
     }
     if (settings_status_ &&
         update_policy_.shouldUpdateSettingsStatus(diagnostics.uptime_ms)) {
@@ -552,6 +548,20 @@ void Ui::update(const VehicleState& state, const RuntimeDiagnostics& diagnostics
     }
     if (update_policy_.allowModalUpdates()) {
         updateWarningModal(warnings);
+    }
+}
+
+void Ui::updateShiftLight(const VehicleState& state, uint32_t now_ms,
+                          const ShiftLightConfig& config) {
+    const SignalValue& rpm = state.get(ParameterId::Rpm);
+    const uint16_t rpm_value = rpm.valid && rpm.value > 0.0f
+                                   ? static_cast<uint16_t>(rpm.value)
+                                   : 0U;
+    if (update_policy_.shouldUpdateData(PageId::Dash)) {
+        dash_shift_.update(rpm_value, rpm.valid, now_ms, config);
+    }
+    if (update_policy_.shouldUpdateData(PageId::Track)) {
+        track_shift_.update(rpm_value, rpm.valid, now_ms, config);
     }
 }
 void Ui::navEvent(lv_event_t* event) {

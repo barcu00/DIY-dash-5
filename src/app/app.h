@@ -7,6 +7,7 @@
 #include "ecu/ecu_can_decoder.h"
 #include "telemetry/telemetry_manager.h"
 #include "ui/ui.h"
+#include "ui/frame_scheduler.h"
 #include "settings/app_config.h"
 #include "settings/config_repository.h"
 #include "settings/nvs_config_backend.h"
@@ -29,6 +30,6 @@ private:
     AppConfig config_ = AppConfig::defaults();
     TileWarningEngine warnings_{};
     Ui ui_;
+    FrameScheduler frame_scheduler_{};
     bool ready_ = false;
-    uint32_t last_ui_update_ms_ = 0;
 };

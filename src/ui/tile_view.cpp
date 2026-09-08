@@ -1,6 +1,8 @@
 #include "tile_view.h"
 #include <cstdio>
+#include <cstring>
 #include "telemetry/parameter_registry.h"
+#include "ui/tile_refresh_policy.h"
 #include "ui/ui_theme.h"
 #include "ui/unit_presenter.h"
 #include "ui/tile_view_policy.h"
@@ -50,22 +52,71 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
                  policy.value_centered ? 0 : 10, 10);
     lv_obj_align(unit_, centered ? LV_ALIGN_RIGHT_MID : LV_ALIGN_BOTTOM_RIGHT,
                  centered ? -18 : -4, centered ? 9 : -2);
+    display_filter_.reset();
+    refresh_initialized_ = false;
+    value_text_initialized_ = false;
+    unit_text_initialized_ = false;
+    raw_valid_initialized_ = false;
+    warning_initialized_ = false;
 }
 void TileView::hide() { if (root_) lv_obj_add_flag(root_, LV_OBJ_FLAG_HIDDEN); }
 void TileView::update(const TileConfig& config, const UnitSettings& units,
-                      const VehicleState& state, bool warning_active) {
-    const SignalValue& signal = state.get(config.parameter);
-    if (!signal.valid) {
-        lv_label_set_text(value_, "---");
-        lv_label_set_text(unit_, "");
-    } else {
-        const PresentedValue p = UnitPresenter::present(config.parameter, signal.value, units);
+                      const VehicleState& state, bool warning_active,
+                      uint32_t now_ms) {
+    if (!warning_initialized_ || warning_active != last_warning_active_) {
+        lv_obj_set_style_border_width(root_, warning_active ? 3 : 1, 0);
+        lv_obj_set_style_border_color(
+            root_, warning_active ? UiTheme::red() : UiTheme::border(), 0);
+        warning_initialized_ = true;
+        last_warning_active_ = warning_active;
+    }
+
+    const SignalValue& raw = state.get(config.parameter);
+    const bool validity_changed = !raw_valid_initialized_ ||
+                                  raw.valid != last_raw_valid_;
+    const uint32_t interval_ms = tileRefreshIntervalMs(config.parameter);
+    if (!refresh_initialized_) {
+        next_refresh_ms_ = now_ms;
+        refresh_initialized_ = true;
+    }
+    if (!validity_changed &&
+        static_cast<int32_t>(now_ms - next_refresh_ms_) < 0) {
+        return;
+    }
+    if (static_cast<int32_t>(now_ms - next_refresh_ms_) >= 0) {
+        const uint32_t elapsed = now_ms - next_refresh_ms_;
+        next_refresh_ms_ += (elapsed / interval_ms + 1U) * interval_ms;
+    }
+    raw_valid_initialized_ = true;
+    last_raw_valid_ = raw.valid;
+
+    const SignalValue signal = display_filter_.sample(
+        raw, now_ms, interval_ms * 2U);
+    char value_text[32] = "---";
+    const char* unit_text = "";
+    if (signal.valid) {
+        const PresentedValue p = UnitPresenter::present(
+            config.parameter, signal.value, units);
         char format[8]; char buffer[32];
         std::snprintf(format, sizeof(format), "%%.%uf", static_cast<unsigned>(config.decimals));
         std::snprintf(buffer, sizeof(buffer), format, static_cast<double>(p.value));
-        lv_label_set_text(value_, buffer); lv_label_set_text(unit_, p.unit);
+        std::snprintf(value_text, sizeof(value_text), "%s", buffer);
+        unit_text = p.unit;
     }
-    lv_obj_set_style_border_width(root_, warning_active ? 3 : 1, 0);
-    lv_obj_set_style_border_color(root_, warning_active ? UiTheme::red() : UiTheme::border(), 0);
+
+    if (!value_text_initialized_ ||
+        std::strcmp(last_value_text_.data(), value_text) != 0) {
+        lv_label_set_text(value_, value_text);
+        std::snprintf(last_value_text_.data(), last_value_text_.size(),
+                      "%s", value_text);
+        value_text_initialized_ = true;
+    }
+    if (!unit_text_initialized_ ||
+        std::strcmp(last_unit_text_.data(), unit_text) != 0) {
+        lv_label_set_text(unit_, unit_text);
+        std::snprintf(last_unit_text_.data(), last_unit_text_.size(),
+                      "%s", unit_text);
+        unit_text_initialized_ = true;
+    }
 }
 TileAddress TileView::address() const { return address_; }

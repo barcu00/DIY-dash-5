@@ -28,10 +28,11 @@ bool App::begin() {
         can_.receivedFrames(), can_.rejectedFrames()};
     warnings_.evaluate(config_, telemetry_.state(), now);
     ui_.update(telemetry_.state(), board_.diagnostics(), status, config_, warnings_);
+    ui_.updateShiftLight(telemetry_.state(), now, config_.shift);
     board_.unlock();
 
     ready_ = true;
-    last_ui_update_ms_ = now;
+    frame_scheduler_.reset(now);
     Serial.println("[DIY Dash] UI ready - DASH / TRACK / SETTINGS");
     return true;
 }
@@ -63,8 +64,15 @@ void App::loop() {
     }
     telemetry_.update(now);
 
-    if (now - last_ui_update_ms_ >= DashboardConfig::kUiUpdateIntervalMs) {
+    if (frame_scheduler_.takeShift(now)) {
         warnings_.evaluate(config_, telemetry_.state(), now);
+        if (board_.lock()) {
+            ui_.updateShiftLight(telemetry_.state(), now, config_.shift);
+            board_.unlock();
+        }
+    }
+
+    if (frame_scheduler_.takeRender(now)) {
         if (board_.lock()) {
             board_.incrementUiUpdates();
             const UiRuntimeStatus status{
@@ -76,7 +84,6 @@ void App::loop() {
                        config_, warnings_);
             board_.unlock();
         }
-        last_ui_update_ms_ = now;
     }
 
     board_.service();
