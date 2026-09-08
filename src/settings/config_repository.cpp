@@ -1,6 +1,11 @@
 #include "config_repository.h"
 
+#include <algorithm>
+
 namespace {
+constexpr uint16_t kCurrentMaximumShiftRpm = 10000U;
+constexpr uint16_t kShiftRpmStep = 100U;
+
 struct LegacyShiftLightConfigV1 {
     uint16_t start_rpm = 5500U;
     uint16_t red_rpm = 7000U;
@@ -45,6 +50,26 @@ LoadResult migrateV1(ConfigBackend& backend, AppConfig& config) {
                ? LoadResult::Migrated
                : LoadResult::MigrationWriteFailed;
 }
+
+bool normalizeLegacyShiftRange(ShiftLightConfig& shift) {
+    if (shift.start_rpm <= kCurrentMaximumShiftRpm &&
+        shift.red_rpm <= kCurrentMaximumShiftRpm &&
+        shift.flash_rpm <= kCurrentMaximumShiftRpm &&
+        shift.max_rpm <= kCurrentMaximumShiftRpm) {
+        return false;
+    }
+
+    shift.max_rpm = std::min<uint16_t>(shift.max_rpm,
+                                        kCurrentMaximumShiftRpm);
+    shift.flash_rpm = std::min<uint16_t>(shift.flash_rpm, shift.max_rpm);
+    shift.red_rpm = std::min<uint16_t>(
+        shift.red_rpm,
+        static_cast<uint16_t>(shift.flash_rpm - kShiftRpmStep));
+    shift.start_rpm = std::min<uint16_t>(
+        shift.start_rpm,
+        static_cast<uint16_t>(shift.red_rpm - kShiftRpmStep));
+    return true;
+}
 }  // namespace
 
 ConfigRepository::ConfigRepository(ConfigBackend& backend) : backend_(backend) {}
@@ -61,13 +86,21 @@ LoadResult ConfigRepository::load(AppConfig& config) {
     AppConfig candidate{};
     if (stored_size != sizeof(candidate) ||
         !backend_.read(&candidate, sizeof(candidate)) ||
-        candidate.schema_version != AppConfig::kSchemaVersion ||
-        !candidate.validate().valid) {
+        candidate.schema_version != AppConfig::kSchemaVersion) {
+        config = AppConfig::defaults();
+        return LoadResult::DefaultsUsed;
+    }
+
+    const bool normalized = normalizeLegacyShiftRange(candidate.shift);
+    if (!candidate.validate().valid) {
         config = AppConfig::defaults();
         return LoadResult::DefaultsUsed;
     }
 
     config = candidate;
+    if (normalized) {
+        (void)backend_.write(&config, sizeof(config));
+    }
     return LoadResult::Loaded;
 }
 
