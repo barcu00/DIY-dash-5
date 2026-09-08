@@ -49,6 +49,8 @@ void migrateTiles(const std::array<LegacyTileConfigV2, Count>& legacy,
         migrated[i].visible = legacy[i].visible;
         migrated[i].decimals = legacy[i].decimals;
         migrated[i].warning = legacy[i].warning;
+        migrated[i].temperature_bar =
+            defaultTemperatureBarConfig(legacy[i].parameter);
     }
 }
 
