@@ -281,14 +281,19 @@ def editor_page():
     draw = ImageDraw.Draw(image)
     draw.rounded_rectangle((10, 6, 790, 474), 10, fill=C["panel"], outline=C["blue"], width=2)
     draw.text((32, 18), "TILE SETTINGS", fill=C["text"], font=F24)
-    fields = ((32, 70, "Parameter", "CLT ▾"), (622, 70, "Decimals", "0 ▾"),
-              (222, 146, "MIN", "40.0"), (402, 146, "READY", "75.0"),
-              (582, 146, "MAX", "130.0"), (202, 272, "Direction", "Above ▾"),
-              (342, 272, "Threshold", "110.0"),
-              (492, 272, "Hysteresis", "2.0"), (642, 272, "Delay ms", "300"))
-    for x, y, title, value in fields:
+    fields = ((32, 70, 230, "Parameter", "CLT ▾"),
+              (622, 70, 130, "Decimals", "0 ▾"),
+              (222, 146, 140, "MIN", "40.0"),
+              (402, 146, 140, "READY", "75.0"),
+              (582, 146, 140, "MAX", "130.0"),
+              (202, 272, 120, "Direction", "Above ▾"),
+              (342, 272, 130, "Threshold", "110.0"),
+              (492, 272, 130, "Hysteresis", "2.0"),
+              (642, 272, 120, "Delay ms", "300"))
+    for x, y, width, title, value in fields:
         draw.text((x, y - 20), title, fill=C["muted"], font=F12)
-        draw.rounded_rectangle((x, y, min(x + 150, 726), y + 42), 5, fill="#18222C", outline=C["border"])
+        draw.rounded_rectangle((x, y, x + width, y + 42), 5,
+                               fill="#18222C", outline=C["border"])
         draw.text((x + 10, y + 12), value, fill=C["text"], font=F14)
     for x, y, button_width in ((222, 190, 65), (402, 190, 65),
                                (582, 190, 65), (342, 318, 60),
