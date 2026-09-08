@@ -62,10 +62,39 @@ void test_values_stay_in_engineering_ranges() {
     }
 }
 
+void test_rpm_holds_the_demo_maximum_for_two_seconds() {
+    MockTelemetry mock;
+
+    mock.update(3999U);
+    TEST_ASSERT_TRUE(mock.state().get(VehicleSignal::Rpm).value < 7800.0f);
+    mock.update(4000U);
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, 7800.0f, mock.state().get(VehicleSignal::Rpm).value);
+    mock.update(5999U);
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, 7800.0f, mock.state().get(VehicleSignal::Rpm).value);
+    mock.update(6001U);
+    TEST_ASSERT_TRUE(mock.state().get(VehicleSignal::Rpm).value < 7800.0f);
+}
+
+void test_rpm_changes_smoothly_at_fifty_hertz() {
+    MockTelemetry mock;
+    mock.update(0U);
+    float previous = mock.state().get(VehicleSignal::Rpm).value;
+    for (uint32_t time_ms = 20U; time_ms <= 10000U; time_ms += 20U) {
+        mock.update(time_ms);
+        const float current = mock.state().get(VehicleSignal::Rpm).value;
+        TEST_ASSERT_TRUE(std::fabs(current - previous) <= 60.0f);
+        previous = current;
+    }
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_reset_has_valid_idle_state);
     RUN_TEST(test_same_timestamp_is_deterministic);
     RUN_TEST(test_values_stay_in_engineering_ranges);
+    RUN_TEST(test_rpm_holds_the_demo_maximum_for_two_seconds);
+    RUN_TEST(test_rpm_changes_smoothly_at_fifty_hertz);
     return UNITY_END();
 }

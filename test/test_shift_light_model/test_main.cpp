@@ -84,13 +84,19 @@ void test_enabled_flash_alternates_the_full_strip_red_and_off() {
     const ShiftLightConfig config{5500U, 7000U, 7500U, 8000U, true};
     const ShiftSegmentStates red =
         ShiftLightModel::segments(7500U, true, 0U, config);
+    const ShiftSegmentStates red_end =
+        ShiftLightModel::segments(7500U, true, 62U, config);
     const ShiftSegmentStates off =
-        ShiftLightModel::segments(7500U, true, 125U, config);
+        ShiftLightModel::segments(7500U, true, 63U, config);
+    const ShiftSegmentStates off_end =
+        ShiftLightModel::segments(7500U, true, 124U, config);
     const ShiftSegmentStates red_again =
-        ShiftLightModel::segments(7500U, true, 250U, config);
+        ShiftLightModel::segments(7500U, true, 125U, config);
 
     TEST_ASSERT_EQUAL_UINT32(12U, litCount(red));
+    TEST_ASSERT_EQUAL_UINT32(12U, litCount(red_end));
     TEST_ASSERT_EQUAL_UINT32(0U, litCount(off));
+    TEST_ASSERT_EQUAL_UINT32(0U, litCount(off_end));
     TEST_ASSERT_EQUAL_UINT32(12U, litCount(red_again));
     for (const ShiftSegmentState& segment : red) {
         TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(ShiftColor::Red),
