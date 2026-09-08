@@ -11,8 +11,8 @@ constexpr uint32_t kDefaultCanBitrate = 500000U;
 constexpr uint32_t kMinimumCanTimeoutMs = 100U;
 constexpr uint32_t kMaximumCanTimeoutMs = 5000U;
 constexpr uint16_t kMaximumWarningDelayMs = 10000U;
-constexpr uint16_t kMinimumShiftRpm = 1000U;
-constexpr uint16_t kMaximumShiftRpm = 15000U;
+constexpr uint16_t kMinimumShiftRpm = 0U;
+constexpr uint16_t kMaximumShiftRpm = 10000U;
 constexpr uint16_t kShiftRpmStep = 100U;
 constexpr float kDefaultStoichAfr = 14.7f;
 

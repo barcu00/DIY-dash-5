@@ -1,14 +1,85 @@
 #include "ecu_can_decoder.h"
 
+#include <array>
+#include <cmath>
 #include <cstring>
 
 EcuCanDecoder::EcuCanDecoder(const SignalDefinition* definitions,
                              std::size_t count)
     : definitions_(definitions), count_(definitions == nullptr ? 0U : count) {}
 
+EcuCanDecoder::EcuCanDecoder(const CanProfile* profile) : profile_(profile) {}
+
 bool EcuCanDecoder::decode(const CanFrame& frame, VehicleState& state,
                            uint32_t now_ms) const {
     if (frame.remote || frame.dlc > sizeof(frame.data)) {
+        return false;
+    }
+
+    if (profile_ != nullptr) {
+        for (std::size_t frame_index = 0U;
+             frame_index < profile_->frame_count; ++frame_index) {
+            const CanFrameDefinition& candidate = profile_->frames[frame_index];
+            if (candidate.can_id != frame.id ||
+                candidate.extended != frame.extended ||
+                candidate.expected_dlc != frame.dlc) {
+                continue;
+            }
+
+            if (candidate.discriminator_mask != 0U) {
+                if (candidate.discriminator_offset >= frame.dlc) {
+                    continue;
+                }
+                uint16_t discriminator = frame.data[candidate.discriminator_offset];
+                if (candidate.discriminator_mask > 0xFFU) {
+                    if (candidate.discriminator_offset + 1U >= frame.dlc) {
+                        continue;
+                    }
+                    discriminator |= static_cast<uint16_t>(
+                        frame.data[candidate.discriminator_offset + 1U]) << 8U;
+                }
+                if ((discriminator & candidate.discriminator_mask) !=
+                    candidate.discriminator_value) {
+                    continue;
+                }
+            }
+
+            struct StagedValue {
+                VehicleSignal signal;
+                float value;
+            };
+            constexpr std::size_t kMaximumSignalsPerFrame = 8U;
+            if (candidate.signal_count > kMaximumSignalsPerFrame) {
+                return false;
+            }
+            std::array<StagedValue, kMaximumSignalsPerFrame> staged{};
+            for (std::size_t signal_index = 0U;
+                 signal_index < candidate.signal_count; ++signal_index) {
+                const CanSignalDefinition& definition =
+                    candidate.signals[signal_index];
+                const std::size_t width = rawWidth(definition.raw_type);
+                if (width == 0U || definition.byte_offset > frame.dlc ||
+                    width > static_cast<std::size_t>(
+                                frame.dlc - definition.byte_offset)) {
+                    return false;
+                }
+                const float raw = readRaw(frame.data + definition.byte_offset,
+                                          definition.raw_type,
+                                          definition.byte_order);
+                const float value = raw * definition.scale + definition.bias;
+                if (!std::isfinite(value) || value < definition.minimum_native ||
+                    value > definition.maximum_native) {
+                    return false;
+                }
+                staged[signal_index] = {definition.signal, value};
+            }
+            for (std::size_t signal_index = 0U;
+                 signal_index < candidate.signal_count; ++signal_index) {
+                state.set(staged[signal_index].signal,
+                          staged[signal_index].value, now_ms);
+            }
+            return candidate.signal_count > 0U;
+        }
         return false;
     }
 
@@ -34,12 +105,42 @@ bool EcuCanDecoder::decode(const CanFrame& frame, VehicleState& state,
     return decoded;
 }
 
+void EcuCanDecoder::selectProfile(const CanProfile* profile) {
+    profile_ = profile;
+    definitions_ = nullptr;
+    count_ = 0U;
+}
+
+const CanProfile* EcuCanDecoder::profile() const {
+    return profile_;
+}
+
 std::size_t EcuCanDecoder::definitionCount() const {
+    if (profile_ != nullptr) {
+        std::size_t result = 0U;
+        for (std::size_t i = 0U; i < profile_->frame_count; ++i) {
+            result += profile_->frames[i].signal_count;
+        }
+        return result;
+    }
     return count_;
 }
 
 uint32_t EcuCanDecoder::timeoutFor(VehicleSignal signal) const {
     uint32_t timeout_ms = 0U;
+    if (profile_ != nullptr) {
+        for (std::size_t frame_index = 0U;
+             frame_index < profile_->frame_count; ++frame_index) {
+            const CanFrameDefinition& frame = profile_->frames[frame_index];
+            for (std::size_t signal_index = 0U;
+                 signal_index < frame.signal_count; ++signal_index) {
+                if (frame.signals[signal_index].signal == signal) {
+                    timeout_ms = frame.signals[signal_index].timeout_ms;
+                }
+            }
+        }
+        return timeout_ms;
+    }
     for (std::size_t i = 0; i < count_; ++i) {
         if (definitions_[i].signal == signal) {
             timeout_ms = definitions_[i].timeout_ms;

@@ -3,8 +3,8 @@
 #include <algorithm>
 
 namespace {
-constexpr uint16_t kMinimumRpm = 1000U;
-constexpr uint16_t kMaximumRpm = 15000U;
+constexpr uint16_t kMinimumRpm = 0U;
+constexpr uint16_t kMaximumRpm = 10000U;
 constexpr uint16_t kRpmGap = 100U;
 
 uint16_t roundedRpm(uint16_t rpm) {

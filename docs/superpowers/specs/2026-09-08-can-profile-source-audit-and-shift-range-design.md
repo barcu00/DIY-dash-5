@@ -98,14 +98,15 @@ struct CanFrameDefinition {
     bool extended;
     uint8_t expected_dlc;
     uint8_t discriminator_offset;
-    uint8_t discriminator_mask;
-    uint8_t discriminator_value;
+    uint16_t discriminator_mask;
+    uint16_t discriminator_value;
     const CanSignalDefinition* signals;
     size_t signal_count;
 };
 ```
 
-A discriminator mask of zero disables discriminator matching. The decoder
+A discriminator mask of zero disables discriminator matching. A 16-bit mask
+also validates an adjacent reserved byte in multiplexed protocols. The decoder
 first validates frame format, exact DLC, discriminator bounds, and every signal
 extraction. It then computes all values into a small stack staging array,
 validates finite values and native ranges, and only then updates

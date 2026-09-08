@@ -38,22 +38,11 @@ ShiftSegmentStates ShiftLightModel::segments(
         lit_count = std::min(lit_count, kSegmentCount);
     }
 
-    std::size_t red_index = static_cast<std::size_t>(
-        (static_cast<uint32_t>(config.red_rpm - config.start_rpm) *
-         kSegmentCount) /
-        range);
-    red_index = std::min(red_index, kSegmentCount - 1U);
-    const std::size_t yellow_index = red_index > 1U ? red_index - 2U : 0U;
-
     for (std::size_t i = 0U; i < lit_count; ++i) {
         states[i].lit = true;
-        if (i >= red_index) {
-            states[i].color = ShiftColor::Red;
-        } else if (i >= yellow_index) {
-            states[i].color = ShiftColor::Yellow;
-        } else {
-            states[i].color = ShiftColor::Green;
-        }
+        states[i].color = i < 4U   ? ShiftColor::Green
+                          : i < 8U ? ShiftColor::Yellow
+                                   : ShiftColor::Red;
     }
     return states;
 }

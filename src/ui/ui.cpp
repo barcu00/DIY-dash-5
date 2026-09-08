@@ -323,7 +323,7 @@ void Ui::createShiftSettings(lv_obj_t* panel) {
         *sliders[index] = lv_slider_create(panel);
         lv_obj_set_pos(*sliders[index], 160, y + 10);
         lv_obj_set_size(*sliders[index], 440, 18);
-        lv_slider_set_range(*sliders[index], 1000, 15000);
+        lv_slider_set_range(*sliders[index], 0, 10000);
         lv_slider_set_value(*sliders[index], values[index], LV_ANIM_OFF);
         lv_obj_add_event_cb(*sliders[index], settingsEvent,
                             LV_EVENT_VALUE_CHANGED,
