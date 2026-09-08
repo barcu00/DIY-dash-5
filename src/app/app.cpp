@@ -2,6 +2,8 @@
 
 #include <Arduino.h>
 
+#include "ecu/can_profile_registry.h"
+
 bool App::begin() {
     config_repository_.load(config_);
     if (!board_.begin()) {
@@ -83,14 +85,18 @@ void App::loop() {
 
 void App::applyRuntimeConfig(uint32_t now_ms) {
     can_.stop();
+    telemetry_.selectProfile(
+        CanProfileRegistry::find(config_.can.profile_id.data()), now_ms);
     telemetry_.setCanTimeout(config_.can.timeout_ms);
     telemetry_.selectSource(config_.data_source, now_ms);
     const bool can_ready = config_.data_source == DataSource::Can
                                ? can_.begin(config_.can.bitrate)
                                : false;
     telemetry_.setCanInitialized(can_ready, now_ms);
-    Serial.printf("[DIY Dash] Source: %s; CAN listen-only: %s; %u bit/s\n",
+    const CanProfile* profile = decoder_.profile();
+    Serial.printf("[DIY Dash] Source: %s; profile: %s; CAN listen-only: %s; %u bit/s\n",
                   config_.data_source == DataSource::Can ? "CAN" : "DEMO",
+                  profile == nullptr ? "none" : profile->id,
                   can_ready ? "READY" : "INACTIVE",
                   static_cast<unsigned>(config_.can.bitrate));
 }

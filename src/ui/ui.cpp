@@ -1,6 +1,7 @@
 #include "ui.h"
 #include <cstdio>
 #include <cstring>
+#include "ecu/can_profile_registry.h"
 #include "ui/tile_engine.h"
 #include "ui/ui_theme.h"
 #include "telemetry/parameter_registry.h"
@@ -53,6 +54,7 @@ enum SettingsAction : intptr_t {
     BrightnessPreview = 1,
     BrightnessCommit,
     SourceChanged,
+    ProfileChanged,
     BitrateChanged,
     TimeoutDecrease,
     TimeoutIncrease,
@@ -272,7 +274,40 @@ void Ui::createDataCanSettings(lv_obj_t* panel) {
     profile_dropdown_ = lv_dropdown_create(panel);
     lv_obj_set_pos(profile_dropdown_, 208, 48);
     lv_obj_set_size(profile_dropdown_, 160, 44);
-    lv_dropdown_set_options(profile_dropdown_, "none");
+    char profile_options[512] = "none";
+    uint16_t selected_profile = 0U;
+    std::size_t used = std::strlen(profile_options);
+    for (std::size_t index = 0U; index < CanProfileRegistry::count(); ++index) {
+        const CanProfile* profile = CanProfileRegistry::at(index);
+        if (profile == nullptr) continue;
+        const int written = std::snprintf(
+            profile_options + used, sizeof(profile_options) - used,
+            "\n%s", profile->name);
+        if (written < 0 || static_cast<std::size_t>(written) >=
+                               sizeof(profile_options) - used) {
+            break;
+        }
+        used += static_cast<std::size_t>(written);
+        if (std::strcmp(config_->can.profile_id.data(), profile->id) == 0) {
+            selected_profile = static_cast<uint16_t>(index + 1U);
+        }
+    }
+    lv_dropdown_set_options(profile_dropdown_, profile_options);
+    lv_dropdown_set_selected(profile_dropdown_, selected_profile);
+    lv_obj_add_event_cb(profile_dropdown_, settingsEvent,
+                        LV_EVENT_VALUE_CHANGED,
+                        reinterpret_cast<void*>(ProfileChanged));
+
+    const CanProfile* selected = selected_profile == 0U
+        ? nullptr : CanProfileRegistry::at(selected_profile - 1U);
+    char recommendation[48] = "Recommended: select a profile";
+    if (selected != nullptr) {
+        std::snprintf(recommendation, sizeof(recommendation),
+                      "Recommended: %u kbit/s",
+                      static_cast<unsigned>(selected->default_bitrate / 1000U));
+    }
+    makeLabel(panel, recommendation, 208, 100,
+              &lv_font_montserrat_12, UiTheme::muted());
 
     makeLabel(panel, "BITRATE", 392, 26, &lv_font_montserrat_12,
               UiTheme::muted());
@@ -789,6 +824,18 @@ void Ui::settingsEvent(lv_event_t* event) {
         candidate.data_source = lv_dropdown_get_selected(
             instance_->source_dropdown_) == 1U ? DataSource::Can
                                                 : DataSource::Demo;
+        instance_->stageSettings(candidate, true);
+        return;
+    }
+    if (action == ProfileChanged) {
+        const uint16_t selected = lv_dropdown_get_selected(
+            instance_->profile_dropdown_);
+        candidate.can.profile_id.fill('\0');
+        const CanProfile* profile = selected == 0U
+            ? nullptr : CanProfileRegistry::at(selected - 1U);
+        const char* id = profile == nullptr ? "none" : profile->id;
+        std::strncpy(candidate.can.profile_id.data(), id,
+                     candidate.can.profile_id.size() - 1U);
         instance_->stageSettings(candidate, true);
         return;
     }

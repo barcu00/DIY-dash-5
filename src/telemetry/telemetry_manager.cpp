@@ -1,6 +1,6 @@
 #include "telemetry_manager.h"
 
-TelemetryManager::TelemetryManager(const EcuCanDecoder& decoder,
+TelemetryManager::TelemetryManager(EcuCanDecoder& decoder,
                                    uint32_t can_timeout_ms)
     : decoder_(decoder), can_timeout_ms_(can_timeout_ms) {
     can_state_.reset(DataSource::Can);
@@ -8,6 +8,24 @@ TelemetryManager::TelemetryManager(const EcuCanDecoder& decoder,
     for (std::size_t i = 0; i < timeouts_.size(); ++i) {
         timeouts_[i] = decoder_.timeoutFor(static_cast<VehicleSignal>(i));
     }
+}
+
+void TelemetryManager::selectProfile(const CanProfile* profile,
+                                     uint32_t now_ms) {
+    decoder_.selectProfile(profile);
+    timeouts_.fill(0U);
+    for (std::size_t i = 0U; i < timeouts_.size(); ++i) {
+        timeouts_[i] = decoder_.timeoutFor(static_cast<VehicleSignal>(i));
+    }
+    has_valid_frame_ = false;
+    started_ms_ = now_ms;
+    last_valid_frame_ms_ = now_ms;
+    can_state_.reset(DataSource::Can);
+    empty_state_.reset(DataSource::None);
+    can_status_ = selected_source_ == DataSource::Can
+                      ? (can_initialized_ ? CanStatus::Waiting
+                                          : CanStatus::InitFailed)
+                      : CanStatus::Disabled;
 }
 
 void TelemetryManager::selectSource(DataSource source, uint32_t now_ms) {

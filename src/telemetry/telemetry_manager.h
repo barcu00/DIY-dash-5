@@ -9,8 +9,9 @@
 
 class TelemetryManager {
 public:
-    TelemetryManager(const EcuCanDecoder& decoder, uint32_t can_timeout_ms);
+    TelemetryManager(EcuCanDecoder& decoder, uint32_t can_timeout_ms);
 
+    void selectProfile(const CanProfile* profile, uint32_t now_ms);
     void selectSource(DataSource source, uint32_t now_ms);
     void setCanTimeout(uint32_t timeout_ms);
     void setCanInitialized(bool initialized, uint32_t now_ms);
@@ -24,7 +25,7 @@ public:
     std::size_t mappingCount() const;
 
 private:
-    const EcuCanDecoder& decoder_;
+    EcuCanDecoder& decoder_;
     MockTelemetry demo_;
     VehicleState can_state_{};
     VehicleState empty_state_{};
