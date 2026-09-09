@@ -59,6 +59,7 @@ void test_tile_editor_suspends_every_background_visual_update() {
     TEST_ASSERT_FALSE(policy.shouldUpdateData(PageId::Dash));
     TEST_ASSERT_FALSE(policy.shouldUpdateData(PageId::Track));
     TEST_ASSERT_FALSE(policy.shouldUpdateSettingsStatus(1000U));
+    TEST_ASSERT_FALSE(policy.allowLayoutUpdates());
     TEST_ASSERT_FALSE(policy.allowShiftLightUpdates());
     TEST_ASSERT_FALSE(policy.allowModalUpdates());
 }
@@ -71,6 +72,7 @@ void test_leaving_tile_editor_restores_the_destination_page() {
 
     TEST_ASSERT_FALSE(policy.shouldUpdateData(PageId::Dash));
     TEST_ASSERT_TRUE(policy.shouldUpdateData(PageId::Track));
+    TEST_ASSERT_TRUE(policy.allowLayoutUpdates());
     TEST_ASSERT_TRUE(policy.allowShiftLightUpdates());
     TEST_ASSERT_TRUE(policy.allowModalUpdates());
 }

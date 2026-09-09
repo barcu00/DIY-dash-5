@@ -37,6 +37,27 @@ class TileEditorScreenContractTests(unittest.TestCase):
         self.assertIn("editor_flag_color_", self.header)
         self.assertIn('"YELLOW\\nGREEN\\nRED"', self.open_editor)
 
+    def test_live_tiles_receive_active_profile_capabilities(self):
+        app = (ROOT / "src/app/app.cpp").read_text(encoding="utf-8")
+        tile_header = (ROOT / "src/ui/tile_view.h").read_text(encoding="utf-8")
+        tile_source = (ROOT / "src/ui/tile_view.cpp").read_text(encoding="utf-8")
+
+        self.assertIn("setDataContext", self.header)
+        self.assertIn("ParameterCapabilities", self.header)
+        self.assertIn("ui_.setDataContext", app)
+        self.assertRegex(tile_header, r"update\([^;]+bool supported")
+        self.assertIn("flagTilePresentation", tile_source)
+        self.assertIn('"UNAVAILABLE"', tile_source)
+        self.assertIn("stripe_", tile_header)
+
+    def test_tiles_open_editor_only_on_long_press(self):
+        tile_source = (ROOT / "src/ui/tile_view.cpp").read_text(encoding="utf-8")
+        create = tile_source.split("void TileView::create", 1)[1]
+        create = create.split("void TileView::apply", 1)[0]
+
+        self.assertIn("LV_EVENT_LONG_PRESSED", create)
+        self.assertNotIn("LV_EVENT_CLICKED", create)
+
     def test_ui_strings_are_english_only(self):
         ui_files = list((ROOT / "src/ui").glob("*.cpp"))
         string_literal = re.compile(r'"(?:\\.|[^"\\])*"')
