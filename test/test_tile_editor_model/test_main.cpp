@@ -165,6 +165,25 @@ void test_switching_to_flag_preserves_dormant_numeric_settings() {
                              tile.temperature_bar.ready_native);
 }
 
+void test_candidate_preview_keeps_editor_open_and_runtime_unchanged() {
+    AppConfig runtime = AppConfig::defaults();
+    const TileConfig original = runtime.dash_tiles[0];
+    TileEditorModel editor;
+    TEST_ASSERT_TRUE(editor.open({PageId::Dash, 0U}, runtime));
+    editor.setParameter(ParameterId::CheckEngine);
+    editor.setFlagActiveColor(FlagActiveColor::Red);
+
+    AppConfig candidate = runtime;
+    TEST_ASSERT_TRUE(editor.writeCandidate(candidate));
+
+    TEST_ASSERT_TRUE(editor.isOpen());
+    TEST_ASSERT_EQUAL_MEMORY(&original, &runtime.dash_tiles[0],
+                             sizeof(TileConfig));
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(ParameterId::CheckEngine),
+                            static_cast<uint8_t>(
+                                candidate.dash_tiles[0].parameter));
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_open_rejects_settings_page_and_out_of_range_slots);
@@ -177,5 +196,6 @@ int main(int, char**) {
     RUN_TEST(test_apply_rejects_invalid_draft_without_mutating_config);
     RUN_TEST(test_flag_color_is_staged_saved_and_canceled_per_tile);
     RUN_TEST(test_switching_to_flag_preserves_dormant_numeric_settings);
+    RUN_TEST(test_candidate_preview_keeps_editor_open_and_runtime_unchanged);
     return UNITY_END();
 }

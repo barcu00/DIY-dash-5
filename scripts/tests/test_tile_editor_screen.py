@@ -58,6 +58,36 @@ class TileEditorScreenContractTests(unittest.TestCase):
         self.assertIn("LV_EVENT_LONG_PRESSED", create)
         self.assertNotIn("LV_EVENT_CLICKED", create)
 
+    def test_parameter_switches_sync_the_draft_without_erasing_dormant_values(self):
+        self.assertIn("syncEditorDraftFromControls", self.header)
+        self.assertIn("loadEditorControlsFromDraft", self.header)
+        self.assertNotIn("load_temperature_defaults", self.header)
+
+    def test_tile_save_waits_for_persistence_before_closing(self):
+        save_editor = self.source.split("void Ui::saveEditor", 1)[1]
+        save_editor = save_editor.split("void Ui::showSettingsMessage", 1)[0]
+        completion = self.source.split("void Ui::completeConfigCommit", 1)[1]
+        completion = completion.split("void Ui::openEditor", 1)[0]
+
+        self.assertIn("writeCandidate", save_editor)
+        self.assertIn("editor_commit_pending_", save_editor)
+        self.assertNotIn("stageSettings", save_editor)
+        self.assertNotIn("closeEditor()", save_editor)
+        self.assertIn("editor_commit_pending_", completion)
+        self.assertIn("closeEditor()", completion)
+
+    def test_opening_editor_clears_existing_warning_visual(self):
+        self.assertIn("warning_panel_", self.open_editor)
+        delete_at = self.open_editor.index("lv_obj_del(warning_panel_)")
+        load_at = self.open_editor.index("lv_scr_load(editor_screen_)")
+        self.assertLess(delete_at, load_at)
+
+    def test_editor_uses_the_runtime_capability_context(self):
+        self.assertIn("active_profile_", self.header)
+        self.assertIn("active_source_", self.header)
+        self.assertIn("active_profile_", self.open_editor)
+        self.assertNotIn("CanProfileRegistry::find", self.open_editor)
+
     def test_ui_strings_are_english_only(self):
         ui_files = list((ROOT / "src/ui").glob("*.cpp"))
         string_literal = re.compile(r'"(?:\\.|[^"\\])*"')
