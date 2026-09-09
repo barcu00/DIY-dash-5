@@ -37,6 +37,16 @@ float demoEngineCycle(uint32_t elapsed_ms) {
         static_cast<float>(phase_ms - kHoldEndMs) /
         static_cast<float>(kCycleMs - kHoldEndMs));
 }
+
+void setDemoFlags(VehicleState& state, uint32_t elapsed_ms) {
+    const std::size_t first =
+        static_cast<std::size_t>(ParameterId::IgnitionOn);
+    for (std::size_t index = first; index < parameterCount(); ++index) {
+        const bool active = ((elapsed_ms / 1000U) + index) % 4U == 0U;
+        state.set(static_cast<VehicleSignal>(index), active ? 1.0f : 0.0f,
+                  elapsed_ms);
+    }
+}
 }  // namespace
 
 MockTelemetry::MockTelemetry() {
@@ -77,6 +87,7 @@ void MockTelemetry::reset() {
     state_.set(VehicleSignal::WheelSpeedLr, 0.0f, 0U);
     state_.set(VehicleSignal::WheelSpeedRf, 0.0f, 0U);
     state_.set(VehicleSignal::WheelSpeedRr, 0.0f, 0U);
+    setDemoFlags(state_, 0U);
 }
 
 void MockTelemetry::update(uint32_t elapsed_ms) {
@@ -142,6 +153,7 @@ void MockTelemetry::update(uint32_t elapsed_ms) {
                std::clamp(speed * 1.002f, 0.0f, 200.0f), elapsed_ms);
     state_.set(VehicleSignal::WheelSpeedRr,
                std::clamp(speed * 0.998f, 0.0f, 200.0f), elapsed_ms);
+    setDemoFlags(state_, elapsed_ms);
 }
 
 const VehicleState& MockTelemetry::state() const {
