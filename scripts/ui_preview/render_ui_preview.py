@@ -340,20 +340,22 @@ def editor_page():
     draw.text((20, 10), "TILE SETTINGS", fill=C["text"], font=F24)
     fields = ((20, 66, 360, "PARAMETER", "CLT ▾"),
               (610, 66, 150, "DECIMALS", "0 ▾"),
-              (210, 138, 140, "MIN", "40.0"),
-              (390, 138, 140, "READY", "75.0"),
-              (570, 138, 140, "MAX", "130.0"),
+              (190, 138, 125, "MIN", "040.0"),
+              (335, 138, 125, "READY", "075.0"),
+              (480, 138, 125, "RED", "115.0"),
+              (625, 138, 125, "MAX", "130.0"),
               (190, 264, 120, "Direction", "Above ▾"),
               (330, 264, 130, "Threshold", "110.0"),
-              (480, 264, 130, "Hysteresis", "2.0"),
+              (480, 264, 130, "Hysteresis", "002.0"),
               (630, 264, 120, "Delay ms", "300"))
     for x, y, width, title, value in fields:
         draw.text((x, y - 20), title, fill=C["muted"], font=F12)
         draw.rounded_rectangle((x, y, x + width, y + 42), 5,
                                fill="#18222C", outline=C["border"])
         draw.text((x + 10, y + 12), value, fill=C["text"], font=F14)
-    for x, y, button_width in ((210, 180, 65), (390, 180, 65),
-                               (570, 180, 65), (330, 306, 60),
+    for x, y, button_width in ((190, 180, 58), (335, 180, 58),
+                               (480, 180, 58), (625, 180, 58),
+                               (330, 306, 60),
                                (480, 306, 60), (630, 306, 55)):
         for offset, label in ((0, "−"), (button_width + 6, "+")):
             left = x + offset
@@ -364,7 +366,10 @@ def editor_page():
     draw.text((410, 74), "☑ Visible", fill=C["text"], font=F14)
     draw.text((20, 126), "☑ Temperature bar", fill=C["text"], font=F14)
     draw.text((20, 252), "☑ Enable WARNING", fill=C["text"], font=F14)
-    draw.text((20, 358), "Temperature: MIN < READY < MAX. Alarm range: 0.0–999.0.",
+    draw.text((20, 350), "Order: MIN < READY < RED <= MAX",
+              fill=C["muted"], font=F12)
+    draw.text((20, 368),
+              "Temperature: -999.0 to 999.0 | Warning: 0.0 to 999.0",
               fill=C["muted"], font=F12)
     for x, text, width in ((20, "CANCEL", 180), (590, "SAVE TILE", 190)):
         draw.rounded_rectangle((x, 420, x + width, 468), 5, fill="#153B57")

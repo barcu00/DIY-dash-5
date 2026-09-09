@@ -96,11 +96,13 @@ void validateTiles(std::array<TileConfig, Count>& tiles) {
         const bool valid_bar =
             std::isfinite(bar.minimum_native) &&
             std::isfinite(bar.ready_native) &&
+            std::isfinite(bar.red_native) &&
             std::isfinite(bar.maximum_native) &&
             bar.minimum_native >= -kMaximumTileSetting &&
             bar.maximum_native <= kMaximumTileSetting &&
             bar.minimum_native < bar.ready_native &&
-            bar.ready_native < bar.maximum_native;
+            bar.ready_native < bar.red_native &&
+            bar.red_native <= bar.maximum_native;
         if (!valid_bar) {
             bar = defaultTemperatureBarConfig(config.parameter);
             bar.enabled = false;
@@ -120,13 +122,13 @@ TemperatureBarConfig defaultTemperatureBarConfig(ParameterId parameter) {
     switch (parameter) {
         case ParameterId::Clt:
         case ParameterId::OilTemperature:
-            config = {true, 40.0f, 75.0f, 130.0f};
+            config = {true, 40.0f, 75.0f, 115.0f, 130.0f};
             break;
         case ParameterId::Iat:
-            config = {false, 0.0f, 40.0f, 80.0f};
+            config = {false, 0.0f, 40.0f, 70.0f, 80.0f};
             break;
         case ParameterId::FuelTemperature:
-            config = {false, 0.0f, 40.0f, 100.0f};
+            config = {false, 0.0f, 40.0f, 85.0f, 100.0f};
             break;
         case ParameterId::Egt1:
         case ParameterId::Egt2:
@@ -136,10 +138,10 @@ TemperatureBarConfig defaultTemperatureBarConfig(ParameterId parameter) {
         case ParameterId::Egt6:
         case ParameterId::Egt7:
         case ParameterId::Egt8:
-            config = {false, 200.0f, 650.0f, 950.0f};
+            config = {false, 200.0f, 650.0f, 900.0f, 950.0f};
             break;
         default:
-            config = {false, 0.0f, 1.0f, 2.0f};
+            config = {false, 0.0f, 1.0f, 1.5f, 2.0f};
             break;
     }
     return config;

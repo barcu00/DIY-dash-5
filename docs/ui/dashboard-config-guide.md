@@ -27,11 +27,13 @@ stale flags clear the active styling and show `UNAVAILABLE`. Flag states do not
 open the numeric WARNING modal.
 
 For a temperature parameter, the same editor can enable a continuous bar and
-set its native MIN, READY, and MAX values. The bar is empty when data is
-invalid, blue below READY, green in the normal range, yellow in the final
-quarter before MAX, and red at or above MAX. Coolant and oil temperature use
-40.0 / 75.0 / 130.0 degrees Celsius by default. Other temperature channels
-have safe parameter-specific defaults but start with the bar disabled.
+set its native MIN, READY, RED, and MAX values. MIN and MAX define the fill
+scale, while RED independently defines when the bar becomes red. The bar is
+empty when data is invalid, blue below READY, green in the normal range,
+yellow in the final quarter before RED, and red at or above RED. The required
+order is `MIN < READY < RED <= MAX`. Coolant and oil temperature use
+40.0 / 75.0 / 115.0 / 130.0 degrees Celsius by default. Other temperature
+channels have safe parameter-specific defaults but start with the bar disabled.
 
 Hidden tiles can be reopened from the paged DASH and TRACK slot lists in the
 LAYOUTS category. Each page contains no more than six slots. Hiding a tile
@@ -42,8 +44,9 @@ on TRACK. Wide tile labels and values are centered.
 ## Warnings
 
 Each tile independently supports above/below direction, native threshold,
-hysteresis, and delay. Threshold and hysteresis are configured from 0.0 to
-999.0 with one decimal place and a 0.1 step. A breached warning produces a large red WARNING modal
+hysteresis, and delay. Temperature limits and warning values are displayed with
+three integer digits and one decimal place (`000.0`). Threshold and hysteresis
+are configured from 0.0 to 999.0 with a 0.1 step. A breached warning produces a large red WARNING modal
 with the current value and configured limit. Acknowledging removes the modal,
 but the related visible tile stays red until the value returns through the safe
 hysteresis boundary. A hidden tile can still raise its warning. Invalid data

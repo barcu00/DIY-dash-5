@@ -194,13 +194,16 @@ rendering behind it. In DEMO the parameter list contains every channel; in CAN
 it contains only channels decoded by the active profile. An existing unsupported
 assignment is preserved and shown as `---` / `UNAVAILABLE` until replaced.
 Numeric tiles provide visibility, decimals, and a fully configurable warning.
-Temperature tiles can also show a continuous color bar
-with per-tile MIN, READY, and MAX values. Coolant and oil temperature bars are
-enabled by default; IAT, fuel-temperature, and EGT bars remain optional.
+Temperature tiles can also show a continuous color bar with independently
+configurable MIN, READY, RED, and MAX values. MIN/MAX define fill, READY begins
+the normal range, and RED selects the over-temperature color threshold. Coolant
+and oil temperature bars are enabled by default; IAT, fuel-temperature, and EGT
+bars remain optional.
 Flag tiles show a neutral grey `OFF` pill or a colored rail, tinted background,
 and `ON` pill. Yellow, green, or red active color is saved independently for
 each tile; stale flags show `UNAVAILABLE` and never retain an active tint.
-Warning thresholds and hysteresis use a 0.0-999.0 range in 0.1 steps. SETTINGS changes are applied in RAM while controls are
+Temperature and warning editors use an unambiguous `000.0` display. Warning
+thresholds and hysteresis use a 0.0-999.0 range in 0.1 steps. SETTINGS changes are applied in RAM while controls are
 used and written once when the user leaves the screen. Flash writes run outside
 LVGL callbacks to avoid interrupting active RGB-panel rendering.
 See `docs/ui/dashboard-config-guide.md` for controls and safety limitations.

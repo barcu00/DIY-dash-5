@@ -687,21 +687,26 @@ void Ui::openEditor(TileAddress address) {
     editor_temperature_bar_ = lv_checkbox_create(editor_numeric_panel_);
     lv_obj_set_pos(editor_temperature_bar_, 20, 14);
     lv_checkbox_set_text(editor_temperature_bar_, "Temperature bar");
-    makeLabel(editor_numeric_panel_, "MIN", 210, 8, &lv_font_montserrat_12, UiTheme::muted());
+    makeLabel(editor_numeric_panel_, "MIN", 190, 8, &lv_font_montserrat_12, UiTheme::muted());
     editor_temperature_minimum_ = makeSpinbox(
-        editor_numeric_panel_, 210, 26, 140, -9990, 9990, 0, 4, 1);
+        editor_numeric_panel_, 190, 26, 125, -9990, 9990, 0, 4, 3);
     lv_spinbox_set_step(editor_temperature_minimum_, 1);
-    makeStepper(editor_numeric_panel_, editor_temperature_minimum_, 210, 68, 65);
-    makeLabel(editor_numeric_panel_, "READY", 390, 8, &lv_font_montserrat_12, UiTheme::muted());
+    makeStepper(editor_numeric_panel_, editor_temperature_minimum_, 190, 68, 58);
+    makeLabel(editor_numeric_panel_, "READY", 335, 8, &lv_font_montserrat_12, UiTheme::muted());
     editor_temperature_ready_ = makeSpinbox(
-        editor_numeric_panel_, 390, 26, 140, -9990, 9990, 0, 4, 1);
+        editor_numeric_panel_, 335, 26, 125, -9990, 9990, 0, 4, 3);
     lv_spinbox_set_step(editor_temperature_ready_, 1);
-    makeStepper(editor_numeric_panel_, editor_temperature_ready_, 390, 68, 65);
-    makeLabel(editor_numeric_panel_, "MAX", 570, 8, &lv_font_montserrat_12, UiTheme::muted());
+    makeStepper(editor_numeric_panel_, editor_temperature_ready_, 335, 68, 58);
+    makeLabel(editor_numeric_panel_, "RED", 480, 8, &lv_font_montserrat_12, UiTheme::muted());
+    editor_temperature_red_ = makeSpinbox(
+        editor_numeric_panel_, 480, 26, 125, -9990, 9990, 0, 4, 3);
+    lv_spinbox_set_step(editor_temperature_red_, 1);
+    makeStepper(editor_numeric_panel_, editor_temperature_red_, 480, 68, 58);
+    makeLabel(editor_numeric_panel_, "MAX", 625, 8, &lv_font_montserrat_12, UiTheme::muted());
     editor_temperature_maximum_ = makeSpinbox(
-        editor_numeric_panel_, 570, 26, 140, -9990, 9990, 0, 4, 1);
+        editor_numeric_panel_, 625, 26, 125, -9990, 9990, 0, 4, 3);
     lv_spinbox_set_step(editor_temperature_maximum_, 1);
-    makeStepper(editor_numeric_panel_, editor_temperature_maximum_, 570, 68, 65);
+    makeStepper(editor_numeric_panel_, editor_temperature_maximum_, 625, 68, 58);
     loadEditorTemperatureControls(tile.temperature_bar);
 
     editor_warning_ = lv_checkbox_create(editor_numeric_panel_); lv_obj_set_pos(editor_warning_, 20, 140);
@@ -713,18 +718,19 @@ void Ui::openEditor(TileAddress address) {
     lv_dropdown_set_selected(editor_direction_, static_cast<uint16_t>(tile.warning.direction));
     makeLabel(editor_numeric_panel_, "Threshold", 330, 134, &lv_font_montserrat_12, UiTheme::muted());
     editor_threshold_ = makeSpinbox(editor_numeric_panel_, 330, 152, 130, 0, 9990,
-        static_cast<int32_t>(tile.warning.threshold_native * 10.0f), 4, 1);
+        static_cast<int32_t>(tile.warning.threshold_native * 10.0f), 4, 3);
     lv_spinbox_set_step(editor_threshold_, 1); makeStepper(editor_numeric_panel_, editor_threshold_, 330, 194, 60);
     makeLabel(editor_numeric_panel_, "Hysteresis", 480, 134, &lv_font_montserrat_12, UiTheme::muted());
     editor_hysteresis_ = makeSpinbox(editor_numeric_panel_, 480, 152, 130, 0, 9990,
-        static_cast<int32_t>(tile.warning.hysteresis_native * 10.0f), 4, 1);
+        static_cast<int32_t>(tile.warning.hysteresis_native * 10.0f), 4, 3);
     lv_spinbox_set_step(editor_hysteresis_, 1); makeStepper(editor_numeric_panel_, editor_hysteresis_, 480, 194, 60);
     makeLabel(editor_numeric_panel_, "Delay ms", 630, 134, &lv_font_montserrat_12, UiTheme::muted());
     editor_delay_ = makeSpinbox(editor_numeric_panel_, 630, 152, 120, 0, 10000,
         tile.warning.delay_ms, 5);
     lv_spinbox_set_step(editor_delay_, 100); makeStepper(editor_numeric_panel_, editor_delay_, 630, 194, 55);
-    makeLabel(editor_numeric_panel_, "Temperature: MIN < READY < MAX. Alarm range: 0.0–999.0.", 20, 246,
-              &lv_font_montserrat_12, UiTheme::muted());
+    makeLabel(editor_numeric_panel_,
+              "Order: MIN < READY < RED <= MAX\nTemperature: -999.0 to 999.0 | Warning: 0.0 to 999.0",
+              20, 238, &lv_font_montserrat_12, UiTheme::muted());
 
     editor_flag_panel_ = lv_obj_create(editor_screen_);
     lv_obj_set_pos(editor_flag_panel_, 0, 112);
@@ -803,6 +809,8 @@ void Ui::syncEditorDraftFromControls() {
         lv_spinbox_get_value(editor_temperature_minimum_)) / 10.0f;
     temperature_bar.ready_native = static_cast<float>(
         lv_spinbox_get_value(editor_temperature_ready_)) / 10.0f;
+    temperature_bar.red_native = static_cast<float>(
+        lv_spinbox_get_value(editor_temperature_red_)) / 10.0f;
     temperature_bar.maximum_native = static_cast<float>(
         lv_spinbox_get_value(editor_temperature_maximum_)) / 10.0f;
     editor_.setTemperatureBar(temperature_bar);
@@ -836,6 +844,8 @@ void Ui::loadEditorTemperatureControls(const TemperatureBarConfig& config) {
                          static_cast<int32_t>(config.minimum_native * 10.0f));
     lv_spinbox_set_value(editor_temperature_ready_,
                          static_cast<int32_t>(config.ready_native * 10.0f));
+    lv_spinbox_set_value(editor_temperature_red_,
+                         static_cast<int32_t>(config.red_native * 10.0f));
     lv_spinbox_set_value(editor_temperature_maximum_,
                          static_cast<int32_t>(config.maximum_native * 10.0f));
 }

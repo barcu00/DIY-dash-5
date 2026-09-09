@@ -64,6 +64,7 @@ struct TemperatureBarConfig {
     bool enabled = false;
     float minimum_native = 40.0f;
     float ready_native = 75.0f;
+    float red_native = 115.0f;
     float maximum_native = 130.0f;
 };
 
@@ -90,7 +91,7 @@ struct ValidationResult {
 };
 
 struct AppConfig {
-    static constexpr uint32_t kSchemaVersion = 4U;
+    static constexpr uint32_t kSchemaVersion = 5U;
     static constexpr std::size_t kDashTileCount = 14U;
     static constexpr std::size_t kTrackTileCount = 12U;
 

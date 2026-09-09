@@ -46,7 +46,7 @@ class PreviewContractTest(unittest.TestCase):
         self.assertTrue(settings["shift_flash_switch"])
         self.assertEqual(100, settings["shift_step_rpm"])
         self.assertEqual("continuous", settings["temperature_bar_style"])
-        self.assertEqual([40.0, 75.0, 130.0],
+        self.assertEqual([40.0, 75.0, 115.0, 130.0],
                          settings["temperature_bar_defaults"])
         self.assertEqual(0.0, settings["alarm_minimum"])
         self.assertEqual(999.0, settings["alarm_maximum"])

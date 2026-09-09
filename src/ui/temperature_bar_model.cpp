@@ -24,11 +24,11 @@ TemperatureBarState temperatureBarState(
 
     if (signal.value < config.ready_native) {
         state.zone = TemperatureBarZone::Cold;
-    } else if (signal.value >= config.maximum_native) {
+    } else if (signal.value >= config.red_native) {
         state.zone = TemperatureBarZone::Hot;
     } else {
-        const float warm_start = config.maximum_native -
-            (config.maximum_native - config.ready_native) * 0.25f;
+        const float warm_start = config.red_native -
+            (config.red_native - config.ready_native) * 0.25f;
         state.zone = signal.value >= warm_start
             ? TemperatureBarZone::Warm
             : TemperatureBarZone::Normal;

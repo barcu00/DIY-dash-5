@@ -46,11 +46,14 @@ bool validDraft(const TileConfig& tile) {
            tile.warning.delay_ms <= 10000U &&
            std::isfinite(tile.temperature_bar.minimum_native) &&
            std::isfinite(tile.temperature_bar.ready_native) &&
+           std::isfinite(tile.temperature_bar.red_native) &&
            std::isfinite(tile.temperature_bar.maximum_native) &&
            tile.temperature_bar.minimum_native >= -999.0f &&
            tile.temperature_bar.minimum_native <
                tile.temperature_bar.ready_native &&
            tile.temperature_bar.ready_native <
+               tile.temperature_bar.red_native &&
+           tile.temperature_bar.red_native <=
                tile.temperature_bar.maximum_native &&
            tile.temperature_bar.maximum_native <= 999.0f;
 }
