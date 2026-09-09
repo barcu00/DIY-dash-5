@@ -61,6 +61,24 @@ void test_parameter_change_disables_previous_warning_on_apply() {
     TEST_ASSERT_FALSE(config.dash_tiles[0].warning.enabled);
 }
 
+void test_warning_enabled_after_parameter_change_is_saved() {
+    AppConfig config = AppConfig::defaults();
+    TileEditorModel editor;
+    TEST_ASSERT_TRUE(editor.open({PageId::Dash, 0U}, config));
+
+    editor.setParameter(ParameterId::Clt);
+    editor.setWarning(
+        {true, WarningDirection::Above, 95.0f, 2.0f, 200U});
+    TEST_ASSERT_TRUE(editor.applyTo(config));
+
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(ParameterId::Clt),
+                            static_cast<uint8_t>(
+                                config.dash_tiles[0].parameter));
+    TEST_ASSERT_TRUE(config.dash_tiles[0].warning.enabled);
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, 95.0f, config.dash_tiles[0].warning.threshold_native);
+}
+
 void test_same_parameter_preserves_edited_warning() {
     AppConfig config = AppConfig::defaults();
     TileEditorModel editor;
@@ -194,6 +212,7 @@ int main(int, char**) {
     RUN_TEST(test_cancel_discards_staged_visibility_and_parameter_changes);
     RUN_TEST(test_apply_changes_only_selected_tile);
     RUN_TEST(test_parameter_change_disables_previous_warning_on_apply);
+    RUN_TEST(test_warning_enabled_after_parameter_change_is_saved);
     RUN_TEST(test_same_parameter_preserves_edited_warning);
     RUN_TEST(test_apply_preserves_temperature_bar_settings_for_selected_tile);
     RUN_TEST(test_parameter_change_uses_safe_temperature_bar_defaults);
