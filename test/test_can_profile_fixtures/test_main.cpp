@@ -350,6 +350,77 @@ void test_psa_profile_decodes_only_corroborated_engine_sensors() {
     TEST_ASSERT_FALSE(slow.get(ParameterId::Gear).valid);
 }
 
+void test_bmw_ms43_stock_decodes_documented_numeric_signals() {
+    VehicleState fast = decode(
+        "bmw_ms43_stock",
+        CanFrame{0x316U, 8U,
+                 {0x00U, 0U, 0x00U, 0x7DU, 0U, 0U, 0U, 0U},
+                 false, false});
+    assertValue(fast, ParameterId::Rpm, 5000.0f);
+
+    VehicleState engine = decode(
+        "bmw_ms43_stock",
+        CanFrame{0x329U, 8U,
+                 {0U, 184U, 207U, 0U, 0U, 128U, 0U, 0U},
+                 false, false});
+    assertValue(engine, ParameterId::Clt, 90.0f);
+    assertValue(engine, ParameterId::BarometricPressure, 1.012f, 0.001f);
+    assertValue(engine, ParameterId::AcceleratorPosition, 50.0f);
+
+    VehicleState oil = decode(
+        "bmw_ms43_stock",
+        CanFrame{0x545U, 8U, {0U, 0U, 0U, 0U, 138U, 0U, 0U, 0U},
+                 false, false});
+    assertValue(oil, ParameterId::OilTemperature, 90.0f);
+}
+
+void test_bmw_ms43_stock_decodes_documented_engine_flags() {
+    VehicleState fast = decode(
+        "bmw_ms43_stock",
+        CanFrame{0x316U, 8U,
+                 {0x83U, 0U, 0x00U, 0x7DU, 0U, 0U, 0U, 0U},
+                 false, false});
+    assertValue(fast, ParameterId::IgnitionOn, 1.0f);
+    assertValue(fast, ParameterId::CrankSensorError, 1.0f);
+    assertValue(fast, ParameterId::MassAirFlowError, 1.0f);
+
+    VehicleState engine = decode(
+        "bmw_ms43_stock",
+        CanFrame{0x329U, 8U,
+                 {0U, 184U, 207U, 0x0BU, 0U, 128U, 0x07U, 0U},
+                 false, false});
+    assertValue(engine, ParameterId::ClutchPressed, 1.0f);
+    assertValue(engine, ParameterId::IdleActive, 1.0f);
+    assertValue(engine, ParameterId::EngineRunning, 1.0f);
+    assertValue(engine, ParameterId::BrakePressed, 1.0f);
+    assertValue(engine, ParameterId::BrakeSystemFault, 1.0f);
+    assertValue(engine, ParameterId::KickdownActive, 1.0f);
+
+    VehicleState warnings = decode(
+        "bmw_ms43_stock",
+        CanFrame{0x545U, 8U,
+                 {0x12U, 0U, 0U, 0x8FU, 138U, 0U, 0U, 0x80U},
+                 false, false});
+    assertValue(warnings, ParameterId::CheckEngine, 1.0f);
+    assertValue(warnings, ParameterId::EmlWarning, 1.0f);
+    assertValue(warnings, ParameterId::OilConsumptionWarning, 1.0f);
+    assertValue(warnings, ParameterId::OilLossWarning, 1.0f);
+    assertValue(warnings, ParameterId::OilSensorFault, 1.0f);
+    assertValue(warnings, ParameterId::CoolantOverheat, 1.0f);
+    assertValue(warnings, ParameterId::UpshiftRequest, 1.0f);
+    assertValue(warnings, ParameterId::LowOilPressure, 1.0f);
+}
+
+void test_bmw_ms43_stock_flag_bits_clear_to_off() {
+    VehicleState state = decode(
+        "bmw_ms43_stock",
+        CanFrame{0x545U, 8U, {0U, 0U, 0U, 0U, 138U, 0U, 0U, 0U},
+                 false, false});
+    assertValue(state, ParameterId::CheckEngine, 0.0f);
+    assertValue(state, ParameterId::EmlWarning, 0.0f);
+    assertValue(state, ParameterId::LowOilPressure, 0.0f);
+}
+
 void test_wrong_dlc_and_format_are_rejected_without_partial_update() {
     EcuCanDecoder decoder(CanProfileRegistry::find("ecumaster_emu_black"));
     VehicleState state;
@@ -402,6 +473,9 @@ int main(int, char**) {
     RUN_TEST(test_link_indexed_frames_require_the_discriminator);
     RUN_TEST(test_link_experimental_profile_exposes_documented_extra_channels);
     RUN_TEST(test_psa_profile_decodes_only_corroborated_engine_sensors);
+    RUN_TEST(test_bmw_ms43_stock_decodes_documented_numeric_signals);
+    RUN_TEST(test_bmw_ms43_stock_decodes_documented_engine_flags);
+    RUN_TEST(test_bmw_ms43_stock_flag_bits_clear_to_off);
     RUN_TEST(test_wrong_dlc_and_format_are_rejected_without_partial_update);
     RUN_TEST(test_out_of_range_signal_rejects_the_whole_matching_frame);
     return UNITY_END();
