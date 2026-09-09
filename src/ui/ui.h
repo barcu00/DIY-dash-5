@@ -9,6 +9,7 @@
 #include "settings/app_config.h"
 #include "telemetry/vehicle_state.h"
 #include "ui/settings_commit_model.h"
+#include "ui/parameter_options.h"
 #include "ui/tile_editor_model.h"
 #include "ui/shift_light_view.h"
 #include "ui/settings_flow_model.h"
@@ -67,6 +68,8 @@ private:
     void openEditor(TileAddress address);
     void closeEditor();
     void saveEditor();
+    void refreshEditorParameterControls(ParameterId parameter,
+                                        bool load_temperature_defaults);
     void loadEditorTemperatureControls(const TemperatureBarConfig& config);
     bool stageSettings(AppConfig candidate, bool reconfigure_runtime);
     void queueSettingsOnExit();
@@ -120,10 +123,17 @@ private:
     std::array<lv_obj_t*, SettingsFlowModel::kSlotsPerPage> layout_labels_{};
     std::array<std::size_t, SettingsFlowModel::kSlotsPerPage> layout_slots_{};
     lv_obj_t* reset_overlay_ = nullptr;
-    lv_obj_t* editor_overlay_ = nullptr;
+    Page editor_return_page_ = Page::Dash;
+    SettingsCategory editor_return_category_ = SettingsCategory::Home;
+    ParameterOptionList editor_parameter_options_{};
+    lv_obj_t* editor_screen_ = nullptr;
     lv_obj_t* editor_parameter_ = nullptr;
     lv_obj_t* editor_visible_ = nullptr;
+    lv_obj_t* editor_decimals_label_ = nullptr;
     lv_obj_t* editor_decimals_ = nullptr;
+    lv_obj_t* editor_numeric_panel_ = nullptr;
+    lv_obj_t* editor_flag_panel_ = nullptr;
+    lv_obj_t* editor_flag_color_ = nullptr;
     lv_obj_t* editor_warning_ = nullptr;
     lv_obj_t* editor_temperature_bar_ = nullptr;
     lv_obj_t* editor_temperature_minimum_ = nullptr;

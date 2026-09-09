@@ -1,14 +1,22 @@
 #include "ui_update_policy.h"
 
 void UiUpdatePolicy::activate(PageId page) {
-    active_page_ = page;
-    if (page == PageId::Settings) {
+    activate(page == PageId::Dash ? UiActivity::Dash :
+             (page == PageId::Track ? UiActivity::Track
+                                    : UiActivity::Settings));
+}
+
+void UiUpdatePolicy::activate(UiActivity activity) {
+    activity_ = activity;
+    interaction_active_ = false;
+    if (activity == UiActivity::Settings) {
         settings_status_initialized_ = false;
     }
 }
 
 bool UiUpdatePolicy::shouldUpdateData(PageId page) const {
-    return page != PageId::Settings && page == active_page_;
+    return (page == PageId::Dash && activity_ == UiActivity::Dash) ||
+           (page == PageId::Track && activity_ == UiActivity::Track);
 }
 
 void UiUpdatePolicy::markLayoutDirty() {
@@ -22,7 +30,7 @@ bool UiUpdatePolicy::takeLayoutDirty() {
 }
 
 bool UiUpdatePolicy::shouldUpdateSettingsStatus(uint32_t now_ms) {
-    if (active_page_ != PageId::Settings || interaction_active_) {
+    if (activity_ != UiActivity::Settings || interaction_active_) {
         return false;
     }
     if (!settings_status_initialized_ ||
@@ -42,5 +50,9 @@ void UiUpdatePolicy::setInteractionActive(bool active) {
 }
 
 bool UiUpdatePolicy::allowModalUpdates() const {
-    return !interaction_active_;
+    return activity_ != UiActivity::TileEditor && !interaction_active_;
+}
+
+bool UiUpdatePolicy::allowShiftLightUpdates() const {
+    return activity_ == UiActivity::Dash || activity_ == UiActivity::Track;
 }
