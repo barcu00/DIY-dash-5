@@ -34,7 +34,7 @@ void test_defaults_define_approved_dash_and_track_slots() {
 
 void test_tiles_default_and_normalize_to_yellow_flag_color() {
     AppConfig config = AppConfig::defaults();
-    TEST_ASSERT_EQUAL_UINT32(4U, AppConfig::kSchemaVersion);
+    TEST_ASSERT_EQUAL_UINT32(5U, AppConfig::kSchemaVersion);
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(FlagActiveColor::Yellow),
                             static_cast<uint8_t>(
                                 config.dash_tiles[0].flag_active_color));
@@ -52,7 +52,7 @@ void test_validation_preserves_dormant_numeric_settings_on_flag_tiles() {
     TileConfig& tile = config.dash_tiles[0];
     tile.parameter = ParameterId::CheckEngine;
     tile.warning = {true, WarningDirection::Above, 105.5f, 2.5f, 400U};
-    tile.temperature_bar = {true, 35.0f, 72.5f, 125.0f};
+    tile.temperature_bar = {true, 35.0f, 72.5f, 110.0f, 125.0f};
 
     TEST_ASSERT_TRUE(config.validate().valid);
     TEST_ASSERT_TRUE(tile.warning.enabled);
@@ -95,6 +95,8 @@ void test_defaults_enable_temperature_bars_only_for_coolant_and_oil() {
     TEST_ASSERT_FLOAT_WITHIN(
         0.001f, 75.0f, config.dash_tiles[3].temperature_bar.ready_native);
     TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, 115.0f, config.dash_tiles[3].temperature_bar.red_native);
+    TEST_ASSERT_FLOAT_WITHIN(
         0.001f, 130.0f, config.dash_tiles[3].temperature_bar.maximum_native);
     TEST_ASSERT_TRUE(config.dash_tiles[12].temperature_bar.enabled);
     TEST_ASSERT_FALSE(config.dash_tiles[10].temperature_bar.enabled);
@@ -115,6 +117,7 @@ void test_validation_normalizes_unsafe_persisted_values() {
     config.dash_tiles[0].warning.delay_ms = 60000U;
     config.dash_tiles[3].temperature_bar.minimum_native = 200.0f;
     config.dash_tiles[3].temperature_bar.ready_native = -10.0f;
+    config.dash_tiles[3].temperature_bar.red_native = -20.0f;
     config.dash_tiles[3].temperature_bar.maximum_native = 1000.0f;
     std::memset(config.can.profile_id.data(), 'x', config.can.profile_id.size());
 
@@ -142,6 +145,8 @@ void test_validation_normalizes_unsafe_persisted_values() {
         0.001f, 40.0f, config.dash_tiles[3].temperature_bar.minimum_native);
     TEST_ASSERT_FLOAT_WITHIN(
         0.001f, 75.0f, config.dash_tiles[3].temperature_bar.ready_native);
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, 115.0f, config.dash_tiles[3].temperature_bar.red_native);
     TEST_ASSERT_FLOAT_WITHIN(
         0.001f, 130.0f, config.dash_tiles[3].temperature_bar.maximum_native);
     TEST_ASSERT_EQUAL_CHAR('\0', config.can.profile_id.back());

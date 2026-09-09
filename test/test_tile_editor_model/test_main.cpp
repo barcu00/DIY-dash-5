@@ -85,7 +85,7 @@ void test_apply_preserves_temperature_bar_settings_for_selected_tile() {
     AppConfig config = AppConfig::defaults();
     TileEditorModel editor;
     TEST_ASSERT_TRUE(editor.open({PageId::Dash, 3U}, config));
-    const TemperatureBarConfig bar{true, 30.0f, 72.5f, 118.0f};
+    const TemperatureBarConfig bar{true, 30.0f, 72.5f, 105.0f, 118.0f};
 
     editor.setTemperatureBar(bar);
     TEST_ASSERT_TRUE(editor.applyTo(config));
@@ -95,6 +95,8 @@ void test_apply_preserves_temperature_bar_settings_for_selected_tile() {
         0.001f, 30.0f, config.dash_tiles[3].temperature_bar.minimum_native);
     TEST_ASSERT_FLOAT_WITHIN(
         0.001f, 72.5f, config.dash_tiles[3].temperature_bar.ready_native);
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, 105.0f, config.dash_tiles[3].temperature_bar.red_native);
     TEST_ASSERT_FLOAT_WITHIN(
         0.001f, 118.0f, config.dash_tiles[3].temperature_bar.maximum_native);
 }
@@ -112,6 +114,8 @@ void test_parameter_change_uses_safe_temperature_bar_defaults() {
         0.001f, 40.0f, config.dash_tiles[0].temperature_bar.minimum_native);
     TEST_ASSERT_FLOAT_WITHIN(
         0.001f, 75.0f, config.dash_tiles[0].temperature_bar.ready_native);
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, 115.0f, config.dash_tiles[0].temperature_bar.red_native);
     TEST_ASSERT_FLOAT_WITHIN(
         0.001f, 130.0f, config.dash_tiles[0].temperature_bar.maximum_native);
 }
@@ -150,7 +154,7 @@ void test_switching_to_flag_preserves_dormant_numeric_settings() {
     AppConfig config = AppConfig::defaults();
     TileConfig& tile = config.dash_tiles[3];
     tile.warning = {true, WarningDirection::Above, 105.5f, 2.5f, 400U};
-    tile.temperature_bar = {true, 35.0f, 72.5f, 125.0f};
+    tile.temperature_bar = {true, 35.0f, 72.5f, 110.0f, 125.0f};
     TileEditorModel editor;
     TEST_ASSERT_TRUE(editor.open({PageId::Dash, 3U}, config));
 

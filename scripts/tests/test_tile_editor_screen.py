@@ -37,6 +37,17 @@ class TileEditorScreenContractTests(unittest.TestCase):
         self.assertIn("editor_flag_color_", self.header)
         self.assertIn('"YELLOW\\nGREEN\\nRED"', self.open_editor)
 
+    def test_decimal_controls_show_three_integer_digits_and_one_decimal(self):
+        self.assertIn("editor_temperature_red_", self.header)
+        self.assertIn('"RED"', self.open_editor)
+        self.assertGreaterEqual(self.open_editor.count(", 4, 3)"), 6)
+        self.assertNotIn(", 4, 1)", self.open_editor)
+        self.assertIn("Order: MIN < READY < RED <= MAX", self.open_editor)
+        self.assertIn(
+            "Temperature: -999.0 to 999.0 | Warning: 0.0 to 999.0",
+            self.open_editor,
+        )
+
     def test_live_tiles_receive_active_profile_capabilities(self):
         app = (ROOT / "src/app/app.cpp").read_text(encoding="utf-8")
         tile_header = (ROOT / "src/ui/tile_view.h").read_text(encoding="utf-8")

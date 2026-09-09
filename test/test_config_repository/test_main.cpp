@@ -46,12 +46,19 @@ struct LegacyAppConfigV2 {
     std::array<LegacyTileConfigV2, AppConfig::kTrackTileCount> track_tiles{};
 };
 
+struct LegacyTemperatureBarConfigV3 {
+    bool enabled = false;
+    float minimum_native = 40.0f;
+    float ready_native = 75.0f;
+    float maximum_native = 130.0f;
+};
+
 struct LegacyTileConfigV3 {
     ParameterId parameter = ParameterId::Rpm;
     bool visible = true;
     uint8_t decimals = 0U;
     TileWarningConfig warning{};
-    TemperatureBarConfig temperature_bar{};
+    LegacyTemperatureBarConfigV3 temperature_bar{};
 };
 
 struct LegacyAppConfigV3 {
@@ -63,6 +70,26 @@ struct LegacyAppConfigV3 {
     UnitSettings units{};
     std::array<LegacyTileConfigV3, AppConfig::kDashTileCount> dash_tiles{};
     std::array<LegacyTileConfigV3, AppConfig::kTrackTileCount> track_tiles{};
+};
+
+struct LegacyTileConfigV4 {
+    ParameterId parameter = ParameterId::Rpm;
+    bool visible = true;
+    uint8_t decimals = 0U;
+    TileWarningConfig warning{};
+    LegacyTemperatureBarConfigV3 temperature_bar{};
+    FlagActiveColor flag_active_color = FlagActiveColor::Yellow;
+};
+
+struct LegacyAppConfigV4 {
+    uint32_t schema_version = 4U;
+    DataSource data_source = DataSource::Demo;
+    uint8_t brightness_percent = 100U;
+    CanSettings can{};
+    ShiftLightConfig shift{};
+    UnitSettings units{};
+    std::array<LegacyTileConfigV4, AppConfig::kDashTileCount> dash_tiles{};
+    std::array<LegacyTileConfigV4, AppConfig::kTrackTileCount> track_tiles{};
 };
 
 template <std::size_t Count>
@@ -100,7 +127,11 @@ std::array<LegacyTileConfigV3, Count> legacyV3Tiles(
         legacy[i].visible = current[i].visible;
         legacy[i].decimals = current[i].decimals;
         legacy[i].warning = current[i].warning;
-        legacy[i].temperature_bar = current[i].temperature_bar;
+        legacy[i].temperature_bar = {
+            current[i].temperature_bar.enabled,
+            current[i].temperature_bar.minimum_native,
+            current[i].temperature_bar.ready_native,
+            current[i].temperature_bar.maximum_native};
     }
     return legacy;
 }
@@ -115,6 +146,38 @@ LegacyAppConfigV3 legacyV3Defaults() {
     legacy.units = defaults.units;
     legacy.dash_tiles = legacyV3Tiles(defaults.dash_tiles);
     legacy.track_tiles = legacyV3Tiles(defaults.track_tiles);
+    return legacy;
+}
+
+template <std::size_t Count>
+std::array<LegacyTileConfigV4, Count> legacyV4Tiles(
+    const std::array<TileConfig, Count>& current) {
+    std::array<LegacyTileConfigV4, Count> legacy{};
+    for (std::size_t i = 0U; i < Count; ++i) {
+        legacy[i].parameter = current[i].parameter;
+        legacy[i].visible = current[i].visible;
+        legacy[i].decimals = current[i].decimals;
+        legacy[i].warning = current[i].warning;
+        legacy[i].temperature_bar = {
+            current[i].temperature_bar.enabled,
+            current[i].temperature_bar.minimum_native,
+            current[i].temperature_bar.ready_native,
+            current[i].temperature_bar.maximum_native};
+        legacy[i].flag_active_color = current[i].flag_active_color;
+    }
+    return legacy;
+}
+
+LegacyAppConfigV4 legacyV4Defaults() {
+    const AppConfig defaults = AppConfig::defaults();
+    LegacyAppConfigV4 legacy;
+    legacy.data_source = defaults.data_source;
+    legacy.brightness_percent = defaults.brightness_percent;
+    legacy.can = defaults.can;
+    legacy.shift = defaults.shift;
+    legacy.units = defaults.units;
+    legacy.dash_tiles = legacyV4Tiles(defaults.dash_tiles);
+    legacy.track_tiles = legacyV4Tiles(defaults.track_tiles);
     return legacy;
 }
 
@@ -249,7 +312,7 @@ void test_schema_v3_migrates_all_fields_and_defaults_flag_color() {
 
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(LoadResult::Migrated),
                             static_cast<uint8_t>(repository.load(loaded)));
-    TEST_ASSERT_EQUAL_UINT32(4U, loaded.schema_version);
+    TEST_ASSERT_EQUAL_UINT32(AppConfig::kSchemaVersion, loaded.schema_version);
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DataSource::Can),
                             static_cast<uint8_t>(loaded.data_source));
     TEST_ASSERT_EQUAL_UINT8(40U, loaded.brightness_percent);
@@ -264,11 +327,36 @@ void test_schema_v3_migrates_all_fields_and_defaults_flag_color() {
         0.001f, 105.5f, loaded.dash_tiles[3].warning.threshold_native);
     TEST_ASSERT_FLOAT_WITHIN(
         0.001f, 72.5f, loaded.dash_tiles[3].temperature_bar.ready_native);
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, 125.0f, loaded.dash_tiles[3].temperature_bar.red_native);
     TEST_ASSERT_EQUAL_UINT8(2U, loaded.track_tiles[2].decimals);
     for (const TileConfig& tile : loaded.dash_tiles) {
         TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(FlagActiveColor::Yellow),
                                 static_cast<uint8_t>(tile.flag_active_color));
     }
+    TEST_ASSERT_EQUAL_UINT32(sizeof(AppConfig), backend.stored_size);
+}
+
+void test_schema_v4_migrates_red_threshold_from_previous_maximum() {
+    MemoryBackend backend;
+    LegacyAppConfigV4 stored = legacyV4Defaults();
+    stored.dash_tiles[3].temperature_bar = {
+        true, 35.0f, 72.5f, 123.5f};
+    stored.dash_tiles[3].flag_active_color = FlagActiveColor::Green;
+    TEST_ASSERT_TRUE(backend.write(&stored, sizeof(stored)));
+    ConfigRepository repository(backend);
+    AppConfig loaded{};
+
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(LoadResult::Migrated),
+                            static_cast<uint8_t>(repository.load(loaded)));
+    TEST_ASSERT_EQUAL_UINT32(AppConfig::kSchemaVersion, loaded.schema_version);
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, 123.5f, loaded.dash_tiles[3].temperature_bar.red_native);
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, 123.5f, loaded.dash_tiles[3].temperature_bar.maximum_native);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(FlagActiveColor::Green),
+                            static_cast<uint8_t>(
+                                loaded.dash_tiles[3].flag_active_color));
     TEST_ASSERT_EQUAL_UINT32(sizeof(AppConfig), backend.stored_size);
 }
 
@@ -486,6 +574,7 @@ int main(int, char**) {
     RUN_TEST(test_valid_configuration_round_trips_through_backend);
     RUN_TEST(test_schema_v2_shift_values_above_new_limit_are_normalized_in_place);
     RUN_TEST(test_schema_v3_migrates_all_fields_and_defaults_flag_color);
+    RUN_TEST(test_schema_v4_migrates_red_threshold_from_previous_maximum);
     RUN_TEST(test_schema_v2_normalization_write_failure_is_reported);
     RUN_TEST(test_schema_v2_custom_layout_gets_bar_defaults_for_its_parameters);
     RUN_TEST(test_schema_v1_is_migrated_without_losing_user_settings);
