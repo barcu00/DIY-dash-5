@@ -44,9 +44,10 @@ on TRACK. Wide tile labels and values are centered.
 ## Warnings
 
 Each tile independently supports above/below direction, native threshold,
-hysteresis, and delay. Temperature limits and warning values are displayed with
-three integer digits and one decimal place (`000.0`). Threshold and hysteresis
-are configured from 0.0 to 999.0 with a 0.1 step. A breached warning produces a large red WARNING modal
+hysteresis, and delay. Temperature limits are displayed with an explicit sign,
+three integer digits, and one decimal place (`+000.0` / `-000.0`); warning
+values use `000.0`. Threshold and hysteresis are configured from 0.0 to 999.0
+with a 0.1 step. A breached warning produces a large red WARNING modal
 with the current value and configured limit. Acknowledging removes the modal,
 but the related visible tile stays red until the value returns through the safe
 hysteresis boundary. A hidden tile can still raise its warning. Invalid data

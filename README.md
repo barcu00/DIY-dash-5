@@ -202,8 +202,9 @@ bars remain optional.
 Flag tiles show a neutral grey `OFF` pill or a colored rail, tinted background,
 and `ON` pill. Yellow, green, or red active color is saved independently for
 each tile; stale flags show `UNAVAILABLE` and never retain an active tint.
-Temperature and warning editors use an unambiguous `000.0` display. Warning
-thresholds and hysteresis use a 0.0-999.0 range in 0.1 steps. SETTINGS changes are applied in RAM while controls are
+Temperature editors use an explicit signed `+000.0` / `-000.0` display;
+non-negative warning values use `000.0`. Warning thresholds and hysteresis use
+a 0.0-999.0 range in 0.1 steps. SETTINGS changes are applied in RAM while controls are
 used and written once when the user leaves the screen. Flash writes run outside
 LVGL callbacks to avoid interrupting active RGB-panel rendering.
 See `docs/ui/dashboard-config-guide.md` for controls and safety limitations.
