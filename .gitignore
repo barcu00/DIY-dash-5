@@ -1,6 +1,7 @@
 # PlatformIO
 .pio/
 .cache/
+.github-artifacts/
 __pycache__/
 
 # Editors
