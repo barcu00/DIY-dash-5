@@ -2,7 +2,7 @@
 
 Date: 2026-09-09
 
-Status: proposed for user review
+Status: approved, including English-only UI
 
 ## Goal
 
@@ -21,11 +21,13 @@ out of scope. The implementation must not require an ECU patch.
 
 - `DEMO` offers every registered numeric and flag parameter.
 - `CAN` offers only parameters defined by the currently selected profile.
+- Every user-visible label, status, hint, validation message, and error is in
+  English. No Polish text is introduced anywhere in the interface.
 - The list is derived from the compiled profile frames. It is not maintained as
   a second hand-written capability list.
 - Changing the source or profile does not overwrite saved tile assignments.
 - A tile whose saved parameter is unsupported by the active CAN profile stays
-  in its original position and displays `---` with `NIEDOSTEPNY`.
+  in its original position and displays `---` with `UNAVAILABLE`.
 - Opening such a tile still shows its saved parameter as the current selection,
   followed by the supported alternatives. The user can save a replacement or
   cancel without losing the original setting.
@@ -61,7 +63,7 @@ tile uses the approved visual variant C:
 - visibility and parameter selection work exactly like numeric tiles;
 - decimals, numeric warning threshold/hysteresis/delay, and temperature-bar
   controls are hidden because they do not apply to a boolean state;
-- stale or unavailable data displays `---` and `NIEDOSTEPNY`, without an ON
+- stale or unavailable data displays `---` and `UNAVAILABLE`, without an ON
   tint;
 - the selected color is stored with that tile and survives restart.
 
@@ -327,6 +329,8 @@ UI preview screenshots showing the full-screen editor plus OFF/ON flag tiles.
 - All documented flags in the approved scope render as configurable variant-C
   tiles.
 - The tile editor occupies the full display and background UI refresh is paused.
+- The complete user interface remains English-only, including unavailable and
+  validation states.
 - Schema-3 user settings migrate without losing layouts, warnings, temperature
   bars, units, brightness, source, CAN settings, or shift-light settings.
 - GitHub Actions is green and provides a flashable test binary plus UI previews.
