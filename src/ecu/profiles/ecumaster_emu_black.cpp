@@ -3,6 +3,20 @@
 namespace {
 constexpr uint32_t kFastTimeout = 250U;
 
+constexpr CanSignalDefinition flag8(ParameterId parameter,
+                                    uint8_t byte_offset, uint8_t bit) {
+    return {parameter, byte_offset, RawType::Unsigned8, ByteOrder::Little,
+            1.0f, 0.0f, 0.0f, 1.0f, kFastTimeout,
+            CanSignalKind::MaskedFlag, 1U << bit, bit, 1ULL << 1U};
+}
+
+constexpr CanSignalDefinition flag16(ParameterId parameter,
+                                     uint8_t byte_offset, uint8_t bit) {
+    return {parameter, byte_offset, RawType::Unsigned16, ByteOrder::Little,
+            1.0f, 0.0f, 0.0f, 1.0f, kFastTimeout,
+            CanSignalKind::MaskedFlag, 1U << bit, bit, 1ULL << 1U};
+}
+
 const CanSignalDefinition kFrame600[] = {
     {ParameterId::Rpm, 0U, RawType::Unsigned16, ByteOrder::Little, 1.0f, 0.0f,
      0.0f, 16000.0f, kFastTimeout},
@@ -44,10 +58,35 @@ const CanSignalDefinition kFrame604[] = {
      0.027f, 0.0f, 0.0f, 20.0f, kFastTimeout},
     {ParameterId::EthanolContent, 7U, RawType::Unsigned8, ByteOrder::Little,
      1.0f, 0.0f, 0.0f, 100.0f, kFastTimeout},
+    flag16(ParameterId::CoolantSensorError, 4U, 0U),
+    flag16(ParameterId::IntakeAirSensorError, 4U, 1U),
+    flag16(ParameterId::MapSensorError, 4U, 2U),
+    flag16(ParameterId::WidebandSensorError, 4U, 3U),
+    flag16(ParameterId::Egt1SensorError, 4U, 4U),
+    flag16(ParameterId::Egt2SensorError, 4U, 5U),
+    flag16(ParameterId::EgtHighAlarm, 4U, 6U),
+    flag16(ParameterId::KnockDetected, 4U, 7U),
+    flag16(ParameterId::FlexFuelSensorError, 4U, 8U),
+    flag16(ParameterId::DbwError, 4U, 9U),
+    flag16(ParameterId::FuelPressureError, 4U, 10U),
+    flag8(ParameterId::GearCutActive, 6U, 0U),
+    flag8(ParameterId::AntiLagActive, 6U, 1U),
+    flag8(ParameterId::LaunchControlActive, 6U, 2U),
+    flag8(ParameterId::IdleActive, 6U, 3U),
+    flag8(ParameterId::TractionControlActive, 6U, 5U),
+    flag8(ParameterId::PitLimiterActive, 6U, 6U),
 };
 const CanSignalDefinition kFrame605[] = {
     {ParameterId::AcceleratorPosition, 0U, RawType::Unsigned8,
      ByteOrder::Little, 0.5f, 0.0f, 0.0f, 100.0f, kFastTimeout},
+};
+const CanSignalDefinition kFrame606[] = {
+    flag8(ParameterId::FuelPumpActive, 7U, 0U),
+    flag8(ParameterId::CoolantFanActive, 7U, 1U),
+    flag8(ParameterId::AcClutchActive, 7U, 2U),
+    flag8(ParameterId::AcFanActive, 7U, 3U),
+    flag8(ParameterId::NitrousActive, 7U, 4U),
+    flag8(ParameterId::StarterRequestActive, 7U, 5U),
 };
 const CanSignalDefinition kFrame607[] = {
     {ParameterId::BoostTarget, 0U, RawType::Unsigned16, ByteOrder::Little,
@@ -64,6 +103,8 @@ const CanFrameDefinition kFrames[] = {
      sizeof(kFrame604) / sizeof(kFrame604[0])},
     {0x605U, false, 8U, 0U, 0U, 0U, kFrame605,
      sizeof(kFrame605) / sizeof(kFrame605[0])},
+    {0x606U, false, 8U, 0U, 0U, 0U, kFrame606,
+     sizeof(kFrame606) / sizeof(kFrame606[0])},
     {0x607U, false, 8U, 0U, 0U, 0U, kFrame607,
      sizeof(kFrame607) / sizeof(kFrame607[0])},
 };

@@ -2,9 +2,27 @@
 
 namespace {
 constexpr uint32_t kTimeout = 300U;
+
+constexpr CanSignalDefinition flag(ParameterId parameter, uint8_t byte_offset,
+                                   uint8_t bit) {
+    return {parameter, byte_offset, RawType::Unsigned8, ByteOrder::Little,
+            1.0f, 0.0f, 0.0f, 1.0f, kTimeout,
+            CanSignalKind::MaskedFlag, 1U << bit, bit, 1ULL << 1U};
+}
 const CanSignalDefinition kStatus[] = {
     {ParameterId::Gear, 5U, RawType::Unsigned8, ByteOrder::Little, 1.0f, 0.0f,
      0.0f, 20.0f, kTimeout},
+    flag(ParameterId::RevLimiterActive, 4U, 0U),
+    flag(ParameterId::MainRelayActive, 4U, 1U),
+    flag(ParameterId::FuelPumpActive, 4U, 2U),
+    flag(ParameterId::CheckEngine, 4U, 3U),
+    flag(ParameterId::O2HeaterActive, 4U, 4U),
+    flag(ParameterId::LambdaProtectionActive, 4U, 5U),
+    flag(ParameterId::CoolantFanActive, 4U, 6U),
+    flag(ParameterId::CoolantFan2Active, 4U, 7U),
+};
+const CanSignalDefinition kStatus11[] = {
+    flag(ParameterId::BrakePressed, 0U, 0U),
 };
 const CanSignalDefinition kSpeeds[] = {
     {ParameterId::Rpm, 0U, RawType::Unsigned16, ByteOrder::Little, 1.0f, 0.0f,
@@ -67,7 +85,8 @@ const CanSignalDefinition kEgt[] = {
     {ParameterId::Egt8, 7U, RawType::Unsigned8, ByteOrder::Little, 5.0f, 0.0f, 0.0f, 1275.0f, kTimeout},
 };
 const CanFrameDefinition kFrames[] = {
-    {0x200U, false, 8U, 0U, 0U, 0U, kStatus, 1U},
+    {0x200U, false, 8U, 0U, 0U, 0U, kStatus,
+     sizeof(kStatus) / sizeof(kStatus[0])},
     {0x201U, false, 8U, 0U, 0U, 0U, kSpeeds, 5U},
     {0x202U, false, 8U, 0U, 0U, 0U, kThrottle, 2U},
     {0x203U, false, 8U, 0U, 0U, 0U, kSensors1, 3U},
@@ -75,6 +94,8 @@ const CanFrameDefinition kFrames[] = {
     {0x205U, false, 8U, 0U, 0U, 0U, kAirFuel, 2U},
     {0x207U, false, 8U, 0U, 0U, 0U, kFueling, 3U},
     {0x209U, false, 8U, 0U, 0U, 0U, kEgt, 8U},
+    {0x20BU, false, 8U, 0U, 0U, 0U, kStatus11,
+     sizeof(kStatus11) / sizeof(kStatus11[0])},
 };
 }  // namespace
 
