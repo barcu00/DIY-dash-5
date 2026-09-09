@@ -26,6 +26,5 @@ public:
 
 private:
     bool open_ = false;
-    ParameterId original_parameter_ = ParameterId::Rpm;
     TileEditorDraft draft_{};
 };

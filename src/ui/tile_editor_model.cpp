@@ -65,7 +65,6 @@ bool TileEditorModel::open(TileAddress address, const AppConfig& config) {
         return false;
     }
     draft_ = {address, *tile};
-    original_parameter_ = tile->parameter;
     open_ = true;
     return true;
 }
@@ -90,6 +89,7 @@ void TileEditorModel::setParameter(ParameterId parameter) {
         draft_.tile.parameter = parameter;
         if (previous_kind == ParameterKind::Numeric &&
             next_kind == ParameterKind::Numeric) {
+            draft_.tile.warning.enabled = false;
             draft_.tile.temperature_bar =
                 defaultTemperatureBarConfig(parameter);
         }
@@ -133,13 +133,7 @@ bool TileEditorModel::writeCandidate(AppConfig& config) const {
         return false;
     }
 
-    TileConfig candidate = draft_.tile;
-    if (candidate.parameter != original_parameter_ &&
-        parameterDescriptor(original_parameter_).kind == ParameterKind::Numeric &&
-        parameterDescriptor(candidate.parameter).kind == ParameterKind::Numeric) {
-        candidate.warning.enabled = false;
-    }
-    *destination = candidate;
+    *destination = draft_.tile;
     return true;
 }
 
