@@ -19,6 +19,7 @@ public:
     void setDecimals(uint8_t decimals);
     void setWarning(const TileWarningConfig& warning);
     void setTemperatureBar(const TemperatureBarConfig& temperature_bar);
+    void setFlagActiveColor(FlagActiveColor color);
 
     bool applyTo(AppConfig& config);
 

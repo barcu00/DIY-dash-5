@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cmath>
 
+#include "telemetry/parameter_registry.h"
+
 std::optional<std::size_t> TileWarningEngine::indexOf(TileAddress address) {
     if (address.page == PageId::Dash &&
         address.slot < AppConfig::kDashTileCount) {
@@ -82,7 +84,8 @@ void TileWarningEngine::evaluate(const AppConfig& config,
         RuntimeWarning& runtime = runtime_[index];
 
         if (!tile.warning.enabled ||
-            static_cast<std::size_t>(tile.parameter) >= parameterCount()) {
+            static_cast<std::size_t>(tile.parameter) >= parameterCount() ||
+            parameterDescriptor(tile.parameter).kind == ParameterKind::Flag) {
             runtime = RuntimeWarning{};
             continue;
         }

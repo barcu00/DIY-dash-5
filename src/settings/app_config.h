@@ -67,12 +67,19 @@ struct TemperatureBarConfig {
     float maximum_native = 130.0f;
 };
 
+enum class FlagActiveColor : uint8_t {
+    Yellow,
+    Green,
+    Red,
+};
+
 struct TileConfig {
     ParameterId parameter = ParameterId::Rpm;
     bool visible = true;
     uint8_t decimals = 0U;
     TileWarningConfig warning{};
     TemperatureBarConfig temperature_bar{};
+    FlagActiveColor flag_active_color = FlagActiveColor::Yellow;
 };
 
 TemperatureBarConfig defaultTemperatureBarConfig(ParameterId parameter);
@@ -83,7 +90,7 @@ struct ValidationResult {
 };
 
 struct AppConfig {
-    static constexpr uint32_t kSchemaVersion = 3U;
+    static constexpr uint32_t kSchemaVersion = 4U;
     static constexpr std::size_t kDashTileCount = 14U;
     static constexpr std::size_t kTrackTileCount = 12U;
 

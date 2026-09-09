@@ -3,6 +3,8 @@
 #include <cmath>
 #include <cstddef>
 
+#include "telemetry/parameter_registry.h"
+
 namespace {
 const TileConfig* tileAt(const AppConfig& config, TileAddress address) {
     if (address.page == PageId::Dash &&
@@ -31,6 +33,8 @@ TileConfig* tileAt(AppConfig& config, TileAddress address) {
 bool validDraft(const TileConfig& tile) {
     return static_cast<std::size_t>(tile.parameter) < parameterCount() &&
            tile.decimals <= 3U &&
+           static_cast<uint8_t>(tile.flag_active_color) <=
+               static_cast<uint8_t>(FlagActiveColor::Red) &&
            static_cast<uint8_t>(tile.warning.direction) <=
                static_cast<uint8_t>(WarningDirection::Below) &&
            std::isfinite(tile.warning.threshold_native) &&
@@ -77,8 +81,15 @@ const TileEditorDraft& TileEditorModel::draft() const {
 
 void TileEditorModel::setParameter(ParameterId parameter) {
     if (open_ && draft_.tile.parameter != parameter) {
+        const ParameterKind previous_kind =
+            parameterDescriptor(draft_.tile.parameter).kind;
+        const ParameterKind next_kind = parameterDescriptor(parameter).kind;
         draft_.tile.parameter = parameter;
-        draft_.tile.temperature_bar = defaultTemperatureBarConfig(parameter);
+        if (previous_kind == ParameterKind::Numeric &&
+            next_kind == ParameterKind::Numeric) {
+            draft_.tile.temperature_bar =
+                defaultTemperatureBarConfig(parameter);
+        }
     }
 }
 
@@ -107,6 +118,12 @@ void TileEditorModel::setTemperatureBar(
     }
 }
 
+void TileEditorModel::setFlagActiveColor(FlagActiveColor color) {
+    if (open_) {
+        draft_.tile.flag_active_color = color;
+    }
+}
+
 bool TileEditorModel::applyTo(AppConfig& config) {
     TileConfig* destination = tileAt(config, draft_.address);
     if (!open_ || destination == nullptr || !validDraft(draft_.tile)) {
@@ -114,7 +131,9 @@ bool TileEditorModel::applyTo(AppConfig& config) {
     }
 
     TileConfig candidate = draft_.tile;
-    if (candidate.parameter != original_parameter_) {
+    if (candidate.parameter != original_parameter_ &&
+        parameterDescriptor(original_parameter_).kind == ParameterKind::Numeric &&
+        parameterDescriptor(candidate.parameter).kind == ParameterKind::Numeric) {
         candidate.warning.enabled = false;
     }
     *destination = candidate;

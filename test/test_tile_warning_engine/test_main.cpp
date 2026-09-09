@@ -165,6 +165,21 @@ void test_equal_excursions_use_page_then_slot_order() {
     TEST_ASSERT_EQUAL_UINT8(2U, modal->remaining_count);
 }
 
+void test_flag_tiles_never_open_numeric_warning_modal() {
+    const AppConfig config = oneWarning(
+        PageId::Dash, 0U, ParameterId::CheckEngine,
+        WarningDirection::Above, 0.5f, 0.0f, 0U);
+    VehicleState state;
+    state.reset(DataSource::Can);
+    state.set(ParameterId::CheckEngine, 1.0f, 0U);
+    TileWarningEngine engine;
+
+    engine.evaluate(config, state, 0U);
+
+    TEST_ASSERT_FALSE(engine.nextModal().has_value());
+    TEST_ASSERT_FALSE(engine.isHighlighted({PageId::Dash, 0U}));
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_above_warning_activates_only_after_configured_delay);
@@ -174,5 +189,6 @@ int main(int, char**) {
     RUN_TEST(test_hidden_tile_warning_still_opens_global_modal);
     RUN_TEST(test_largest_normalized_excursion_is_shown_first);
     RUN_TEST(test_equal_excursions_use_page_then_slot_order);
+    RUN_TEST(test_flag_tiles_never_open_numeric_warning_modal);
     return UNITY_END();
 }

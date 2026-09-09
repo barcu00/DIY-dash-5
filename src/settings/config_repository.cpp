@@ -41,6 +41,25 @@ struct LegacyAppConfigV2 {
     std::array<LegacyTileConfigV2, AppConfig::kTrackTileCount> track_tiles{};
 };
 
+struct LegacyTileConfigV3 {
+    ParameterId parameter = ParameterId::Rpm;
+    bool visible = true;
+    uint8_t decimals = 0U;
+    TileWarningConfig warning{};
+    TemperatureBarConfig temperature_bar{};
+};
+
+struct LegacyAppConfigV3 {
+    uint32_t schema_version = 3U;
+    DataSource data_source = DataSource::Demo;
+    uint8_t brightness_percent = 100U;
+    CanSettings can{};
+    ShiftLightConfig shift{};
+    UnitSettings units{};
+    std::array<LegacyTileConfigV3, AppConfig::kDashTileCount> dash_tiles{};
+    std::array<LegacyTileConfigV3, AppConfig::kTrackTileCount> track_tiles{};
+};
+
 template <std::size_t Count>
 void migrateTiles(const std::array<LegacyTileConfigV2, Count>& legacy,
                   std::array<TileConfig, Count>& migrated) {
@@ -51,6 +70,19 @@ void migrateTiles(const std::array<LegacyTileConfigV2, Count>& legacy,
         migrated[i].warning = legacy[i].warning;
         migrated[i].temperature_bar =
             defaultTemperatureBarConfig(legacy[i].parameter);
+    }
+}
+
+template <std::size_t Count>
+void migrateTiles(const std::array<LegacyTileConfigV3, Count>& legacy,
+                  std::array<TileConfig, Count>& migrated) {
+    for (std::size_t i = 0U; i < Count; ++i) {
+        migrated[i].parameter = legacy[i].parameter;
+        migrated[i].visible = legacy[i].visible;
+        migrated[i].decimals = legacy[i].decimals;
+        migrated[i].warning = legacy[i].warning;
+        migrated[i].temperature_bar = legacy[i].temperature_bar;
+        migrated[i].flag_active_color = FlagActiveColor::Yellow;
     }
 }
 
@@ -110,6 +142,31 @@ LoadResult migrateV2(ConfigBackend& backend, AppConfig& config) {
                : LoadResult::MigrationWriteFailed;
 }
 
+LoadResult migrateV3(ConfigBackend& backend, AppConfig& config) {
+    LegacyAppConfigV3 legacy{};
+    if (!backend.read(&legacy, sizeof(legacy)) || legacy.schema_version != 3U) {
+        return LoadResult::DefaultsUsed;
+    }
+
+    AppConfig migrated = AppConfig::defaults();
+    migrated.data_source = legacy.data_source;
+    migrated.brightness_percent = legacy.brightness_percent;
+    migrated.can = legacy.can;
+    migrated.shift = legacy.shift;
+    migrated.units = legacy.units;
+    migrateTiles(legacy.dash_tiles, migrated.dash_tiles);
+    migrateTiles(legacy.track_tiles, migrated.track_tiles);
+    normalizeLegacyShiftRange(migrated.shift);
+    if (!migrated.validate().valid) {
+        return LoadResult::DefaultsUsed;
+    }
+
+    config = migrated;
+    return backend.write(&config, sizeof(config))
+               ? LoadResult::Migrated
+               : LoadResult::MigrationWriteFailed;
+}
+
 bool normalizeLegacyShiftRange(ShiftLightConfig& shift) {
     if (shift.start_rpm <= kCurrentMaximumShiftRpm &&
         shift.red_rpm <= kCurrentMaximumShiftRpm &&
@@ -147,6 +204,12 @@ LoadResult ConfigRepository::load(AppConfig& config) {
     }
     if (stored_size == sizeof(LegacyAppConfigV2)) {
         const LoadResult migration = migrateV2(backend_, config);
+        if (migration != LoadResult::DefaultsUsed) {
+            return migration;
+        }
+    }
+    if (stored_size == sizeof(LegacyAppConfigV3)) {
+        const LoadResult migration = migrateV3(backend_, config);
         if (migration != LoadResult::DefaultsUsed) {
             return migration;
         }

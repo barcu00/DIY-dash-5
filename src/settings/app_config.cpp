@@ -70,6 +70,10 @@ void validateTiles(std::array<TileConfig, Count>& tiles) {
             config.parameter = ParameterId::Rpm;
         }
         config.decimals = std::min<uint8_t>(config.decimals, 3U);
+        if (static_cast<uint8_t>(config.flag_active_color) >
+            static_cast<uint8_t>(FlagActiveColor::Red)) {
+            config.flag_active_color = FlagActiveColor::Yellow;
+        }
         if (static_cast<uint8_t>(config.warning.direction) >
             static_cast<uint8_t>(WarningDirection::Below)) {
             config.warning.direction = WarningDirection::Above;
@@ -101,8 +105,10 @@ void validateTiles(std::array<TileConfig, Count>& tiles) {
             bar = defaultTemperatureBarConfig(config.parameter);
             bar.enabled = false;
         }
-        if (parameterDescriptor(config.parameter).native_unit !=
-            NativeUnit::Celsius) {
+        const ParameterDescriptor& descriptor =
+            parameterDescriptor(config.parameter);
+        if (descriptor.kind == ParameterKind::Numeric &&
+            descriptor.native_unit != NativeUnit::Celsius) {
             bar.enabled = false;
         }
     }

@@ -47,6 +47,20 @@ void test_tiles_default_and_normalize_to_yellow_flag_color() {
                                 config.dash_tiles[0].flag_active_color));
 }
 
+void test_validation_preserves_dormant_numeric_settings_on_flag_tiles() {
+    AppConfig config = AppConfig::defaults();
+    TileConfig& tile = config.dash_tiles[0];
+    tile.parameter = ParameterId::CheckEngine;
+    tile.warning = {true, WarningDirection::Above, 105.5f, 2.5f, 400U};
+    tile.temperature_bar = {true, 35.0f, 72.5f, 125.0f};
+
+    TEST_ASSERT_TRUE(config.validate().valid);
+    TEST_ASSERT_TRUE(tile.warning.enabled);
+    TEST_ASSERT_TRUE(tile.temperature_bar.enabled);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 72.5f,
+                             tile.temperature_bar.ready_native);
+}
+
 void test_defaults_use_demo_metric_and_shared_shift_configuration() {
     const AppConfig config = AppConfig::defaults();
 
@@ -203,6 +217,7 @@ int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_defaults_define_approved_dash_and_track_slots);
     RUN_TEST(test_tiles_default_and_normalize_to_yellow_flag_color);
+    RUN_TEST(test_validation_preserves_dormant_numeric_settings_on_flag_tiles);
     RUN_TEST(test_defaults_use_demo_metric_and_shared_shift_configuration);
     RUN_TEST(test_defaults_enable_temperature_bars_only_for_coolant_and_oil);
     RUN_TEST(test_validation_normalizes_unsafe_persisted_values);
