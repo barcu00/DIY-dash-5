@@ -1,3 +1,5 @@
+#include <initializer_list>
+
 #include <unity.h>
 
 #include "ecu/can_profile_registry.h"
@@ -421,6 +423,146 @@ void test_bmw_ms43_stock_flag_bits_clear_to_off() {
     assertValue(state, ParameterId::LowOilPressure, 0.0f);
 }
 
+void test_ecumaster_decodes_all_approved_status_flags() {
+    VehicleState status = decode(
+        "ecumaster_emu_black",
+        CanFrame{0x604U, 8U,
+                 {3U, 0U, 0xF4U, 0x01U, 0xFFU, 0x07U, 0x6FU, 85U},
+                 false, false});
+    for (const ParameterId flag : {
+             ParameterId::CoolantSensorError,
+             ParameterId::IntakeAirSensorError,
+             ParameterId::MapSensorError,
+             ParameterId::WidebandSensorError,
+             ParameterId::Egt1SensorError,
+             ParameterId::Egt2SensorError,
+             ParameterId::EgtHighAlarm,
+             ParameterId::KnockDetected,
+             ParameterId::FlexFuelSensorError,
+             ParameterId::DbwError,
+             ParameterId::FuelPressureError,
+             ParameterId::GearCutActive,
+             ParameterId::AntiLagActive,
+             ParameterId::LaunchControlActive,
+             ParameterId::IdleActive,
+             ParameterId::TractionControlActive,
+             ParameterId::PitLimiterActive,
+         }) {
+        assertValue(status, flag, 1.0f);
+    }
+
+    VehicleState outputs = decode(
+        "ecumaster_emu_black",
+        CanFrame{0x606U, 8U, {0U, 0U, 0U, 0U, 0U, 0U, 0U, 0x3FU},
+                 false, false});
+    for (const ParameterId flag : {
+             ParameterId::FuelPumpActive,
+             ParameterId::CoolantFanActive,
+             ParameterId::AcClutchActive,
+             ParameterId::AcFanActive,
+             ParameterId::NitrousActive,
+             ParameterId::StarterRequestActive,
+         }) {
+        assertValue(outputs, flag, 1.0f);
+    }
+}
+
+void test_rusefi_decodes_all_approved_status_flags() {
+    VehicleState status = decode(
+        "rusefi_verbose",
+        CanFrame{0x200U, 8U, {0U, 0U, 0U, 0U, 0xFFU, 3U, 0U, 0U},
+                 false, false});
+    for (const ParameterId flag : {
+             ParameterId::RevLimiterActive,
+             ParameterId::MainRelayActive,
+             ParameterId::FuelPumpActive,
+             ParameterId::CheckEngine,
+             ParameterId::O2HeaterActive,
+             ParameterId::LambdaProtectionActive,
+             ParameterId::CoolantFanActive,
+             ParameterId::CoolantFan2Active,
+         }) {
+        assertValue(status, flag, 1.0f);
+    }
+
+    VehicleState brake = decode(
+        "rusefi_verbose",
+        CanFrame{0x20BU, 8U, {0x01U, 0U, 0U, 0U, 0U, 0U, 0U, 0U},
+                 false, false});
+    assertValue(brake, ParameterId::BrakePressed, 1.0f);
+}
+
+void test_maxxecu_decodes_all_approved_status_flags() {
+    VehicleState status = decode(
+        "maxxecu_default_1_3",
+        CanFrame{0x526U, 8U, {0xFFU, 0x7FU, 0U, 0U, 0U, 0U, 0U, 0U},
+                 false, false});
+    for (const ParameterId flag : {
+             ParameterId::ShiftCutActive,
+             ParameterId::RevLimiterActive,
+             ParameterId::AntiLagActive,
+             ParameterId::LaunchControlActive,
+             ParameterId::TractionPowerLimiterActive,
+             ParameterId::ThrottleBlipActive,
+             ParameterId::AcIdleUpActive,
+             ParameterId::KnockDetected,
+             ParameterId::BrakePressed,
+             ParameterId::ClutchPressed,
+             ParameterId::SpeedLimiterActive,
+             ParameterId::GpLimiterActive,
+             ParameterId::UserCutActive,
+             ParameterId::EcuLoggingActive,
+             ParameterId::NitrousActive,
+         }) {
+        assertValue(status, flag, 1.0f);
+    }
+}
+
+void test_link_decodes_limit_bits_and_exact_active_feature_states() {
+    VehicleState limits = decode(
+        "link_generic_dash_experimental",
+        CanFrame{0x3E8U, 8U, {12U, 0U, 0U, 0U, 0U, 0U, 0xFFU, 0xFFU},
+                 false, false});
+    for (const ParameterId flag : {
+             ParameterId::RevLimiterActive,
+             ParameterId::MapLimiterActive,
+             ParameterId::SpeedLimiterActive,
+             ParameterId::MaxIgnitionLimiterActive,
+             ParameterId::AntiLagIgnitionCutActive,
+             ParameterId::HighVoltageLimitActive,
+             ParameterId::OverrunActive,
+             ParameterId::TractionPowerLimiterActive,
+             ParameterId::LowVoltageLimitActive,
+             ParameterId::LaunchRpmLimitActive,
+             ParameterId::WakeupActive,
+             ParameterId::GpRpmLimit1Active,
+             ParameterId::ClosedLoopStepperLimitActive,
+             ParameterId::GpRpmLimit2Active,
+             ParameterId::EThrottleLimitActive,
+             ParameterId::CyclicIdleActive,
+         }) {
+        assertValue(limits, flag, 1.0f);
+    }
+
+    VehicleState active = decode(
+        "link_generic_dash_experimental",
+        CanFrame{0x3E8U, 8U, {13U, 0U, 0U, 0U, 0U, 0U, 0x2DU, 0x20U},
+                 false, false});
+    assertValue(active, ParameterId::AntiLagActive, 1.0f);
+    assertValue(active, ParameterId::LaunchControlActive, 1.0f);
+    assertValue(active, ParameterId::TractionControlActive, 1.0f);
+    assertValue(active, ParameterId::CruiseControlActive, 1.0f);
+
+    VehicleState inactive = decode(
+        "link_generic_dash_experimental",
+        CanFrame{0x3E8U, 8U, {13U, 0U, 0U, 0U, 0U, 0U, 0x52U, 0x10U},
+                 false, false});
+    assertValue(inactive, ParameterId::AntiLagActive, 0.0f);
+    assertValue(inactive, ParameterId::LaunchControlActive, 0.0f);
+    assertValue(inactive, ParameterId::TractionControlActive, 0.0f);
+    assertValue(inactive, ParameterId::CruiseControlActive, 0.0f);
+}
+
 void test_wrong_dlc_and_format_are_rejected_without_partial_update() {
     EcuCanDecoder decoder(CanProfileRegistry::find("ecumaster_emu_black"));
     VehicleState state;
@@ -476,6 +618,10 @@ int main(int, char**) {
     RUN_TEST(test_bmw_ms43_stock_decodes_documented_numeric_signals);
     RUN_TEST(test_bmw_ms43_stock_decodes_documented_engine_flags);
     RUN_TEST(test_bmw_ms43_stock_flag_bits_clear_to_off);
+    RUN_TEST(test_ecumaster_decodes_all_approved_status_flags);
+    RUN_TEST(test_rusefi_decodes_all_approved_status_flags);
+    RUN_TEST(test_maxxecu_decodes_all_approved_status_flags);
+    RUN_TEST(test_link_decodes_limit_bits_and_exact_active_feature_states);
     RUN_TEST(test_wrong_dlc_and_format_are_rejected_without_partial_update);
     RUN_TEST(test_out_of_range_signal_rejects_the_whole_matching_frame);
     return UNITY_END();
