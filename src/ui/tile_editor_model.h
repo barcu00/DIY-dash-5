@@ -21,6 +21,7 @@ public:
     void setTemperatureBar(const TemperatureBarConfig& temperature_bar);
     void setFlagActiveColor(FlagActiveColor color);
 
+    bool writeCandidate(AppConfig& config) const;
     bool applyTo(AppConfig& config);
 
 private:

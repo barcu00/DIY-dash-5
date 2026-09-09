@@ -94,6 +94,8 @@ void Ui::begin(AppConfig& config, BoardDisplay& board) {
 }
 
 void Ui::setDataContext(DataSource source, const CanProfile* profile) {
+    active_source_ = source;
+    active_profile_ = profile;
     capabilities_ = ParameterCapabilities::forSource(source, profile);
     update_policy_.markLayoutDirty();
 }
@@ -602,6 +604,20 @@ bool Ui::takeConfigCommit(ConfigCommitRequest& request) {
 
 void Ui::completeConfigCommit(uint32_t revision, bool success) {
     commit_model_.complete(revision, success);
+    if (editor_commit_pending_) {
+        editor_commit_pending_ = false;
+        if (success) {
+            update_policy_.markLayoutDirty();
+            closeEditor();
+            showCommitFeedback("SAVED");
+        } else {
+            if (editor_message_) lv_label_set_text(editor_message_, "SAVE ERROR");
+            if (editor_cancel_) lv_obj_clear_state(editor_cancel_, LV_STATE_DISABLED);
+            if (editor_save_) lv_obj_clear_state(editor_save_, LV_STATE_DISABLED);
+        }
+        lv_obj_invalidate(lv_scr_act());
+        return;
+    }
     showCommitFeedback(success ? "SAVED" : "SAVE ERROR");
     lv_obj_invalidate(lv_scr_act());
 }
@@ -612,6 +628,11 @@ void Ui::openEditor(TileAddress address) {
     editor_return_page_ = current_page_;
     editor_return_category_ = settings_flow_.category();
     if (!editor_.open(address, *config_)) return;
+    if (warning_panel_) {
+        lv_obj_del(warning_panel_);
+        warning_panel_ = nullptr;
+        warning_text_ = nullptr;
+    }
     const TileConfig& tile = editor_.draft().tile;
     editor_screen_ = lv_obj_create(nullptr);
     styleScreen(editor_screen_);
@@ -623,10 +644,8 @@ void Ui::openEditor(TileAddress address) {
     editor_parameter_ = lv_dropdown_create(editor_screen_);
     lv_obj_set_pos(editor_parameter_, 20, 66);
     lv_obj_set_size(editor_parameter_, 360, 42);
-    const CanProfile* profile = CanProfileRegistry::find(
-        config_->can.profile_id.data());
     editor_parameter_options_ = ParameterOptions::build(
-        config_->data_source, profile, tile.parameter);
+        active_source_, active_profile_, tile.parameter);
     char parameter_options[2048]{};
     if (!editor_parameter_options_.write(parameter_options,
                                          sizeof(parameter_options))) {
@@ -725,22 +744,20 @@ void Ui::openEditor(TileAddress address) {
               "OFF stays neutral. ON uses the selected accent color.",
               190, 164, &lv_font_montserrat_14, UiTheme::text());
 
-    makeButton(editor_screen_, "CANCEL", 20, 420, 180, 48, editorEvent,
-               reinterpret_cast<void*>(1));
-    makeButton(editor_screen_, "SAVE TILE", 590, 420, 190, 48, editorEvent,
-               reinterpret_cast<void*>(2));
+    editor_cancel_ = makeButton(
+        editor_screen_, "CANCEL", 20, 420, 180, 48, editorEvent,
+        reinterpret_cast<void*>(1));
+    editor_save_ = makeButton(
+        editor_screen_, "SAVE TILE", 590, 420, 190, 48, editorEvent,
+        reinterpret_cast<void*>(2));
     editor_message_ = makeLabel(editor_screen_, "", 235, 436,
                                 &lv_font_montserrat_14, UiTheme::red());
-    refreshEditorParameterControls(tile.parameter, false);
+    refreshEditorParameterControls(tile.parameter);
     update_policy_.activate(UiActivity::TileEditor);
     lv_scr_load(editor_screen_);
 }
 
-void Ui::refreshEditorParameterControls(ParameterId parameter,
-                                        bool load_temperature_defaults) {
-    if (load_temperature_defaults) {
-        loadEditorTemperatureControls(defaultTemperatureBarConfig(parameter));
-    }
+void Ui::refreshEditorParameterControls(ParameterId parameter) {
     const bool is_flag = parameterDescriptor(parameter).kind ==
                          ParameterKind::Flag;
     if (is_flag) {
@@ -754,6 +771,62 @@ void Ui::refreshEditorParameterControls(ParameterId parameter,
         lv_obj_clear_flag(editor_decimals_label_, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(editor_decimals_, LV_OBJ_FLAG_HIDDEN);
     }
+}
+
+void Ui::syncEditorDraftFromControls() {
+    if (!editor_.isOpen()) return;
+    editor_.setVisible(lv_obj_has_state(editor_visible_, LV_STATE_CHECKED));
+    editor_.setFlagActiveColor(static_cast<FlagActiveColor>(
+        lv_dropdown_get_selected(editor_flag_color_)));
+    if (parameterDescriptor(editor_.draft().tile.parameter).kind !=
+        ParameterKind::Numeric) {
+        return;
+    }
+
+    editor_.setDecimals(static_cast<uint8_t>(
+        lv_dropdown_get_selected(editor_decimals_)));
+    TileWarningConfig warning;
+    warning.enabled = lv_obj_has_state(editor_warning_, LV_STATE_CHECKED);
+    warning.direction = static_cast<WarningDirection>(
+        lv_dropdown_get_selected(editor_direction_));
+    warning.threshold_native = static_cast<float>(
+        lv_spinbox_get_value(editor_threshold_)) / 10.0f;
+    warning.hysteresis_native = static_cast<float>(
+        lv_spinbox_get_value(editor_hysteresis_)) / 10.0f;
+    warning.delay_ms = static_cast<uint16_t>(
+        lv_spinbox_get_value(editor_delay_));
+    editor_.setWarning(warning);
+    TemperatureBarConfig temperature_bar;
+    temperature_bar.enabled = lv_obj_has_state(
+        editor_temperature_bar_, LV_STATE_CHECKED);
+    temperature_bar.minimum_native = static_cast<float>(
+        lv_spinbox_get_value(editor_temperature_minimum_)) / 10.0f;
+    temperature_bar.ready_native = static_cast<float>(
+        lv_spinbox_get_value(editor_temperature_ready_)) / 10.0f;
+    temperature_bar.maximum_native = static_cast<float>(
+        lv_spinbox_get_value(editor_temperature_maximum_)) / 10.0f;
+    editor_.setTemperatureBar(temperature_bar);
+}
+
+void Ui::loadEditorControlsFromDraft() {
+    if (!editor_.isOpen()) return;
+    const TileConfig& tile = editor_.draft().tile;
+    if (tile.visible) lv_obj_add_state(editor_visible_, LV_STATE_CHECKED);
+    else lv_obj_clear_state(editor_visible_, LV_STATE_CHECKED);
+    lv_dropdown_set_selected(editor_decimals_, tile.decimals);
+    if (tile.warning.enabled) lv_obj_add_state(editor_warning_, LV_STATE_CHECKED);
+    else lv_obj_clear_state(editor_warning_, LV_STATE_CHECKED);
+    lv_dropdown_set_selected(editor_direction_,
+                             static_cast<uint16_t>(tile.warning.direction));
+    lv_spinbox_set_value(editor_threshold_, static_cast<int32_t>(
+        tile.warning.threshold_native * 10.0f));
+    lv_spinbox_set_value(editor_hysteresis_, static_cast<int32_t>(
+        tile.warning.hysteresis_native * 10.0f));
+    lv_spinbox_set_value(editor_delay_, tile.warning.delay_ms);
+    loadEditorTemperatureControls(tile.temperature_bar);
+    lv_dropdown_set_selected(editor_flag_color_,
+                             static_cast<uint16_t>(tile.flag_active_color));
+    refreshEditorParameterControls(tile.parameter);
 }
 
 void Ui::loadEditorTemperatureControls(const TemperatureBarConfig& config) {
@@ -774,6 +847,8 @@ void Ui::closeEditor() {
     }
     lv_obj_t* previous = editor_screen_;
     editor_screen_ = nullptr;
+    editor_cancel_ = nullptr;
+    editor_save_ = nullptr;
     editor_.cancel();
     if (editor_return_page_ == Page::Settings) {
         current_page_ = Page::Settings;
@@ -786,40 +861,20 @@ void Ui::closeEditor() {
 }
 
 void Ui::saveEditor() {
-    if (!config_ || !editor_.isOpen()) return;
-    editor_.setParameter(editor_parameter_options_.parameterAt(
-        lv_dropdown_get_selected(editor_parameter_)));
-    editor_.setVisible(lv_obj_has_state(editor_visible_, LV_STATE_CHECKED));
-    editor_.setDecimals(static_cast<uint8_t>(lv_dropdown_get_selected(editor_decimals_)));
-    TileWarningConfig warning;
-    warning.enabled = lv_obj_has_state(editor_warning_, LV_STATE_CHECKED);
-    warning.direction = static_cast<WarningDirection>(lv_dropdown_get_selected(editor_direction_));
-    warning.threshold_native = static_cast<float>(lv_spinbox_get_value(editor_threshold_)) / 10.0f;
-    warning.hysteresis_native = static_cast<float>(lv_spinbox_get_value(editor_hysteresis_)) / 10.0f;
-    warning.delay_ms = static_cast<uint16_t>(lv_spinbox_get_value(editor_delay_));
-    editor_.setWarning(warning);
-    TemperatureBarConfig temperature_bar;
-    temperature_bar.enabled = lv_obj_has_state(
-        editor_temperature_bar_, LV_STATE_CHECKED);
-    temperature_bar.minimum_native = static_cast<float>(
-        lv_spinbox_get_value(editor_temperature_minimum_)) / 10.0f;
-    temperature_bar.ready_native = static_cast<float>(
-        lv_spinbox_get_value(editor_temperature_ready_)) / 10.0f;
-    temperature_bar.maximum_native = static_cast<float>(
-        lv_spinbox_get_value(editor_temperature_maximum_)) / 10.0f;
-    editor_.setTemperatureBar(temperature_bar);
-    editor_.setFlagActiveColor(static_cast<FlagActiveColor>(
-        lv_dropdown_get_selected(editor_flag_color_)));
+    if (!config_ || !editor_.isOpen() || editor_commit_pending_) return;
+    syncEditorDraftFromControls();
     AppConfig candidate = *config_;
-    if (!editor_.applyTo(candidate) || !stageSettings(candidate, false)) {
+    if (!editor_.writeCandidate(candidate)) {
         lv_label_set_text(editor_message_, "SAVE FAILED"); return;
     }
-    update_policy_.markLayoutDirty();
-    const bool refresh_layout = current_page_ == Page::Settings &&
-        settings_flow_.category() == SettingsCategory::Layouts;
-    closeEditor();
-    queueSettingsOnExit();
-    if (refresh_layout) showSettings(SettingsCategory::Layouts);
+    commit_model_.markDirty(false);
+    if (!commit_model_.queueOnExit(candidate)) {
+        lv_label_set_text(editor_message_, "SAVE FAILED"); return;
+    }
+    editor_commit_pending_ = true;
+    lv_label_set_text(editor_message_, "SAVING");
+    lv_obj_add_state(editor_cancel_, LV_STATE_DISABLED);
+    lv_obj_add_state(editor_save_, LV_STATE_DISABLED);
 }
 
 void Ui::showSettingsMessage(const char* message) {
@@ -947,10 +1002,12 @@ void Ui::editorEvent(lv_event_t* event) {
     if (action == 1) instance_->closeEditor();
     if (action == 2) instance_->saveEditor();
     if (action == 3) {
+        instance_->syncEditorDraftFromControls();
         const ParameterId parameter =
             instance_->editor_parameter_options_.parameterAt(
                 lv_dropdown_get_selected(instance_->editor_parameter_));
-        instance_->refreshEditorParameterControls(parameter, true);
+        instance_->editor_.setParameter(parameter);
+        instance_->loadEditorControlsFromDraft();
     }
 }
 

@@ -70,8 +70,9 @@ private:
     void openEditor(TileAddress address);
     void closeEditor();
     void saveEditor();
-    void refreshEditorParameterControls(ParameterId parameter,
-                                        bool load_temperature_defaults);
+    void syncEditorDraftFromControls();
+    void loadEditorControlsFromDraft();
+    void refreshEditorParameterControls(ParameterId parameter);
     void loadEditorTemperatureControls(const TemperatureBarConfig& config);
     bool stageSettings(AppConfig candidate, bool reconfigure_runtime);
     void queueSettingsOnExit();
@@ -94,6 +95,8 @@ private:
     ShiftLightView track_shift_{};
     UiUpdatePolicy update_policy_{};
     ParameterCapabilities capabilities_{};
+    DataSource active_source_ = DataSource::Demo;
+    const CanProfile* active_profile_ = nullptr;
     SettingsFlowModel settings_flow_{};
     AppConfig* config_ = nullptr;
     BoardDisplay* board_ = nullptr;
@@ -147,6 +150,9 @@ private:
     lv_obj_t* editor_hysteresis_ = nullptr;
     lv_obj_t* editor_delay_ = nullptr;
     lv_obj_t* editor_message_ = nullptr;
+    lv_obj_t* editor_cancel_ = nullptr;
+    lv_obj_t* editor_save_ = nullptr;
+    bool editor_commit_pending_ = false;
     lv_obj_t* warning_panel_ = nullptr;
     lv_obj_t* warning_text_ = nullptr;
     TileWarningEngine* warning_engine_ = nullptr;

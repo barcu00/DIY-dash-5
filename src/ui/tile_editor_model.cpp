@@ -124,7 +124,7 @@ void TileEditorModel::setFlagActiveColor(FlagActiveColor color) {
     }
 }
 
-bool TileEditorModel::applyTo(AppConfig& config) {
+bool TileEditorModel::writeCandidate(AppConfig& config) const {
     TileConfig* destination = tileAt(config, draft_.address);
     if (!open_ || destination == nullptr || !validDraft(draft_.tile)) {
         return false;
@@ -137,6 +137,13 @@ bool TileEditorModel::applyTo(AppConfig& config) {
         candidate.warning.enabled = false;
     }
     *destination = candidate;
+    return true;
+}
+
+bool TileEditorModel::applyTo(AppConfig& config) {
+    if (!writeCandidate(config)) {
+        return false;
+    }
     open_ = false;
     return true;
 }
