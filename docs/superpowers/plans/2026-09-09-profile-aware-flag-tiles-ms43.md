@@ -108,8 +108,9 @@ Implementation details:
   frame can expose many independent bits. Keep storage on the stack and reject
   definitions above the bound.
 - Implement only the approved MS43 numeric and flag table from the design.
-- Add the profile at the end of the existing registry so persisted profile IDs,
-  not indexes, remain authoritative.
+- Add the profile after the existing verified profiles and before the
+  experimental profiles, preserving the registry's verified-first contract.
+  Persisted selection remains authoritative by profile ID, not index.
 
 Commit as `feat: add masked CAN flags and BMW MS43 stock`, push, and require both
 GitHub workflow runs to pass.
