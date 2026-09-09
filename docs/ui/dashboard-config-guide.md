@@ -8,10 +8,11 @@ The bottom navigation contains DASH, TRACK, and SETTINGS; DIAG is not present.
 Hold a visible tile for about 600 ms to open its independent full-screen editor;
 a short tap does nothing. Live tiles, layout work, warnings, and shift-light
 rendering pause while this screen is open, but CAN reception continues. SAVE
-TILE applies the draft in RAM, closes the editor, and queues one persistent
-transaction. The application loop writes it outside the LVGL callback. CANCEL
-leaves the configuration unchanged; a failed persistent write reports
-`SAVE ERROR` and remains retryable.
+TILE queues a candidate without changing the active configuration. The
+application loop writes it outside the LVGL callback; only a successful write
+updates runtime and closes the editor. CANCEL leaves the configuration
+unchanged. A failed write reports `SAVE ERROR`, keeps the editor open, and can
+be retried.
 
 DEMO lists all 101 registered parameters. CAN derives the list from the active
 profile's compiled frame definitions. If a saved tile is not supported by the
