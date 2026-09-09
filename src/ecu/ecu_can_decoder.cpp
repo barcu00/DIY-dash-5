@@ -48,7 +48,7 @@ bool EcuCanDecoder::decode(const CanFrame& frame, VehicleState& state,
                 VehicleSignal signal;
                 float value;
             };
-            constexpr std::size_t kMaximumSignalsPerFrame = 8U;
+            constexpr std::size_t kMaximumSignalsPerFrame = 24U;
             if (candidate.signal_count > kMaximumSignalsPerFrame) {
                 return false;
             }
@@ -63,10 +63,38 @@ bool EcuCanDecoder::decode(const CanFrame& frame, VehicleState& state,
                                 frame.dlc - definition.byte_offset)) {
                     return false;
                 }
-                const float raw = readRaw(frame.data + definition.byte_offset,
-                                          definition.raw_type,
-                                          definition.byte_order);
-                const float value = raw * definition.scale + definition.bias;
+                const uint8_t* raw_data =
+                    frame.data + definition.byte_offset;
+                float value = 0.0f;
+                if (definition.kind == CanSignalKind::MaskedFlag) {
+                    const std::size_t width_bits = width * 8U;
+                    const uint32_t width_mask = width == sizeof(uint32_t)
+                        ? UINT32_MAX
+                        : (1U << width_bits) - 1U;
+                    if (definition.raw_mask == 0U ||
+                        (definition.raw_mask & ~width_mask) != 0U ||
+                        definition.raw_shift >= width_bits ||
+                        definition.active_values_mask == 0U) {
+                        return false;
+                    }
+                    const uint32_t raw = readUnsigned(
+                        raw_data, width, definition.byte_order);
+                    const uint32_t extracted =
+                        (raw & definition.raw_mask) >> definition.raw_shift;
+                    if (extracted >= 64U) {
+                        return false;
+                    }
+                    value = (definition.active_values_mask &
+                             (1ULL << extracted)) != 0U
+                        ? 1.0f
+                        : 0.0f;
+                } else if (definition.kind == CanSignalKind::Linear) {
+                    const float raw = readRaw(raw_data, definition.raw_type,
+                                              definition.byte_order);
+                    value = raw * definition.scale + definition.bias;
+                } else {
+                    return false;
+                }
                 if (!std::isfinite(value) || value < definition.minimum_native ||
                     value > definition.maximum_native) {
                     return false;

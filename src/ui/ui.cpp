@@ -613,7 +613,7 @@ void Ui::openEditor(TileAddress address) {
     makeLabel(editor_overlay_, "Parameter", 20, 44, &lv_font_montserrat_12, UiTheme::muted());
     editor_parameter_ = lv_dropdown_create(editor_overlay_); lv_obj_set_pos(editor_parameter_, 20, 62);
     lv_obj_set_size(editor_parameter_, 230, 42);
-    char parameter_options[1024]{};
+    char parameter_options[2048]{};
     if (!ParameterOptions::write(parameter_options, sizeof(parameter_options))) {
         std::strncpy(parameter_options, "RPM", sizeof(parameter_options) - 1U);
     }

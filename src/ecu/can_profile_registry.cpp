@@ -11,6 +11,7 @@ const CanProfile* const kProfiles[] = {
     &kMaxxEcuDefaultProfile,
     &kHaltechBroadcastProfile,
     &kSpeeduinoHaltechProfile,
+    &kBmwMs43StockProfile,
     &kLinkGenericDashProfile,
     &kPsaC2VtsProfile,
 };

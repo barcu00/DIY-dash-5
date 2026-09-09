@@ -6,7 +6,7 @@
 #include "ui/parameter_options.h"
 
 void test_tile_parameter_options_include_every_registered_parameter() {
-    char options[1024]{};
+    char options[2048]{};
 
     TEST_ASSERT_TRUE(ParameterOptions::write(options, sizeof(options)));
     TEST_ASSERT_EQUAL_STRING("RPM", std::strtok(options, "\n"));
@@ -18,7 +18,7 @@ void test_tile_parameter_options_include_every_registered_parameter() {
         ++count;
     }
     TEST_ASSERT_EQUAL_UINT32(parameterCount(), count);
-    TEST_ASSERT_EQUAL_STRING("WHEEL RR", last);
+    TEST_ASSERT_EQUAL_STRING("CRUISE", last);
 }
 
 void test_tile_parameter_options_report_truncation() {

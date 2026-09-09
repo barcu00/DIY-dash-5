@@ -24,6 +24,11 @@ enum class CanProfileVerification : uint8_t {
     Experimental,
 };
 
+enum class CanSignalKind : uint8_t {
+    Linear,
+    MaskedFlag,
+};
+
 struct CanSignalDefinition {
     VehicleSignal signal;
     uint8_t byte_offset;
@@ -34,6 +39,10 @@ struct CanSignalDefinition {
     float minimum_native;
     float maximum_native;
     uint32_t timeout_ms;
+    CanSignalKind kind = CanSignalKind::Linear;
+    uint32_t raw_mask = 0U;
+    uint8_t raw_shift = 0U;
+    uint64_t active_values_mask = 0U;
 };
 
 struct CanFrameDefinition {
