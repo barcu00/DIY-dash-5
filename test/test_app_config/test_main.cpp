@@ -32,6 +32,21 @@ void test_defaults_define_approved_dash_and_track_slots() {
     }
 }
 
+void test_tiles_default_and_normalize_to_yellow_flag_color() {
+    AppConfig config = AppConfig::defaults();
+    TEST_ASSERT_EQUAL_UINT32(4U, AppConfig::kSchemaVersion);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(FlagActiveColor::Yellow),
+                            static_cast<uint8_t>(
+                                config.dash_tiles[0].flag_active_color));
+
+    config.dash_tiles[0].flag_active_color =
+        static_cast<FlagActiveColor>(255U);
+    TEST_ASSERT_TRUE(config.validate().valid);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(FlagActiveColor::Yellow),
+                            static_cast<uint8_t>(
+                                config.dash_tiles[0].flag_active_color));
+}
+
 void test_defaults_use_demo_metric_and_shared_shift_configuration() {
     const AppConfig config = AppConfig::defaults();
 
@@ -187,6 +202,7 @@ void test_validation_rejects_unsnapped_or_out_of_range_shift_values() {
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_defaults_define_approved_dash_and_track_slots);
+    RUN_TEST(test_tiles_default_and_normalize_to_yellow_flag_color);
     RUN_TEST(test_defaults_use_demo_metric_and_shared_shift_configuration);
     RUN_TEST(test_defaults_enable_temperature_bars_only_for_coolant_and_oil);
     RUN_TEST(test_validation_normalizes_unsafe_persisted_values);

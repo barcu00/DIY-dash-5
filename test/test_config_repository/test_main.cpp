@@ -46,6 +46,25 @@ struct LegacyAppConfigV2 {
     std::array<LegacyTileConfigV2, AppConfig::kTrackTileCount> track_tiles{};
 };
 
+struct LegacyTileConfigV3 {
+    ParameterId parameter = ParameterId::Rpm;
+    bool visible = true;
+    uint8_t decimals = 0U;
+    TileWarningConfig warning{};
+    TemperatureBarConfig temperature_bar{};
+};
+
+struct LegacyAppConfigV3 {
+    uint32_t schema_version = 3U;
+    DataSource data_source = DataSource::Demo;
+    uint8_t brightness_percent = 100U;
+    CanSettings can{};
+    ShiftLightConfig shift{};
+    UnitSettings units{};
+    std::array<LegacyTileConfigV3, AppConfig::kDashTileCount> dash_tiles{};
+    std::array<LegacyTileConfigV3, AppConfig::kTrackTileCount> track_tiles{};
+};
+
 template <std::size_t Count>
 std::array<LegacyTileConfigV2, Count> legacyTiles(
     const std::array<TileConfig, Count>& current) {
@@ -69,6 +88,33 @@ LegacyAppConfigV2 legacyV2Defaults() {
     legacy.units = defaults.units;
     legacy.dash_tiles = legacyTiles(defaults.dash_tiles);
     legacy.track_tiles = legacyTiles(defaults.track_tiles);
+    return legacy;
+}
+
+template <std::size_t Count>
+std::array<LegacyTileConfigV3, Count> legacyV3Tiles(
+    const std::array<TileConfig, Count>& current) {
+    std::array<LegacyTileConfigV3, Count> legacy{};
+    for (std::size_t i = 0U; i < Count; ++i) {
+        legacy[i].parameter = current[i].parameter;
+        legacy[i].visible = current[i].visible;
+        legacy[i].decimals = current[i].decimals;
+        legacy[i].warning = current[i].warning;
+        legacy[i].temperature_bar = current[i].temperature_bar;
+    }
+    return legacy;
+}
+
+LegacyAppConfigV3 legacyV3Defaults() {
+    const AppConfig defaults = AppConfig::defaults();
+    LegacyAppConfigV3 legacy;
+    legacy.data_source = defaults.data_source;
+    legacy.brightness_percent = defaults.brightness_percent;
+    legacy.can = defaults.can;
+    legacy.shift = defaults.shift;
+    legacy.units = defaults.units;
+    legacy.dash_tiles = legacyV3Tiles(defaults.dash_tiles);
+    legacy.track_tiles = legacyV3Tiles(defaults.track_tiles);
     return legacy;
 }
 
@@ -179,6 +225,51 @@ void test_schema_v2_shift_values_above_new_limit_are_normalized_in_place() {
     TEST_ASSERT_TRUE(loaded.dash_tiles[3].temperature_bar.enabled);
     TEST_ASSERT_FLOAT_WITHIN(
         0.001f, 75.0f, loaded.dash_tiles[3].temperature_bar.ready_native);
+}
+
+void test_schema_v3_migrates_all_fields_and_defaults_flag_color() {
+    MemoryBackend backend;
+    LegacyAppConfigV3 stored = legacyV3Defaults();
+    stored.data_source = DataSource::Can;
+    stored.brightness_percent = 40U;
+    std::strncpy(stored.can.profile_id.data(), "bmw_ms43_stock",
+                 stored.can.profile_id.size() - 1U);
+    stored.can.bitrate = 500000U;
+    stored.shift = ShiftLightConfig{5000U, 6500U, 7200U, 8000U, false};
+    stored.units.temperature = TemperatureUnit::Fahrenheit;
+    stored.dash_tiles[3].visible = false;
+    stored.dash_tiles[3].warning = {
+        true, WarningDirection::Above, 105.5f, 2.5f, 400U};
+    stored.dash_tiles[3].temperature_bar = {
+        true, 35.0f, 72.5f, 125.0f};
+    stored.track_tiles[2].decimals = 2U;
+    TEST_ASSERT_TRUE(backend.write(&stored, sizeof(stored)));
+    ConfigRepository repository(backend);
+    AppConfig loaded{};
+
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(LoadResult::Migrated),
+                            static_cast<uint8_t>(repository.load(loaded)));
+    TEST_ASSERT_EQUAL_UINT32(4U, loaded.schema_version);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DataSource::Can),
+                            static_cast<uint8_t>(loaded.data_source));
+    TEST_ASSERT_EQUAL_UINT8(40U, loaded.brightness_percent);
+    TEST_ASSERT_EQUAL_STRING("bmw_ms43_stock", loaded.can.profile_id.data());
+    TEST_ASSERT_EQUAL_UINT16(7200U, loaded.shift.flash_rpm);
+    TEST_ASSERT_FALSE(loaded.shift.flash_enabled);
+    TEST_ASSERT_EQUAL_UINT8(
+        static_cast<uint8_t>(TemperatureUnit::Fahrenheit),
+        static_cast<uint8_t>(loaded.units.temperature));
+    TEST_ASSERT_FALSE(loaded.dash_tiles[3].visible);
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, 105.5f, loaded.dash_tiles[3].warning.threshold_native);
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, 72.5f, loaded.dash_tiles[3].temperature_bar.ready_native);
+    TEST_ASSERT_EQUAL_UINT8(2U, loaded.track_tiles[2].decimals);
+    for (const TileConfig& tile : loaded.dash_tiles) {
+        TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(FlagActiveColor::Yellow),
+                                static_cast<uint8_t>(tile.flag_active_color));
+    }
+    TEST_ASSERT_EQUAL_UINT32(sizeof(AppConfig), backend.stored_size);
 }
 
 void test_schema_v2_normalization_write_failure_is_reported() {
@@ -394,6 +485,7 @@ int main(int, char**) {
     RUN_TEST(test_schema_mismatch_loads_safe_defaults);
     RUN_TEST(test_valid_configuration_round_trips_through_backend);
     RUN_TEST(test_schema_v2_shift_values_above_new_limit_are_normalized_in_place);
+    RUN_TEST(test_schema_v3_migrates_all_fields_and_defaults_flag_color);
     RUN_TEST(test_schema_v2_normalization_write_failure_is_reported);
     RUN_TEST(test_schema_v2_custom_layout_gets_bar_defaults_for_its_parameters);
     RUN_TEST(test_schema_v1_is_migrated_without_losing_user_settings);

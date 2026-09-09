@@ -128,6 +128,43 @@ void test_apply_rejects_invalid_draft_without_mutating_config() {
                              sizeof(TileConfig));
 }
 
+void test_flag_color_is_staged_saved_and_canceled_per_tile() {
+    AppConfig config = AppConfig::defaults();
+    TileEditorModel editor;
+    TEST_ASSERT_TRUE(editor.open({PageId::Dash, 0U}, config));
+    editor.setFlagActiveColor(FlagActiveColor::Red);
+    TEST_ASSERT_TRUE(editor.applyTo(config));
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(FlagActiveColor::Red),
+                            static_cast<uint8_t>(
+                                config.dash_tiles[0].flag_active_color));
+
+    TEST_ASSERT_TRUE(editor.open({PageId::Dash, 0U}, config));
+    editor.setFlagActiveColor(FlagActiveColor::Green);
+    editor.cancel();
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(FlagActiveColor::Red),
+                            static_cast<uint8_t>(
+                                config.dash_tiles[0].flag_active_color));
+}
+
+void test_switching_to_flag_preserves_dormant_numeric_settings() {
+    AppConfig config = AppConfig::defaults();
+    TileConfig& tile = config.dash_tiles[3];
+    tile.warning = {true, WarningDirection::Above, 105.5f, 2.5f, 400U};
+    tile.temperature_bar = {true, 35.0f, 72.5f, 125.0f};
+    TileEditorModel editor;
+    TEST_ASSERT_TRUE(editor.open({PageId::Dash, 3U}, config));
+
+    editor.setParameter(ParameterId::CheckEngine);
+    TEST_ASSERT_TRUE(editor.applyTo(config));
+
+    TEST_ASSERT_TRUE(tile.warning.enabled);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 105.5f,
+                             tile.warning.threshold_native);
+    TEST_ASSERT_TRUE(tile.temperature_bar.enabled);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 72.5f,
+                             tile.temperature_bar.ready_native);
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_open_rejects_settings_page_and_out_of_range_slots);
@@ -138,5 +175,7 @@ int main(int, char**) {
     RUN_TEST(test_apply_preserves_temperature_bar_settings_for_selected_tile);
     RUN_TEST(test_parameter_change_uses_safe_temperature_bar_defaults);
     RUN_TEST(test_apply_rejects_invalid_draft_without_mutating_config);
+    RUN_TEST(test_flag_color_is_staged_saved_and_canceled_per_tile);
+    RUN_TEST(test_switching_to_flag_preserves_dormant_numeric_settings);
     return UNITY_END();
 }
