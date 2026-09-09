@@ -13,11 +13,13 @@ public:
     void apply(const TileConfig& config, const TileGeometry& geometry);
     void hide();
     void update(const TileConfig& config, const UnitSettings& units,
-                const VehicleState& state, bool warning_active,
+                const VehicleState& state, bool supported,
+                bool warning_active,
                 uint32_t now_ms);
     TileAddress address() const;
 private:
     lv_obj_t* root_ = nullptr;
+    lv_obj_t* stripe_ = nullptr;
     lv_obj_t* title_ = nullptr;
     lv_obj_t* value_ = nullptr;
     lv_obj_t* unit_ = nullptr;

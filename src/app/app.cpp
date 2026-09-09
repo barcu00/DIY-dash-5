@@ -101,6 +101,7 @@ void App::applyRuntimeConfig(uint32_t now_ms) {
                                : false;
     telemetry_.setCanInitialized(can_ready, now_ms);
     const CanProfile* profile = decoder_.profile();
+    ui_.setDataContext(config_.data_source, profile);
     Serial.printf("[DIY Dash] Source: %s; profile: %s; CAN listen-only: %s; %u bit/s\n",
                   config_.data_source == DataSource::Can ? "CAN" : "DEMO",
                   profile == nullptr ? "none" : profile->id,

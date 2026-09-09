@@ -21,6 +21,7 @@ public:
     bool shouldUpdateSettingsStatus(uint32_t now_ms);
     void setInteractionActive(bool active);
     bool allowModalUpdates() const;
+    bool allowLayoutUpdates() const;
     bool allowShiftLightUpdates() const;
 
 private:

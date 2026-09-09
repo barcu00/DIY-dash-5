@@ -53,6 +53,10 @@ bool UiUpdatePolicy::allowModalUpdates() const {
     return activity_ != UiActivity::TileEditor && !interaction_active_;
 }
 
+bool UiUpdatePolicy::allowLayoutUpdates() const {
+    return activity_ != UiActivity::TileEditor;
+}
+
 bool UiUpdatePolicy::allowShiftLightUpdates() const {
     return activity_ == UiActivity::Dash || activity_ == UiActivity::Track;
 }

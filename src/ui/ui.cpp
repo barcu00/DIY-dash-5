@@ -92,6 +92,11 @@ void Ui::begin(AppConfig& config, BoardDisplay& board) {
     update_policy_.takeLayoutDirty();
     load(Page::Dash);
 }
+
+void Ui::setDataContext(DataSource source, const CanProfile* profile) {
+    capabilities_ = ParameterCapabilities::forSource(source, profile);
+    update_policy_.markLayoutDirty();
+}
 void Ui::createDataPage(Page page, const AppConfig& config) {
     lv_obj_t*& screen = page == Page::Dash ? dash_ : track_;
     screen = lv_obj_create(nullptr); styleScreen(screen);
@@ -501,19 +506,22 @@ void Ui::createSystemSettings(lv_obj_t* panel) {
 void Ui::update(const VehicleState& state, const RuntimeDiagnostics& diagnostics,
                 const UiRuntimeStatus& status, const AppConfig& config,
                 TileWarningEngine& warnings) {
-    if (update_policy_.takeLayoutDirty()) {
+    if (update_policy_.allowLayoutUpdates() &&
+        update_policy_.takeLayoutDirty()) {
         applyLayout(Page::Dash, config);
         applyLayout(Page::Track, config);
     }
     if (update_policy_.shouldUpdateData(PageId::Dash)) {
         for (std::size_t i = 0U; i < dash_tiles_.size(); ++i)
             dash_tiles_[i].update(config.dash_tiles[i], config.units, state,
+                capabilities_.supports(config.dash_tiles[i].parameter),
                 warnings.isHighlighted({PageId::Dash, static_cast<uint8_t>(i)}),
                 diagnostics.uptime_ms);
     }
     if (update_policy_.shouldUpdateData(PageId::Track)) {
         for (std::size_t i = 0U; i < track_tiles_.size(); ++i)
             track_tiles_[i].update(config.track_tiles[i], config.units, state,
+                capabilities_.supports(config.track_tiles[i].parameter),
                 warnings.isHighlighted({PageId::Track, static_cast<uint8_t>(i)}),
                 diagnostics.uptime_ms);
     }

@@ -6,6 +6,7 @@
 #include "alarms/tile_warning_engine.h"
 #include "board/board_display.h"
 #include "can/can_status.h"
+#include "ecu/parameter_capabilities.h"
 #include "settings/app_config.h"
 #include "telemetry/vehicle_state.h"
 #include "ui/settings_commit_model.h"
@@ -32,6 +33,7 @@ public:
                 TileWarningEngine& warnings);
     void updateShiftLight(const VehicleState& state, uint32_t now_ms,
                           const ShiftLightConfig& config);
+    void setDataContext(DataSource source, const CanProfile* profile);
     bool takeConfigCommit(ConfigCommitRequest& request);
     void completeConfigCommit(uint32_t revision, bool success);
     static void spinDecreaseEvent(lv_event_t* event);
@@ -91,6 +93,7 @@ private:
     ShiftLightView dash_shift_{};
     ShiftLightView track_shift_{};
     UiUpdatePolicy update_policy_{};
+    ParameterCapabilities capabilities_{};
     SettingsFlowModel settings_flow_{};
     AppConfig* config_ = nullptr;
     BoardDisplay* board_ = nullptr;

@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <cstring>
 #include "telemetry/parameter_registry.h"
+#include "ui/flag_tile_model.h"
 #include "ui/tile_refresh_policy.h"
 #include "ui/ui_theme.h"
 #include "ui/unit_presenter.h"
@@ -30,12 +31,12 @@ void TileView::create(lv_obj_t* parent, TileAddress address, lv_event_cb_t callb
     lv_obj_clear_flag(root_, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_flag(root_, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(root_, callback, LV_EVENT_LONG_PRESSED, this);
-    lv_obj_t* stripe = lv_obj_create(root_);
-    lv_obj_set_pos(stripe, 0, 0);
-    lv_obj_set_size(stripe, 4, 88);
-    lv_obj_set_style_bg_color(stripe, UiTheme::blue(), 0);
-    lv_obj_set_style_border_width(stripe, 0, 0);
-    lv_obj_clear_flag(stripe, LV_OBJ_FLAG_SCROLLABLE);
+    stripe_ = lv_obj_create(root_);
+    lv_obj_set_pos(stripe_, 0, 0);
+    lv_obj_set_size(stripe_, 4, 88);
+    lv_obj_set_style_bg_color(stripe_, UiTheme::blue(), 0);
+    lv_obj_set_style_border_width(stripe_, 0, 0);
+    lv_obj_clear_flag(stripe_, LV_OBJ_FLAG_SCROLLABLE);
     title_ = lv_label_create(root_);
     lv_obj_set_style_text_font(title_, &lv_font_montserrat_12, 0);
     lv_obj_set_style_text_color(title_, UiTheme::muted(), 0);
@@ -62,25 +63,46 @@ void TileView::create(lv_obj_t* parent, TileAddress address, lv_event_cb_t callb
 }
 void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
     const bool centered = geometry.size == TileSize::Wide;
+    const bool is_flag = parameterDescriptor(config.parameter).kind ==
+                         ParameterKind::Flag;
     lv_obj_clear_flag(root_, LV_OBJ_FLAG_HIDDEN);
     lv_obj_set_pos(root_, geometry.x, geometry.y);
     lv_obj_set_size(root_, geometry.width, geometry.height);
+    lv_obj_set_style_bg_color(root_, UiTheme::panel(), 0);
+    lv_obj_set_size(stripe_, 4, geometry.height - 16);
+    lv_obj_set_style_bg_color(stripe_, UiTheme::blue(), 0);
     lv_label_set_text(title_, parameterDescriptor(config.parameter).short_name);
     lv_obj_set_width(title_, geometry.width - 24);
-    lv_obj_set_style_text_align(title_, centered ? LV_TEXT_ALIGN_CENTER : LV_TEXT_ALIGN_LEFT, 0);
-    lv_obj_align(title_, centered ? LV_ALIGN_TOP_MID : LV_ALIGN_TOP_LEFT,
-                 centered ? 0 : 10, 2);
-    const TileViewPolicy policy = tileViewPolicy(geometry.size);
-    lv_obj_set_width(value_, geometry.width - (centered ? 70 : 28));
     lv_obj_set_style_text_align(
-        value_, policy.value_centered ? LV_TEXT_ALIGN_CENTER : LV_TEXT_ALIGN_LEFT, 0);
-    lv_obj_align(value_, policy.value_centered ? LV_ALIGN_CENTER : LV_ALIGN_LEFT_MID,
-                 policy.value_centered ? 0 : 10, 10);
+        title_, (centered || is_flag) ? LV_TEXT_ALIGN_CENTER
+                                     : LV_TEXT_ALIGN_LEFT, 0);
+    lv_obj_align(title_, (centered || is_flag) ? LV_ALIGN_TOP_MID
+                                              : LV_ALIGN_TOP_LEFT,
+                 (centered || is_flag) ? 0 : 10, 2);
+    const TileViewPolicy policy = tileViewPolicy(geometry.size);
+    lv_obj_set_width(value_, is_flag ? 92
+                                    : geometry.width - (centered ? 70 : 28));
+    lv_obj_set_style_bg_opa(value_, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_pad_all(value_, 0, 0);
+    lv_obj_set_style_radius(value_, 0, 0);
+    lv_obj_set_style_text_color(
+        value_, lv_color_hex(tileViewPolicy(geometry.size).value_rgb), 0);
+    lv_obj_set_style_text_align(
+        value_, (policy.value_centered || is_flag) ? LV_TEXT_ALIGN_CENTER
+                                                  : LV_TEXT_ALIGN_LEFT, 0);
+    lv_obj_align(value_, (policy.value_centered || is_flag) ? LV_ALIGN_CENTER
+                                                           : LV_ALIGN_LEFT_MID,
+                 (policy.value_centered || is_flag) ? 0 : 10, 10);
     const bool temperature_bar_visible = config.temperature_bar.enabled &&
         parameterDescriptor(config.parameter).native_unit == NativeUnit::Celsius;
-    lv_obj_align(unit_, centered ? LV_ALIGN_RIGHT_MID : LV_ALIGN_BOTTOM_RIGHT,
-                 centered ? -18 : -4,
-                 centered ? 9 : (temperature_bar_visible ? -14 : -2));
+    lv_obj_set_width(unit_, is_flag ? geometry.width - 24 : LV_SIZE_CONTENT);
+    lv_obj_set_style_text_align(unit_, is_flag ? LV_TEXT_ALIGN_CENTER
+                                              : LV_TEXT_ALIGN_LEFT, 0);
+    lv_obj_align(unit_, is_flag ? LV_ALIGN_BOTTOM_MID :
+                 (centered ? LV_ALIGN_RIGHT_MID : LV_ALIGN_BOTTOM_RIGHT),
+                 is_flag ? 0 : (centered ? -18 : -4),
+                 is_flag ? -2 :
+                 (centered ? 9 : (temperature_bar_visible ? -14 : -2)));
     if (temperature_bar_visible) {
         lv_obj_clear_flag(temperature_bar_, LV_OBJ_FLAG_HIDDEN);
         lv_obj_set_size(temperature_bar_, geometry.width - 24, 8);
@@ -98,7 +120,8 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
 }
 void TileView::hide() { if (root_) lv_obj_add_flag(root_, LV_OBJ_FLAG_HIDDEN); }
 void TileView::update(const TileConfig& config, const UnitSettings& units,
-                      const VehicleState& state, bool warning_active,
+                      const VehicleState& state, bool supported,
+                      bool warning_active,
                       uint32_t now_ms) {
     if (!warning_initialized_ || warning_active != last_warning_active_) {
         lv_obj_set_style_border_width(root_, warning_active ? 3 : 1, 0);
@@ -108,7 +131,8 @@ void TileView::update(const TileConfig& config, const UnitSettings& units,
         last_warning_active_ = warning_active;
     }
 
-    const SignalValue& raw = state.get(config.parameter);
+    const SignalValue& source = state.get(config.parameter);
+    const SignalValue raw = supported ? source : SignalValue{};
     const bool validity_changed = !raw_valid_initialized_ ||
                                   raw.valid != last_raw_valid_;
     const uint32_t interval_ms = tileRefreshIntervalMs(config.parameter);
@@ -127,8 +151,11 @@ void TileView::update(const TileConfig& config, const UnitSettings& units,
     raw_valid_initialized_ = true;
     last_raw_valid_ = raw.valid;
 
-    const SignalValue signal = display_filter_.sample(
-        raw, now_ms, interval_ms * 2U);
+    const bool is_flag = parameterDescriptor(config.parameter).kind ==
+                         ParameterKind::Flag;
+    const SignalValue signal = is_flag
+        ? raw
+        : display_filter_.sample(raw, now_ms, interval_ms * 2U);
     const TemperatureBarState temperature = temperatureBarState(
         config.parameter, signal, config.temperature_bar);
     if (temperature.visible &&
@@ -146,7 +173,33 @@ void TileView::update(const TileConfig& config, const UnitSettings& units,
     }
     char value_text[32] = "---";
     const char* unit_text = "";
-    if (signal.valid) {
+    if (is_flag) {
+        const FlagTilePresentation presentation = flagTilePresentation(
+            signal, config.flag_active_color);
+        lv_obj_set_style_bg_color(
+            root_, lv_color_hex(presentation.background_rgb), 0);
+        lv_obj_set_style_bg_color(
+            stripe_, lv_color_hex(presentation.rail_rgb), 0);
+        if (presentation.state == FlagTileState::Unavailable) {
+            lv_obj_set_style_bg_opa(value_, LV_OPA_TRANSP, 0);
+            lv_obj_set_style_text_color(value_, UiTheme::muted(), 0);
+            unit_text = "UNAVAILABLE";
+        } else {
+            std::snprintf(value_text, sizeof(value_text), "%s",
+                          presentation.status_text);
+            lv_obj_set_style_bg_opa(value_, LV_OPA_COVER, 0);
+            lv_obj_set_style_bg_color(
+                value_, lv_color_hex(presentation.pill_rgb), 0);
+            lv_obj_set_style_radius(value_, 14, 0);
+            lv_obj_set_style_pad_left(value_, 12, 0);
+            lv_obj_set_style_pad_right(value_, 12, 0);
+            lv_obj_set_style_pad_top(value_, 4, 0);
+            lv_obj_set_style_pad_bottom(value_, 4, 0);
+            lv_obj_set_style_text_color(value_, UiTheme::background(), 0);
+        }
+    } else if (!supported) {
+        unit_text = "UNAVAILABLE";
+    } else if (signal.valid) {
         const PresentedValue p = UnitPresenter::present(
             config.parameter, signal.value, units);
         char format[8]; char buffer[32];
