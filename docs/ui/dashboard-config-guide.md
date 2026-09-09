@@ -5,11 +5,25 @@ The bottom navigation contains DASH, TRACK, and SETTINGS; DIAG is not present.
 
 ## Tiles and layout
 
-Hold a visible tile for about 600 ms to open its editor. Choose the parameter,
-visibility, decimal places, and optional warning. SAVE TILE applies the draft in
-RAM, closes the editor, and queues one persistent transaction. The application
-loop writes it outside the LVGL callback. Cancel leaves the configuration
-unchanged; a failed persistent write reports `SAVE ERROR` and remains retryable.
+Hold a visible tile for about 600 ms to open its independent full-screen editor;
+a short tap does nothing. Live tiles, layout work, warnings, and shift-light
+rendering pause while this screen is open, but CAN reception continues. SAVE
+TILE applies the draft in RAM, closes the editor, and queues one persistent
+transaction. The application loop writes it outside the LVGL callback. CANCEL
+leaves the configuration unchanged; a failed persistent write reports
+`SAVE ERROR` and remains retryable.
+
+DEMO lists all 101 registered parameters. CAN derives the list from the active
+profile's compiled frame definitions. If a saved tile is not supported by the
+new profile, its assignment and position remain intact and the tile displays
+`---` / `UNAVAILABLE`; the editor keeps that value as its first labelled option.
+Filtered dropdown indexes are mapped explicitly to stable parameter IDs.
+
+Boolean flag tiles replace numeric controls with an ACTIVE COLOR selector.
+OFF is neutral with a grey pill. ON uses a yellow, green, or red rail, subtle
+background tint, and matching pill. The color is stored per tile. Invalid or
+stale flags clear the active styling and show `UNAVAILABLE`. Flag states do not
+open the numeric WARNING modal.
 
 For a temperature parameter, the same editor can enable a continuous bar and
 set its native MIN, READY, and MAX values. The bar is empty when data is
@@ -55,8 +69,9 @@ by leaving again.
 - Source is explicitly CAN or DEMO. CAN never automatically falls back to DEMO.
 - CAN is receive-only. Available bitrates are 125, 250, 500, and 1000 kbit/s;
   timeout is adjustable from 100 to 5000 ms.
-- The profile picker offers `none`, five source-pinned standalone ECU profiles,
-  and separately marked experimental Link and PSA C2 profiles. Selecting `none`
+- The profile picker offers `none`, six source-pinned ECU profiles including
+  BMW MS43 Stock, and separately marked experimental Link and PSA C2 profiles.
+  MS43 uses only stock receive-only CAN; OLM/custom `0x33C` is absent. Selecting `none`
   is the safe no-decoder state. A parameter not supplied by the active profile
   displays `---`.
 - START, RED, FLASH, and MAX RPM use four sliders shared by DASH and TRACK and
@@ -95,3 +110,7 @@ acceptance checklist in the README after flashing a test board.
 | Tile editor | Warning modal |
 | --- | --- |
 | ![Tile editor](screenshots/ui-preview-tile-editor.png) | ![Warning modal](screenshots/ui-preview-warning.png) |
+
+| Flag tile states | Flag editor |
+| --- | --- |
+| ![Flag tile states](screenshots/ui-preview-flag-tiles.png) | ![Flag tile editor](screenshots/ui-preview-flag-editor.png) |

@@ -16,6 +16,8 @@ EXPECTED_PREVIEWS = (
     "ui-preview-settings-layouts.png",
     "ui-preview-settings-system.png",
     "ui-preview-tile-editor.png",
+    "ui-preview-flag-tiles.png",
+    "ui-preview-flag-editor.png",
     "ui-preview-warning.png",
 )
 ROOT = Path(__file__).resolve().parent
@@ -91,6 +93,35 @@ def tile(draw, rect, title, value, unit="", centered=False, warning=False):
                                    3, fill=color)
 
 
+def flag_tile(draw, rect, title, state, accent=None):
+    x, y, w, h = rect
+    unavailable = state == "UNAVAILABLE"
+    active = state == "ON" and accent is not None
+    background = "#111820"
+    rail = "#27313A"
+    pill = "#737E87"
+    if active:
+        background = {C["yellow"]: "#262214", C["green"]: "#12271D",
+                      C["red"]: "#2A1519"}[accent]
+        rail = accent
+        pill = accent
+    draw.rounded_rectangle((x, y, x + w, y + h), 8, fill=background,
+                           outline=C["border"], width=1)
+    draw.rounded_rectangle((x, y + 8, x + 4, y + h - 8), 2, fill=rail)
+    draw.text((x + w / 2, y + 10), title, fill=C["muted"], font=F12,
+              anchor="ma")
+    if unavailable:
+        draw.text((x + w / 2, y + 48), "---", fill=C["muted"], font=F24,
+                  anchor="mm")
+        draw.text((x + w / 2, y + h - 8), "UNAVAILABLE", fill=C["muted"],
+                  font=F12, anchor="ms")
+    else:
+        left, right = x + w / 2 - 46, x + w / 2 + 46
+        draw.rounded_rectangle((left, y + 38, right, y + 70), 14, fill=pill)
+        draw.text((x + w / 2, y + 54), state, fill=C["background"],
+                  font=F18, anchor="mm")
+
+
 def data_page(track=False):
     image = base()
     draw = ImageDraw.Draw(image)
@@ -119,6 +150,34 @@ def data_page(track=False):
         for (title, value, unit), (x, y) in zip(small, positions):
             tile(draw, (x, y, 204, 90), title, value, unit)
         navigation(draw, "DASH")
+    return image
+
+
+def flag_tiles_page():
+    image = base()
+    draw = ImageDraw.Draw(image)
+    shift(draw)
+    rows = CONTRACT["row_y"]
+    left = [("SPEED", "126", "km/h"), ("CLT", "94", "°C"),
+            ("OIL TEMP", "103", "°C"), ("BATTERY", "13.9", "V")]
+    right = [("TPS", "78", "%"), ("MAP", "1.42", "bar"),
+             ("OIL PRESS", "4.2", "bar"), ("LAMBDA", "0.88", "lambda")]
+    for index, entry in enumerate(left):
+        tile(draw, (8, rows[index], 176, 90), *entry)
+    for index, entry in enumerate(right):
+        tile(draw, (616, rows[index], 176, 90), *entry)
+    tile(draw, (192, rows[0], 416, 90), "BMW MS43 STOCK", "6840", "rpm",
+         centered=True)
+    tile(draw, (192, rows[1], 416, 90), "GEAR", "4", "", centered=True)
+    flags = (("CHECK ENGINE", "ON", C["red"]),
+             ("ENGINE RUN", "ON", C["green"]),
+             ("IDLE", "OFF", None),
+             ("LAUNCH", "UNAVAILABLE", None))
+    positions = ((192, rows[2]), (404, rows[2]),
+                 (192, rows[3]), (404, rows[3]))
+    for entry, (x, y) in zip(flags, positions):
+        flag_tile(draw, (x, y, 204, 90), *entry)
+    navigation(draw, "DASH")
     return image
 
 
@@ -276,43 +335,64 @@ def settings_system_page():
 
 
 def editor_page():
-    image = data_page(False).convert("RGBA")
-    shade = Image.new("RGBA", image.size, (0, 0, 0, 145)); image.alpha_composite(shade)
+    image = base().convert("RGBA")
     draw = ImageDraw.Draw(image)
-    draw.rounded_rectangle((10, 6, 790, 474), 10, fill=C["panel"], outline=C["blue"], width=2)
-    draw.text((32, 18), "TILE SETTINGS", fill=C["text"], font=F24)
-    fields = ((32, 70, 230, "Parameter", "CLT ▾"),
-              (622, 70, 130, "Decimals", "0 ▾"),
-              (222, 146, 140, "MIN", "40.0"),
-              (402, 146, 140, "READY", "75.0"),
-              (582, 146, 140, "MAX", "130.0"),
-              (202, 272, 120, "Direction", "Above ▾"),
-              (342, 272, 130, "Threshold", "110.0"),
-              (492, 272, 130, "Hysteresis", "2.0"),
-              (642, 272, 120, "Delay ms", "300"))
+    draw.text((20, 10), "TILE SETTINGS", fill=C["text"], font=F24)
+    fields = ((20, 66, 360, "PARAMETER", "CLT ▾"),
+              (610, 66, 150, "DECIMALS", "0 ▾"),
+              (210, 138, 140, "MIN", "40.0"),
+              (390, 138, 140, "READY", "75.0"),
+              (570, 138, 140, "MAX", "130.0"),
+              (190, 264, 120, "Direction", "Above ▾"),
+              (330, 264, 130, "Threshold", "110.0"),
+              (480, 264, 130, "Hysteresis", "2.0"),
+              (630, 264, 120, "Delay ms", "300"))
     for x, y, width, title, value in fields:
         draw.text((x, y - 20), title, fill=C["muted"], font=F12)
         draw.rounded_rectangle((x, y, x + width, y + 42), 5,
                                fill="#18222C", outline=C["border"])
         draw.text((x + 10, y + 12), value, fill=C["text"], font=F14)
-    for x, y, button_width in ((222, 190, 65), (402, 190, 65),
-                               (582, 190, 65), (342, 318, 60),
-                               (492, 318, 60), (642, 318, 55)):
+    for x, y, button_width in ((210, 180, 65), (390, 180, 65),
+                               (570, 180, 65), (330, 306, 60),
+                               (480, 306, 60), (630, 306, 55)):
         for offset, label in ((0, "−"), (button_width + 6, "+")):
             left = x + offset
             draw.rounded_rectangle((left, y, left + button_width, y + 34), 5,
                                    fill="#153B57")
             draw.text((left + button_width / 2, y + 17), label,
                       fill=C["text"], font=F18, anchor="mm")
-    draw.text((292, 80), "☑ Visible", fill=C["text"], font=F14)
-    draw.text((32, 134), "☑ Temperature bar", fill=C["text"], font=F14)
-    draw.text((32, 260), "☑ Enable WARNING", fill=C["text"], font=F14)
-    draw.text((32, 365), "Temperature: MIN < READY < MAX. Alarm range: 0.0–999.0.",
+    draw.text((410, 74), "☑ Visible", fill=C["text"], font=F14)
+    draw.text((20, 126), "☑ Temperature bar", fill=C["text"], font=F14)
+    draw.text((20, 252), "☑ Enable WARNING", fill=C["text"], font=F14)
+    draw.text((20, 358), "Temperature: MIN < READY < MAX. Alarm range: 0.0–999.0.",
               fill=C["muted"], font=F12)
-    for x, text, width in ((32, "CANCEL", 180), (572, "SAVE TILE", 190)):
-        draw.rounded_rectangle((x, 396, x + width, 444), 5, fill="#153B57")
-        draw.text((x + width / 2, 420), text, fill=C["text"], font=F14, anchor="mm")
+    for x, text, width in ((20, "CANCEL", 180), (590, "SAVE TILE", 190)):
+        draw.rounded_rectangle((x, 420, x + width, 468), 5, fill="#153B57")
+        draw.text((x + width / 2, 444), text, fill=C["text"], font=F14, anchor="mm")
     return image.convert("RGB")
+
+
+def flag_editor_page():
+    image = base()
+    draw = ImageDraw.Draw(image)
+    draw.text((20, 10), "TILE SETTINGS", fill=C["text"], font=F24)
+    draw.text((20, 48), "PARAMETER", fill=C["muted"], font=F12)
+    draw.rounded_rectangle((20, 66, 380, 108), 5, fill="#18222C",
+                           outline=C["border"])
+    draw.text((32, 78), "CHECK ENGINE ▾", fill=C["text"], font=F14)
+    draw.text((410, 80), "☑ Visible", fill=C["text"], font=F14)
+    draw.text((250, 172), "ACTIVE COLOR", fill=C["muted"], font=F14)
+    draw.rounded_rectangle((250, 200, 550, 248), 6, fill="#18222C",
+                           outline=C["border"])
+    draw.text((270, 216), "RED ▾", fill=C["text"], font=F14)
+    draw.text((400, 292),
+              "OFF stays neutral. ON uses the selected accent color.",
+              fill=C["text"], font=F14, anchor="ma")
+    for x, text, width in ((20, "CANCEL", 180), (590, "SAVE TILE", 190)):
+        draw.rounded_rectangle((x, 420, x + width, 468), 5, fill="#153B57")
+        draw.text((x + width / 2, 444), text, fill=C["text"], font=F14,
+                  anchor="mm")
+    return image
 
 
 def warning_page():
@@ -335,7 +415,7 @@ def render_all(output):
         data_page(False), data_page(True), settings_home_page(),
         settings_display_page(), settings_can_page(), settings_shift_page(),
         settings_units_page(), settings_layouts_page(), settings_system_page(),
-        editor_page(), warning_page(),
+        editor_page(), flag_tiles_page(), flag_editor_page(), warning_page(),
     )
     for name, image in zip(EXPECTED_PREVIEWS, images):
         image.save(output / name, format="PNG", optimize=False)
