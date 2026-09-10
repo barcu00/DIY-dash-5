@@ -1,6 +1,6 @@
 # DIY Dash 5
 
-[![Firmware build](https://github.com/barcu00/DIY-dash-5/actions/workflows/build-firmware.yml/badge.svg?branch=dashboard-dev)](https://github.com/barcu00/DIY-dash-5/actions/workflows/build-firmware.yml)
+[![Firmware build](https://github.com/barcu00/DIY-dash-5/actions/workflows/build-firmware.yml/badge.svg?branch=main)](https://github.com/barcu00/DIY-dash-5/actions/workflows/build-firmware.yml)
 [![Current release](https://img.shields.io/github/v/release/barcu00/DIY-dash-5?include_prereleases&label=current%20firmware)](https://github.com/barcu00/DIY-dash-5/releases/tag/v0.2.1)
 [![Target](https://img.shields.io/badge/target-ESP32--S3-00979D)](https://www.espressif.com/en/products/socs/esp32-s3)
 
@@ -297,7 +297,6 @@ Generated files are placed in `.pio/build/waveshare_5/`, including:
 ```bash
 git clone https://github.com/barcu00/DIY-dash-5.git
 cd DIY-dash-5
-git checkout dashboard-dev
 python -m pip install platformio==6.1.18
 pio run -e waveshare_5
 pio run -e waveshare_5 -t upload --upload-port COM5
