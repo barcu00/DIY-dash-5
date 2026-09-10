@@ -1,254 +1,444 @@
 # DIY Dash 5
 
-Modular motorsport dashboard firmware for the
-**Waveshare ESP32-S3-Touch-LCD-5** non-B board. The project drives the real
-800x480 LCD and GT911 touch controller, initializes OPI PSRAM and ESP32 TWAI,
-and renders telemetry through LVGL 8.4.
+[![Firmware build](https://github.com/barcu00/DIY-dash-5/actions/workflows/build-firmware.yml/badge.svg?branch=dashboard-dev)](https://github.com/barcu00/DIY-dash-5/actions/workflows/build-firmware.yml)
+[![Current release](https://img.shields.io/github/v/release/barcu00/DIY-dash-5?include_prereleases&label=current%20firmware)](https://github.com/barcu00/DIY-dash-5/releases/tag/v0.2.1)
+[![Target](https://img.shields.io/badge/target-ESP32--S3-00979D)](https://www.espressif.com/en/products/socs/esp32-s3)
 
-The current test-board firmware provides configurable DASH and TRACK layouts,
-persistent tile warnings, fixed non-scrolling SETTINGS pages, and a shared
-four-threshold shift-light strip. Its table-driven CAN decoder includes six
-source-pinned ECU profiles, including stock BMW MS43, plus separately labelled
-experimental Link and Citroën C2 profiles. A clearly labelled DEMO source
-supports display and UI bring-up without a connected ECU.
+DIY Dash 5 is an open, configurable auxiliary CAN dashboard for motorsport and
+road cars. It is designed for the **Waveshare ESP32-S3-Touch-LCD-5 non-B**
+board with an 800 × 480 RGB display, GT911 touch controller, 16 MB flash, and
+8 MB OPI PSRAM.
 
-## UI preview
+The dashboard does not replace the factory instrument cluster. It adds a
+dedicated screen for engine, ECU, and vehicle data, configurable warnings,
+temperature status, and a track-oriented shift light. CAN operation is passive
+and receive-only.
+
+## Current firmware
+
+The current test-board release is **v0.2.1**.
+
+- [Open the v0.2.1 release](https://github.com/barcu00/DIY-dash-5/releases/tag/v0.2.1)
+- [Download the complete 16 MB flash image](https://github.com/barcu00/DIY-dash-5/releases/download/v0.2.1/DIY-Dash-ESP32-S3-Touch-LCD-5-full.bin)
+- [View the validated GitHub Actions build](https://github.com/barcu00/DIY-dash-5/actions/runs/34399159652)
+
+Flash the complete image at address **`0x0`**. Its expected SHA-256 is:
+
+```text
+9FC9DD483754B7DDDF8EE3D20B1D87F31489FC43DA1D19DF0F165997BE9AAF70
+```
+
+> [!IMPORTANT]
+> v0.2.1 is a prerelease for a physical test board. Automated tests verify the
+> software, UI previews, ESP32-S3 compilation, and binary packaging. Vehicle
+> wiring, touch response, CAN traffic, temperature, and long-duration stability
+> still require validation on the actual installation.
+
+## Interface preview
 
 | DASH | TRACK |
 | --- | --- |
-| ![DASH screen](docs/ui/screenshots/ui-preview-dash.png) | ![TRACK screen](docs/ui/screenshots/ui-preview-track.png) |
+| ![DIY Dash dashboard](docs/ui/screenshots/ui-preview-dash.png) | ![DIY Dash track screen](docs/ui/screenshots/ui-preview-track.png) |
 
-| SETTINGS | SHIFT LIGHT |
+| SETTINGS | TILE SETTINGS |
 | --- | --- |
-| ![SETTINGS home](docs/ui/screenshots/ui-preview-settings-home.png) | ![SHIFT LIGHT settings](docs/ui/screenshots/ui-preview-settings-shift.png) |
+| ![Settings home](docs/ui/screenshots/ui-preview-settings-home.png) | ![Full-screen tile editor](docs/ui/screenshots/ui-preview-tile-editor.png) |
 
-| FLAG TILES | FLAG EDITOR |
+| STATUS FLAGS | WARNING MODAL |
 | --- | --- |
-| ![Flag tile states](docs/ui/screenshots/ui-preview-flag-tiles.png) | ![Flag tile editor](docs/ui/screenshots/ui-preview-flag-editor.png) |
+| ![Configurable status flags](docs/ui/screenshots/ui-preview-flag-tiles.png) | ![Large warning modal](docs/ui/screenshots/ui-preview-warning.png) |
 
-All thirteen CI-rendered 800x480 screens are stored in
-[`docs/ui/screenshots`](docs/ui/screenshots). They are deterministic previews;
-the physical-board checklist remains required.
+All 13 deterministic 800 × 480 previews are available in
+[`docs/ui/screenshots`](docs/ui/screenshots).
 
-## Hardware
+## Main features
 
-- Waveshare ESP32-S3-Touch-LCD-5, non-B variant
-- ESP32-S3 dual-core MCU
-- 5-inch 800x480 RGB LCD
-- GT911 capacitive touch controller
-- 16 MB flash
-- 8 MB OPI PSRAM
-- onboard TJA1051 CAN transceiver
+### Configurable DASH and TRACK pages
 
-CAN/TWAI pinout:
+- DASH has four small tiles on the left, four on the right, two centered wide
+  tiles, and four center-small tiles.
+- TRACK has four small tiles on each side and four centered wide tiles.
+- Hiding a tile compacts only its logical column or group downward.
+- Wide-tile labels and values remain centered.
+- Holding a visible tile for approximately 600 ms opens its independent,
+  full-screen editor. A short tap does not open it.
+- Hidden tiles can be restored from `SETTINGS > LAYOUTS`.
+- Every tile stores its parameter, visibility, decimals, warning, temperature
+  bar configuration, and flag color independently in NVS.
 
-| Function | ESP32-S3 pin |
+### Smooth live data
+
+- The visible data page renders at a stable 40 Hz cadence.
+- Fast parameters update at 40 Hz, medium parameters at 20 Hz, and slow
+  parameters at 10 Hz.
+- Numeric presentation interpolates between incoming samples where appropriate.
+- Warning and shift-light decisions use raw telemetry at 200 Hz and are not
+  delayed by display interpolation.
+- DEMO uses a smooth repeatable engine cycle, including a two-second RPM hold
+  at 7800 RPM.
+
+### Per-tile warnings
+
+Each numeric tile can independently configure:
+
+- enabled or disabled;
+- activation above or below the threshold;
+- threshold from `000.0` to `999.0`;
+- hysteresis from `000.0` to `999.0`;
+- delay from 0 to 10000 ms.
+
+When a limit is exceeded for the configured delay, the UI opens a large red
+`WARNING` modal with the parameter name, current value, configured limit, and
+the number of additional active warnings. Acknowledging the modal leaves the
+related tile highlighted until the signal returns through its hysteresis
+boundary. Hidden tiles can still raise warnings.
+
+Changing a numeric tile parameter clears the previous parameter's stale warning.
+A new warning configured afterward in the same editor session is preserved.
+Warnings are disabled by default in DEMO and must be enabled for the selected
+tile when testing this function.
+
+### Temperature bars
+
+Temperature tiles can display a thin continuous colored bar. Each tile has four
+native temperature controls:
+
+| Control | Meaning |
+| --- | --- |
+| `MIN` | Empty end of the fill scale |
+| `READY` | Start of the normal operating range |
+| `RED` | Independent red over-temperature threshold |
+| `MAX` | Full end of the fill scale |
+
+The required order is `MIN < READY < RED <= MAX`. Temperatures use an explicit
+signed `+000.0` / `-000.0` format and support `-999.0` to `+999.0`.
+
+- blue: below READY;
+- green: normal range;
+- yellow: final quarter of the READY-to-RED interval;
+- red: at or above RED;
+- empty: invalid or unavailable data.
+
+Coolant and oil temperature bars start enabled with default values
+`+040.0 / +075.0 / +115.0 / +130.0 °C`. IAT, fuel temperature, and EGT bars
+have parameter-specific defaults but start disabled.
+
+### Shift light
+
+DASH and TRACK share the same 12-segment shift-light strip:
+
+- four green segments;
+- four yellow segments;
+- four red segments;
+- adjustable `START`, `RED`, `FLASH`, and `MAX` thresholds;
+- 0 to 10000 RPM range in 100 RPM steps;
+- required order `START < RED < FLASH <= MAX`;
+- optional full-strip red flashing at approximately 4 Hz above `FLASH`.
+
+### Fixed SETTINGS screens
+
+SETTINGS uses separate non-scrolling 800 × 480 screens to keep touch and redraw
+performance predictable:
+
+| Category | Functions |
+| --- | --- |
+| DISPLAY | Software brightness from 20% to 100% |
+| DATA & CAN | Explicit DEMO/CAN source, ECU profile, bitrate, and timeout |
+| SHIFT LIGHT | Four RPM sliders and flash enable control |
+| UNITS | Temperature, pressure, speed, lambda/AFR, and stoichiometric AFR |
+| LAYOUTS | Paged DASH/TRACK slot list and hidden-tile restoration |
+| SYSTEM | Runtime information, layout reset, and factory reset |
+
+Settings are changed in RAM while the controls are used and written once when
+the user leaves the settings screen. Tile settings use `SAVE TILE` and update
+the runtime only after persistent storage confirms a successful write.
+
+## Telemetry and selectable data
+
+`VehicleState` is the common model used by DEMO, CAN profiles, warnings, and the
+UI. The current registry contains **101 selectable parameters**:
+
+- 35 numeric measurements;
+- 66 boolean or status flags.
+
+Numeric data includes RPM, speed, gear, throttle, MAP/boost, lambda, coolant,
+oil and intake temperatures, oil/fuel/coolant pressure, battery voltage,
+barometric pressure, ethanol content, ignition, injection, airflow, EGT 1–8,
+and individual wheel speeds.
+
+DEMO exposes the complete registry. CAN exposes only parameters substantiated
+by the selected compiled profile. If a saved tile is not supported by a newly
+selected profile, its assignment remains stored and the UI shows `---` or
+`UNAVAILABLE` instead of inventing a value.
+
+Boolean tiles show a neutral grey `OFF` state. When active, they use the
+per-tile yellow, green, or red color selected by the user. Invalid or stale
+flags show `UNAVAILABLE` and never retain the active color.
+
+## CAN profiles
+
+| Profile | Status | Default bitrate | Implemented scope |
+| --- | --- | ---: | --- |
+| ECUMaster EMU Black | Verified | 1000 kbit/s | Official `0x600–0x607` stream, numeric data and documented states |
+| rusEFI verbose | Verified | 500 kbit/s | Official verbose CAN frames, extended engine data and states |
+| MaxxECU Default 1.3 | Verified | 500 kbit/s | Official default protocol, extended numeric data and states |
+| Haltech Broadcast 2.0 | Verified | 1000 kbit/s | Official big-endian broadcast numeric channels |
+| Speeduino Haltech mode | Verified | 500 kbit/s | Populated Haltech-compatible Speeduino channels |
+| BMW MS43 Stock | Verified | 500 kbit/s | Stock `0x316`, `0x329`, and `0x545` powertrain frames and verified states |
+| Link Generic Dash | Experimental | 1000 kbit/s | Generic Dash frame `0x3E8`; ECU transmission must be configured |
+| PSA Citroën C2 VTS engine | Experimental | 500 kbit/s | HS.IS `0x208` and `0x488`; RPM, TPS, CLT, oil and intake temperature |
+
+The BMW profile is stock and passive. It does not require an OLM or K-line
+patch and does not use a custom `0x33C` stream. The PSA profile uses engine CAN
+only and intentionally excludes VAN, diagnostics, ABS, and uncertain signals.
+
+Exact protocol sources, revisions, frame IDs, mapped channels, and verification
+boundaries are recorded in the
+[`CAN Profile Source Ledger`](docs/can/profile-sources.md).
+
+## Required hardware
+
+- Waveshare ESP32-S3-Touch-LCD-5 **non-B**;
+- USB data cable for programming and serial diagnostics;
+- correctly powered display board;
+- correctly terminated CAN bus;
+- CANH, CANL, and a shared electrical ground with the vehicle/ECU.
+
+CAN/TWAI pin assignment used by the firmware:
+
+| Function | ESP32-S3 GPIO |
 | --- | ---: |
 | CAN TX | GPIO15 |
 | CAN RX | GPIO16 |
 
-Connect CANH and CANL to a correctly terminated CAN bus. Bitrate and explicit
-CAN/DEMO selection are saved from SETTINGS. CAN runs receive-only and never
-falls back automatically to generated DEMO data.
+> [!CAUTION]
+> Confirm voltage levels, grounding, termination, and connector pinout before
+> connecting the dashboard to a vehicle. The firmware uses receive-only CAN,
+> but incorrect electrical wiring can still damage the board or other modules.
 
-## Software stack
+## Install the ready-to-use firmware
 
-- PlatformIO 6.1.18
-- pioarduino ESP32 platform 53.3.11 / Arduino-ESP32 3.1.1
-- ESP32_Display_Panel 1.0.4
-- ESP32_IO_Expander 1.1.1
-- esp-lib-utils 0.2.0
-- LVGL 8.4.0
-- C++17
+### Method 1 — GitHub Release and complete BIN (recommended)
 
-Versions are pinned in `platformio.ini` so local and CI builds use the same
-interfaces.
+This method does not require downloading or compiling the source code.
 
-## Local build
+1. Download
+   [`DIY-Dash-ESP32-S3-Touch-LCD-5-full.bin`](https://github.com/barcu00/DIY-dash-5/releases/download/v0.2.1/DIY-Dash-ESP32-S3-Touch-LCD-5-full.bin).
+2. Install Python 3 and Espressif's flashing tool:
 
-Install Python 3.12 and PlatformIO, then run from the repository root:
+   ```bash
+   python -m pip install --upgrade esptool
+   ```
+
+3. Connect the ESP32-S3 board by USB and identify its serial port.
+4. Erase the target flash:
+
+   ```bash
+   python -m esptool --chip esp32s3 --port COM5 erase_flash
+   ```
+
+5. Flash the complete image at `0x0`:
+
+   ```bash
+   python -m esptool --chip esp32s3 --port COM5 --baud 921600 write_flash \
+     0x0 DIY-Dash-ESP32-S3-Touch-LCD-5-full.bin
+   ```
+
+Replace `COM5` with the board port. On Linux it is commonly similar to
+`/dev/ttyACM0` or `/dev/ttyUSB0`; on macOS it is commonly under `/dev/cu.*`.
+If the board does not enter download mode automatically, use its BOOT/RESET
+procedure and retry.
+
+### Method 2 — GitHub Actions artifact
+
+Every push and pull request runs the complete firmware workflow:
+
+1. Open [GitHub Actions](https://github.com/barcu00/DIY-dash-5/actions/workflows/build-firmware.yml).
+2. Select a successful run for the required commit.
+3. Download the `DIY-Dash-firmware` artifact.
+4. Extract it and flash the included full BIN at `0x0` using Method 1.
+
+Actions artifacts are temporary development builds. For ordinary installation,
+use the permanent full BIN attached to the v0.2.1 release. Release pages contain
+only the complete ready-to-flash image; component binaries remain development
+outputs inside Actions artifacts and local PlatformIO builds.
+
+## Download, compile, and upload the complete project
+
+The repository is a complete PlatformIO project. It can be cloned with Git or
+downloaded as a ZIP, opened directly in PlatformIO, compiled without manually
+installing Arduino libraries, and uploaded to the ESP32-S3 over USB. Required
+libraries and their pinned versions are declared in [`platformio.ini`](platformio.ini).
+
+### PlatformIO IDE in Visual Studio Code
+
+1. Install [Visual Studio Code](https://code.visualstudio.com/).
+2. Install the **PlatformIO IDE** extension.
+3. Download the repository:
+   - use `git clone https://github.com/barcu00/DIY-dash-5.git`, or
+   - choose **Code > Download ZIP** on GitHub and extract the complete archive.
+4. In VS Code select **File > Open Folder** and open the directory containing
+   `platformio.ini`.
+5. Wait for PlatformIO to install the pinned ESP32 platform and libraries.
+6. Select the `waveshare_5` environment.
+7. Use **PlatformIO: Build** to compile the complete software.
+8. Connect the board and use **PlatformIO: Upload** to flash it.
+
+Generated files are placed in `.pio/build/waveshare_5/`, including:
+
+- `firmware.bin`;
+- `bootloader.bin`;
+- `partitions.bin`;
+- `DIY-Dash-ESP32-S3-Touch-LCD-5-full.bin`;
+- `flash-layout.json`.
+
+### PlatformIO command line
 
 ```bash
+git clone https://github.com/barcu00/DIY-dash-5.git
+cd DIY-dash-5
+git checkout dashboard-dev
 python -m pip install platformio==6.1.18
-pio test -e native
 pio run -e waveshare_5
-```
-
-The target output is written to `.pio/build/waveshare_5/`.
-
-## Flashing
-
-The easiest first flash uses the merged image at offset `0x0`:
-
-```bash
-python -m esptool --chip esp32s3 --port COM5 erase_flash
-python -m esptool --chip esp32s3 --port COM5 --baud 921600 write_flash \
-  0x0 .pio/build/waveshare_5/DIY-Dash-ESP32-S3-Touch-LCD-5-full.bin
-```
-
-Replace `COM5` with the detected device port. PlatformIO can also build and
-upload directly:
-
-```bash
 pio run -e waveshare_5 -t upload --upload-port COM5
 ```
 
-When flashing component binaries separately, use the offsets recorded by the
-same build in `.pio/build/waveshare_5/flash-layout.json`. Do not copy offsets
-from another platform or release.
+To run the complete native regression suite before the ESP32 build:
 
-## GitHub Actions artifacts
-
-The workflow `.github/workflows/build-firmware.yml` runs for pushes, pull
-requests, and manual dispatches. It executes native unit tests, compiles the
-Waveshare target, merges the full-flash image from PlatformIO's actual build
-metadata, and uploads the artifact `DIY-Dash-firmware`.
-
-The artifact contains:
-
-- `firmware.bin`
-- `bootloader.bin`
-- `partitions.bin`
-- `boot_app0.bin` when generated by the selected framework
-- `DIY-Dash-ESP32-S3-Touch-LCD-5-full.bin`
-- `flash-layout.json`
-- thirteen 800x480 UI preview PNG files
-
-`flash-layout.json` records every address/file pair supplied to esptool for that
-specific build.
-
-## Runtime architecture
-
-```text
-TWAI/CAN
-   -> CanDriver
-      -> EcuCanDecoder
-         -> VehicleState
-            -> AlarmManager
-            -> UI
-
-DemoTelemetry ----------------> VehicleState
+```bash
+pio test -e native
 ```
 
-Hardware access is isolated in `src/board` and `src/can`. Decoder, telemetry
-selection, data validity, and alarms contain no Arduino or LVGL dependencies and
-are covered by host-native tests. `App` owns orchestration and updates LVGL at a
-bounded rate.
+Replace `COM5` with the detected ESP32-S3 port. The build post-script creates
+the merged 16 MB image and flash layout from PlatformIO's actual build metadata.
 
-## VehicleState
+## First start and configuration
 
-`VehicleState` is the only telemetry model consumed by the UI. Its 101 stable
-selectable parameters comprise 35 numeric values and 66 boolean states. Numeric
-channels cover the original engine data plus barometric/boost/coolant
-pressure, fuel temperature, ethanol, second lambda, ignition, injector duty and
-pulse width, accelerator position, mass airflow, EGT 1-8, and four individual
-wheel speeds. Boolean channels cover only states explicitly documented by each
-profile source. Every slot has a value, update timestamp, and validity flag;
-the complete snapshot also declares whether it came from CAN, DEMO, or no
-source.
+1. After flashing, reset or power-cycle the board.
+2. Confirm that DASH appears at 800 × 480 and touch navigation works.
+3. Open `SETTINGS > DATA & CAN`.
+4. Select `DEMO` for UI testing, or select `CAN` and the matching ECU profile.
+5. Set the required CAN bitrate and timeout.
+6. Leave the settings page to save the configuration.
+7. Hold a tile to configure its parameter, warning, visibility, decimal count,
+   temperature bar, or flag color.
+8. Test warnings in DEMO by enabling a warning and choosing a threshold crossed
+   by the generated signal range.
 
-Resetting the source clears every signal. This prevents stale CAN measurements
-from appearing alongside generated DEMO data. Invalid values are rendered as
-`---`.
+CAN mode never silently falls back to DEMO. A disconnected, invalid, or stale
+CAN signal is displayed as unavailable.
 
-## CAN decoder framework
+## Software architecture
 
-`EcuCanDecoder` is table-driven. Each compiled `CanSignalDefinition` declares:
+```text
+ESP32 TWAI / CAN frames
+        │
+        ▼
+    CanDriver
+        │
+        ▼
+Table-driven ECU decoder ──────── DEMO telemetry
+        │                              │
+        └──────────► VehicleState ◄────┘
+                         │
+             ┌───────────┼───────────┐
+             ▼           ▼           ▼
+       Tile warnings  Shift light  LVGL tile views
+             │           │           │
+             └───────────┴───────────┘
+                         │
+                         ▼
+                  800 × 480 display
+```
 
-- CAN ID and standard/extended format
-- byte offset
-- little- or big-endian order
-- signed/unsigned 8-, 16-, or 32-bit raw type
-- scale and additive offset
-- destination `VehicleSignal`
-- signal timeout
+Hardware-specific display, touch, and CAN access are isolated from the native
+C++ telemetry, configuration, decoder, warning, and presentation models. CAN
+definitions remain table-driven; raw byte layouts do not leak into UI code.
 
-The decoder validates standard/extended format, remote-frame status, exact DLC,
-optional frame discriminators, and every signal range before atomically applying
-a frame. SETTINGS exposes `none`, ECUMaster EMU Black, rusEFI verbose, MaxxECU
-Default 1.3, Haltech Broadcast 2.0, Speeduino Haltech mode, BMW MS43 Stock, and
-the experimental Link Generic Dash and PSA C2 VTS engine profiles. The MS43
-profile consumes only documented stock `0x316`, `0x329`, and `0x545` frames at
-500 kbit/s; there is no OLM profile, K-line dependency, or custom `0x33C`
-stream. Exact source revisions and mapped scope are in
-[`docs/can/profile-sources.md`](docs/can/profile-sources.md).
+## Build and verification status
 
-## CAN and DEMO status
+The current v0.2.1 firmware was built from commit
+[`5d561ed`](https://github.com/barcu00/DIY-dash-5/commit/5d561edc4229067916ff45e37cbaf7651880f462).
 
-The low-level driver initializes ESP32 TWAI on GPIO15/GPIO16 and receives without
-blocking the UI loop. The dashboard distinguishes `WAITING`, `ONLINE`, `OFFLINE`,
-and `INIT FAILED`.
+| Check | Result |
+| --- | ---: |
+| Native test cases | 176 / 176 passed |
+| Push workflow | [Passed](https://github.com/barcu00/DIY-dash-5/actions/runs/34399159652) |
+| Pull-request workflow | [Passed](https://github.com/barcu00/DIY-dash-5/actions/runs/34399164683) |
+| Static RAM | 131,656 / 327,680 bytes — 40.2% |
+| Application flash | 711,144 / 6,553,600 bytes — 10.9% |
+| Complete flash image | 16,777,216 bytes |
 
-Only a frame accepted by the active decoder marks telemetry online. In CAN mode,
-a timeout leaves values invalid and never activates DEMO. DEMO runs only when it
-is explicitly selected and saved in SETTINGS.
+GitHub Actions performs:
 
-## Dashboard and alarms
+1. 176 native C++ tests;
+2. Python packaging and UI contract tests;
+3. Waveshare ESP32-S3 firmware compilation;
+4. deterministic rendering of all UI previews;
+5. merged BIN and flash-layout generation;
+6. firmware artifact upload.
 
-The navigation is exactly DASH, TRACK, and SETTINGS. DASH contains four small
-tiles on each side, two centered wide tiles, and four center-small tiles. TRACK
-contains four small tiles on each side and four centered wide tiles. Both pages
-share the same configurable shift-light strip. Holding a tile for about 600 ms
-opens an independent full-screen editor; the dashboard and shift strip stop
-rendering behind it. In DEMO the parameter list contains every channel; in CAN
-it contains only channels decoded by the active profile. An existing unsupported
-assignment is preserved and shown as `---` / `UNAVAILABLE` until replaced.
-Numeric tiles provide visibility, decimals, and a fully configurable warning.
-Temperature tiles can also show a continuous color bar with independently
-configurable MIN, READY, RED, and MAX values. MIN/MAX define fill, READY begins
-the normal range, and RED selects the over-temperature color threshold. Coolant
-and oil temperature bars are enabled by default; IAT, fuel-temperature, and EGT
-bars remain optional.
-Flag tiles show a neutral grey `OFF` pill or a colored rail, tinted background,
-and `ON` pill. Yellow, green, or red active color is saved independently for
-each tile; stale flags show `UNAVAILABLE` and never retain an active tint.
-Temperature editors use an explicit signed `+000.0` / `-000.0` display;
-non-negative warning values use `000.0`. Warning thresholds and hysteresis use
-a 0.0-999.0 range in 0.1 steps. SETTINGS changes are applied in RAM while controls are
-used and written once when the user leaves the screen. Flash writes run outside
-LVGL callbacks to avoid interrupting active RGB-panel rendering.
-See `docs/ui/dashboard-config-guide.md` for controls and safety limitations.
+## Software stack
 
-The DASH and TRACK shift-light strips share four ordered thresholds:
-`START < RED < FLASH <= MAX`. Above the independent FLASH threshold, an enabled
-flash option alternates the complete strip between red and off at approximately
-4 Hz. All sliders span 0-10000 RPM in 100 RPM steps. Normal progression always
-uses four green, four yellow, and four red segments; thresholds control when the
-fixed color zones illuminate.
+- C++17;
+- PlatformIO 6.1.18;
+- pioarduino ESP32 platform 53.3.11 / Arduino-ESP32 3.1.1;
+- LVGL 8.4.0;
+- ESP32_Display_Panel 1.0.4;
+- ESP32_IO_Expander 1.1.1;
+- esp-lib-utils 0.2.0.
 
-Visible DASH and TRACK telemetry uses a stable 40 Hz render cadence matched to
-the RGB panel. Fast tiles update at 40 Hz, medium tiles at 20 Hz, and slow tiles
-at 10 Hz with elapsed-time interpolation between raw samples. DEMO engine speed
-uses a smooth ten-second cycle with a four-second rise, two seconds held at
-7800 RPM, and a four-second fall. Warning decisions and the shift strip use raw
-telemetry; the strip is evaluated independently at 200 Hz and flashes at 4 Hz.
+Versions are pinned in [`platformio.ini`](platformio.ini) to keep CI and
+developer builds reproducible.
 
-## Serial diagnostics
+## Repository map
 
-USB Serial uses 115200 baud. Startup logs include detected flash and PSRAM sizes,
-LCD dimensions, GT911 availability, TWAI pins and bitrate, mapping count, DEMO
-configuration, and fatal/degraded initialization states.
+| Path | Purpose |
+| --- | --- |
+| `src/app` | Runtime orchestration |
+| `src/board` | RGB display, GT911 touch, brightness, and diagnostics |
+| `src/can` | ESP32 TWAI receive-only driver |
+| `src/ecu` | CAN profiles and table-driven decoding |
+| `src/telemetry` | Parameter registry, DEMO data, and `VehicleState` |
+| `src/alarms` | Per-tile warning state machine |
+| `src/settings` | Defaults, validation, schema migration, and NVS storage |
+| `src/ui` | Layout, editor, settings, tiles, shift light, and presentation |
+| `test` | Native regression and protocol fixture tests |
+| `scripts` | Firmware packaging, UI rendering, and contract tests |
+| `docs/can` | Profile source ledger and mapping boundaries |
+| `docs/ui` | User guide and current screen previews |
 
-## Physical acceptance test
+## Current limitations
 
-A successful CI build proves compilation and artifact generation, not electrical
-or timing behavior. After flashing the target board, verify:
+- This is not yet a production-certified automotive instrument.
+- The non-B Waveshare board is the only current hardware target.
+- Link Generic Dash and PSA C2 mappings remain experimental until verified
+  against captured traffic from the exact target vehicle/ECU.
+- The firmware does not implement BMW MS43 OLM, a custom `0x33C` stream, or
+  K-line acquisition.
+- The PSA profile does not decode VAN traffic.
+- microSD logging and profile import/export are not implemented in v0.2.1.
+- CI cannot validate electrical wiring, display timing under every condition,
+  vehicle-bus compatibility, or long-duration thermal stability.
 
-1. boot completes without a reset loop;
-2. LCD renders the DASH screen at 800x480;
-3. touch switches DASH, TRACK, and SETTINGS, opens each tile editor, and moves
-   all four SHIFT LIGHT sliders;
-4. DEMO values update smoothly only when DEMO is selected;
-5. repeated brightness and shift-slider movement remains artifact-free, and
-   settings save once when leaving the category and survive a reboot;
-6. enabling shift flash makes the complete DASH and TRACK strip blink red at
-   the configured FLASH RPM, while disabling it preserves normal progression;
-7. CAN changes from waiting/offline only after a mapped frame is introduced;
-8. CAN disconnect never leaves real values presented as current or activates DEMO;
-9. the display remains responsive for at least 15 minutes.
+## Physical-board acceptance checklist
 
-## Next milestone
+After flashing, verify:
 
-Capture and compare real traffic from each target ECU, especially the 2005
-Citroën C2 VTS and Link Generic Dash streams, then promote only hardware-verified
-experimental mappings. Unknown frames remain unsupported rather than guessed.
+1. the board boots without a reset loop;
+2. DASH renders at the full 800 × 480 resolution;
+3. touch switches between DASH, TRACK, and every SETTINGS category;
+4. long-press opens a tile editor while a short tap does nothing;
+5. DEMO data, temperature bars, warnings, and the shift light behave correctly;
+6. repeated slider and brightness interaction causes no artifacts;
+7. saved settings survive a restart;
+8. CAN changes from waiting/offline only after receiving a mapped frame;
+9. disconnecting CAN invalidates stale values and never activates DEMO;
+10. the display remains responsive during a minimum 15-minute test.
+
+## Documentation
+
+- [Dashboard configuration guide](docs/ui/dashboard-config-guide.md)
+- [CAN profile source ledger](docs/can/profile-sources.md)
+- [Current v0.2.1 release](https://github.com/barcu00/DIY-dash-5/releases/tag/v0.2.1)
+- [GitHub Actions firmware workflow](.github/workflows/build-firmware.yml)
