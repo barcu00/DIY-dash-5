@@ -1,0 +1,146 @@
+#include "tile_editor_model.h"
+
+#include <cmath>
+#include <cstddef>
+
+#include "telemetry/parameter_registry.h"
+
+namespace {
+const TileConfig* tileAt(const AppConfig& config, TileAddress address) {
+    if (address.page == PageId::Dash &&
+        address.slot < config.dash_tiles.size()) {
+        return &config.dash_tiles[address.slot];
+    }
+    if (address.page == PageId::Track &&
+        address.slot < config.track_tiles.size()) {
+        return &config.track_tiles[address.slot];
+    }
+    return nullptr;
+}
+
+TileConfig* tileAt(AppConfig& config, TileAddress address) {
+    if (address.page == PageId::Dash &&
+        address.slot < config.dash_tiles.size()) {
+        return &config.dash_tiles[address.slot];
+    }
+    if (address.page == PageId::Track &&
+        address.slot < config.track_tiles.size()) {
+        return &config.track_tiles[address.slot];
+    }
+    return nullptr;
+}
+
+bool validDraft(const TileConfig& tile) {
+    return static_cast<std::size_t>(tile.parameter) < parameterCount() &&
+           tile.decimals <= 3U &&
+           static_cast<uint8_t>(tile.flag_active_color) <=
+               static_cast<uint8_t>(FlagActiveColor::Red) &&
+           static_cast<uint8_t>(tile.warning.direction) <=
+               static_cast<uint8_t>(WarningDirection::Below) &&
+           std::isfinite(tile.warning.threshold_native) &&
+           std::isfinite(tile.warning.hysteresis_native) &&
+           tile.warning.threshold_native >= 0.0f &&
+           tile.warning.threshold_native <= 999.0f &&
+           tile.warning.hysteresis_native >= 0.0f &&
+           tile.warning.hysteresis_native <= 999.0f &&
+           tile.warning.delay_ms <= 10000U &&
+           std::isfinite(tile.temperature_bar.minimum_native) &&
+           std::isfinite(tile.temperature_bar.ready_native) &&
+           std::isfinite(tile.temperature_bar.red_native) &&
+           std::isfinite(tile.temperature_bar.maximum_native) &&
+           tile.temperature_bar.minimum_native >= -999.0f &&
+           tile.temperature_bar.minimum_native <
+               tile.temperature_bar.ready_native &&
+           tile.temperature_bar.ready_native <
+               tile.temperature_bar.red_native &&
+           tile.temperature_bar.red_native <=
+               tile.temperature_bar.maximum_native &&
+           tile.temperature_bar.maximum_native <= 999.0f;
+}
+}  // namespace
+
+bool TileEditorModel::open(TileAddress address, const AppConfig& config) {
+    const TileConfig* tile = tileAt(config, address);
+    if (tile == nullptr) {
+        return false;
+    }
+    draft_ = {address, *tile};
+    open_ = true;
+    return true;
+}
+
+void TileEditorModel::cancel() {
+    open_ = false;
+}
+
+bool TileEditorModel::isOpen() const {
+    return open_;
+}
+
+const TileEditorDraft& TileEditorModel::draft() const {
+    return draft_;
+}
+
+void TileEditorModel::setParameter(ParameterId parameter) {
+    if (open_ && draft_.tile.parameter != parameter) {
+        const ParameterKind previous_kind =
+            parameterDescriptor(draft_.tile.parameter).kind;
+        const ParameterKind next_kind = parameterDescriptor(parameter).kind;
+        draft_.tile.parameter = parameter;
+        if (previous_kind == ParameterKind::Numeric &&
+            next_kind == ParameterKind::Numeric) {
+            draft_.tile.warning.enabled = false;
+            draft_.tile.temperature_bar =
+                defaultTemperatureBarConfig(parameter);
+        }
+    }
+}
+
+void TileEditorModel::setVisible(bool visible) {
+    if (open_) {
+        draft_.tile.visible = visible;
+    }
+}
+
+void TileEditorModel::setDecimals(uint8_t decimals) {
+    if (open_) {
+        draft_.tile.decimals = decimals;
+    }
+}
+
+void TileEditorModel::setWarning(const TileWarningConfig& warning) {
+    if (open_) {
+        draft_.tile.warning = warning;
+    }
+}
+
+void TileEditorModel::setTemperatureBar(
+    const TemperatureBarConfig& temperature_bar) {
+    if (open_) {
+        draft_.tile.temperature_bar = temperature_bar;
+    }
+}
+
+void TileEditorModel::setFlagActiveColor(FlagActiveColor color) {
+    if (open_) {
+        draft_.tile.flag_active_color = color;
+    }
+}
+
+bool TileEditorModel::writeCandidate(AppConfig& config) const {
+    TileConfig* destination = tileAt(config, draft_.address);
+    if (!open_ || destination == nullptr || !validDraft(draft_.tile)) {
+        return false;
+    }
+
+    *destination = draft_.tile;
+    return true;
+}
+
+bool TileEditorModel::applyTo(AppConfig& config) {
+    if (!writeCandidate(config)) {
+        return false;
+    }
+    open_ = false;
+    return true;
+}

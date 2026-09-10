@@ -22,6 +22,7 @@ public:
 
     RuntimeDiagnostics diagnostics() const;
     void incrementUiUpdates();
+    void setSoftwareBrightness(uint8_t percent);
 
 private:
     static void flushCallback(lv_disp_drv_t* drv, const lv_area_t* area, lv_color_t* color_map);
@@ -44,4 +45,5 @@ private:
     bool display_ok_ = false;
     bool touch_ok_ = false;
     uint32_t ui_updates_ = 0;
+    lv_obj_t* brightness_layer_ = nullptr;
 };

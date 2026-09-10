@@ -1,14 +1,42 @@
 Import("env")
 
-from os.path import join
+import json
+import os
+import shutil
+from os.path import basename, join
 
 app_bin = join("$BUILD_DIR", "${PROGNAME}.bin")
-merged_bin = join("$BUILD_DIR", "OpenDash-v0.1-full.bin")
+merged_bin = join("$BUILD_DIR", "DIY-Dash-ESP32-S3-Touch-LCD-5-full.bin")
+manifest_file = join("$BUILD_DIR", "flash-layout.json")
 
 
 def merge_firmware(source, target, env):
     board = env.BoardConfig()
-    flash_images = env.Flatten(env.get("FLASH_EXTRA_IMAGES", [])) + ["$ESP32_APP_OFFSET", app_bin]
+    image_pairs = [
+        (str(image[0]), env.subst(str(image[1])))
+        for image in env.get("FLASH_EXTRA_IMAGES", [])
+    ]
+    image_pairs.append((env.subst("$ESP32_APP_OFFSET"), env.subst(app_bin)))
+
+    for address, image_path in image_pairs:
+        if not os.path.isfile(image_path):
+            raise RuntimeError(
+                "Cannot merge firmware: image at {} is missing: {}".format(
+                    address, image_path
+                )
+            )
+
+    # Framework-owned images (notably boot_app0.bin) must also be shipped
+    # beside the manifest so every recorded component can be flashed alone.
+    for _, image_path in image_pairs:
+        destination = join(env.subst("$BUILD_DIR"), basename(image_path))
+        if os.path.abspath(image_path) != os.path.abspath(destination):
+            shutil.copy2(image_path, destination)
+
+    flash_images = []
+    for address, image_path in image_pairs:
+        flash_images.extend([address, '"{}"'.format(image_path)])
+
     command = " ".join(
         [
             '"$PYTHONEXE"',
@@ -25,7 +53,20 @@ def merge_firmware(source, target, env):
     )
     result = env.Execute(command)
     if result != 0:
-        raise RuntimeError("Failed to create merged OpenDash flash image")
+        raise RuntimeError("Failed to create merged DIY Dash flash image")
+
+    manifest = {
+        "chip": board.get("build.mcu", "esp32s3"),
+        "flash_size": board.get("upload.flash_size", "16MB"),
+        "merged_image": basename(env.subst(merged_bin)),
+        "images": [
+            {"offset": address, "file": basename(image_path)}
+            for address, image_path in image_pairs
+        ],
+    }
+    with open(env.subst(manifest_file), "w", encoding="utf-8") as output:
+        json.dump(manifest, output, indent=2)
+        output.write("\n")
 
 
 env.AddPostAction(app_bin, merge_firmware)

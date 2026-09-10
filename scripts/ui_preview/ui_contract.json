@@ -1,0 +1,43 @@
+{
+  "width": 800,
+  "height": 480,
+  "outer_margin": 8,
+  "left_width": 176,
+  "center_x": 192,
+  "center_width": 416,
+  "center_small_width": 204,
+  "right_x": 616,
+  "right_width": 176,
+  "tile_height": 90,
+  "row_y": [36, 134, 232, 332],
+  "navigation_y": 430,
+  "navigation_height": 50,
+  "settings": {
+    "content_x": 16,
+    "content_y": 66,
+    "content_width": 768,
+    "content_height": 348,
+    "scrollable": false,
+    "category_count": 6,
+    "layout_slots_per_page": 6,
+    "shift_slider_count": 4,
+    "shift_flash_switch": true,
+    "shift_step_rpm": 100,
+    "temperature_bar_style": "continuous",
+    "temperature_bar_defaults": [40.0, 75.0, 115.0, 130.0],
+    "alarm_minimum": 0.0,
+    "alarm_maximum": 999.0,
+    "alarm_decimals": 1
+  },
+  "colors": {
+    "background": "#07090D",
+    "panel": "#11161D",
+    "border": "#27313C",
+    "text": "#F2F5F7",
+    "muted": "#7D8996",
+    "blue": "#20A4F3",
+    "green": "#39D353",
+    "yellow": "#FFCF33",
+    "red": "#FF3B30"
+  }
+}

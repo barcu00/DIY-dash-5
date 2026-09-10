@@ -1,0 +1,167 @@
+#include "settings_flow_model.h"
+
+#include <algorithm>
+
+namespace {
+constexpr uint16_t kMinimumRpm = 0U;
+constexpr uint16_t kMaximumRpm = 10000U;
+constexpr uint16_t kRpmGap = 100U;
+
+uint16_t roundedRpm(uint16_t rpm) {
+    const uint32_t bounded = std::min<uint32_t>(rpm, kMaximumRpm);
+    return static_cast<uint16_t>(
+        ((bounded + kRpmGap / 2U) / kRpmGap) * kRpmGap);
+}
+}
+
+void SettingsFlowModel::open(SettingsCategory category) {
+    category_ = category;
+}
+
+void SettingsFlowModel::backToHome() {
+    category_ = SettingsCategory::Home;
+}
+
+SettingsCategory SettingsFlowModel::category() const {
+    return category_;
+}
+
+void SettingsFlowModel::selectLayout(PageId page) {
+    if (page != PageId::Dash && page != PageId::Track) {
+        return;
+    }
+    layout_ = page;
+    page_index_ = 0U;
+}
+
+PageId SettingsFlowModel::layout() const {
+    return layout_;
+}
+
+std::size_t SettingsFlowModel::pageIndex() const {
+    return page_index_;
+}
+
+std::size_t SettingsFlowModel::pageCount() const {
+    const std::size_t slots = layout_ == PageId::Dash
+                                  ? AppConfig::kDashTileCount
+                                  : AppConfig::kTrackTileCount;
+    return (slots + kSlotsPerPage - 1U) / kSlotsPerPage;
+}
+
+std::size_t SettingsFlowModel::firstSlot() const {
+    return page_index_ * kSlotsPerPage;
+}
+
+bool SettingsFlowModel::nextPage() {
+    if (page_index_ + 1U >= pageCount()) {
+        return false;
+    }
+    ++page_index_;
+    return true;
+}
+
+bool SettingsFlowModel::previousPage() {
+    if (page_index_ == 0U) {
+        return false;
+    }
+    --page_index_;
+    return true;
+}
+
+bool SettingsFlowModel::shouldPersist(SettingsInputKind kind,
+                                      SettingsInputEvent event) {
+    return kind == SettingsInputKind::Discrete
+               ? event == SettingsInputEvent::ValueChanged
+               : event == SettingsInputEvent::Released ||
+                     event == SettingsInputEvent::PressLost;
+}
+
+ShiftLightConfig SettingsFlowModel::correctedShift(
+    ShiftLightConfig current, ShiftField field, uint16_t requested_rpm) {
+    requested_rpm = roundedRpm(requested_rpm);
+    if (field == ShiftField::Start) {
+        current.start_rpm = std::clamp<uint16_t>(
+            requested_rpm, kMinimumRpm, kMaximumRpm - 2U * kRpmGap);
+        current.red_rpm = std::clamp<uint16_t>(
+            std::max<uint16_t>(current.red_rpm,
+                               current.start_rpm + kRpmGap),
+            current.start_rpm + kRpmGap, kMaximumRpm - kRpmGap);
+        current.flash_rpm = std::clamp<uint16_t>(
+            std::max<uint16_t>(current.flash_rpm,
+                               current.red_rpm + kRpmGap),
+            current.red_rpm + kRpmGap, kMaximumRpm);
+        current.max_rpm = std::clamp<uint16_t>(
+            std::max<uint16_t>(current.max_rpm,
+                               current.flash_rpm),
+            current.flash_rpm, kMaximumRpm);
+        return current;
+    }
+
+    if (field == ShiftField::Red) {
+        current.red_rpm = std::clamp<uint16_t>(
+            requested_rpm, kMinimumRpm + kRpmGap,
+            kMaximumRpm - kRpmGap);
+        current.start_rpm = std::clamp<uint16_t>(
+            std::min<uint16_t>(current.start_rpm,
+                               current.red_rpm - kRpmGap),
+            kMinimumRpm, current.red_rpm - kRpmGap);
+        current.flash_rpm = std::clamp<uint16_t>(
+            std::max<uint16_t>(current.flash_rpm,
+                               current.red_rpm + kRpmGap),
+            current.red_rpm + kRpmGap, kMaximumRpm);
+        current.max_rpm = std::clamp<uint16_t>(
+            std::max<uint16_t>(current.max_rpm, current.flash_rpm),
+            current.flash_rpm, kMaximumRpm);
+        return current;
+    }
+
+    if (field == ShiftField::Flash) {
+        current.flash_rpm = std::clamp<uint16_t>(
+            requested_rpm, kMinimumRpm + 2U * kRpmGap, kMaximumRpm);
+        current.red_rpm = std::clamp<uint16_t>(
+            std::min<uint16_t>(current.red_rpm,
+                               current.flash_rpm - kRpmGap),
+            kMinimumRpm + kRpmGap, current.flash_rpm - kRpmGap);
+        current.start_rpm = std::clamp<uint16_t>(
+            std::min<uint16_t>(current.start_rpm,
+                               current.red_rpm - kRpmGap),
+            kMinimumRpm, current.red_rpm - kRpmGap);
+        current.max_rpm = std::clamp<uint16_t>(
+            std::max<uint16_t>(current.max_rpm, current.flash_rpm),
+            current.flash_rpm, kMaximumRpm);
+        return current;
+    }
+
+    current.max_rpm = std::clamp<uint16_t>(
+        requested_rpm, kMinimumRpm + 2U * kRpmGap, kMaximumRpm);
+    current.flash_rpm = std::clamp<uint16_t>(
+        std::min<uint16_t>(current.flash_rpm, current.max_rpm),
+        kMinimumRpm + 2U * kRpmGap, current.max_rpm);
+    current.red_rpm = std::clamp<uint16_t>(
+        std::min<uint16_t>(current.red_rpm,
+                           current.flash_rpm - kRpmGap),
+        kMinimumRpm + kRpmGap, current.flash_rpm - kRpmGap);
+    current.start_rpm = std::clamp<uint16_t>(
+        std::min<uint16_t>(current.start_rpm,
+                           current.red_rpm - kRpmGap),
+        kMinimumRpm, current.red_rpm - kRpmGap);
+    return current;
+}
+
+void SettingsFlowModel::requestReset(SettingsResetTarget target) {
+    reset_target_ = target;
+    reset_pending_ = true;
+}
+
+bool SettingsFlowModel::resetPending() const {
+    return reset_pending_;
+}
+
+SettingsResetTarget SettingsFlowModel::pendingReset() const {
+    return reset_target_;
+}
+
+void SettingsFlowModel::cancelReset() {
+    reset_pending_ = false;
+}

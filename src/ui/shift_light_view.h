@@ -1,0 +1,17 @@
+#pragma once
+#include <array>
+#include <lvgl.h>
+#include "settings/app_config.h"
+#include "ui/shift_light_model.h"
+class ShiftLightView {
+public:
+    void create(lv_obj_t* parent);
+    void update(uint16_t rpm, bool rpm_valid, uint32_t now_ms,
+                const ShiftLightConfig& config);
+private:
+    static void drawEvent(lv_event_t* event);
+
+    lv_obj_t* strip_ = nullptr;
+    ShiftSegmentStates last_states_{};
+    bool state_initialized_ = false;
+};

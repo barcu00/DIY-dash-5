@@ -1,0 +1,41 @@
+#pragma once
+
+#include <array>
+#include <cstdint>
+
+#include "can/can_status.h"
+#include "ecu/ecu_can_decoder.h"
+#include "telemetry/mock_telemetry.h"
+
+class TelemetryManager {
+public:
+    TelemetryManager(EcuCanDecoder& decoder, uint32_t can_timeout_ms);
+
+    void selectProfile(const CanProfile* profile, uint32_t now_ms);
+    void selectSource(DataSource source, uint32_t now_ms);
+    void setCanTimeout(uint32_t timeout_ms);
+    void setCanInitialized(bool initialized, uint32_t now_ms);
+    bool accept(const CanFrame& frame, uint32_t now_ms);
+    void update(uint32_t now_ms);
+
+    const VehicleState& state() const;
+    CanStatus canStatus() const;
+    bool demoActive() const;
+    DataSource selectedSource() const;
+    std::size_t mappingCount() const;
+
+private:
+    EcuCanDecoder& decoder_;
+    MockTelemetry demo_;
+    VehicleState can_state_{};
+    VehicleState empty_state_{};
+    std::array<uint32_t, VehicleState::kSignalCount> timeouts_{};
+    DataSource selected_source_ = DataSource::Demo;
+    bool demo_active_ = false;
+    bool can_initialized_ = true;
+    bool has_valid_frame_ = false;
+    uint32_t can_timeout_ms_ = 0U;
+    uint32_t started_ms_ = 0U;
+    uint32_t last_valid_frame_ms_ = 0U;
+    CanStatus can_status_ = CanStatus::Waiting;
+};

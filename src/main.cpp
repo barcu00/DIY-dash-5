@@ -7,7 +7,7 @@ void setup() {
     Serial.begin(115200);
     delay(250);
     Serial.println();
-    Serial.println("BartzDash v0.1");
+    Serial.println("DIY Dash - ESP32-S3 Touch-LCD-5");
     app.begin();
 }
 

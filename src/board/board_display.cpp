@@ -3,54 +3,66 @@
 #include <esp_heap_caps.h>
 #include <esp_timer.h>
 
+#include "board/display_tuning.h"
+
 using esp_panel::board::Board;
 using esp_panel::drivers::TouchPoint;
 
 namespace {
 constexpr uint32_t kLvTickMs = 2;
-constexpr uint32_t kBufferLines = 40;
+constexpr uint16_t kExpectedWidth = 800;
+constexpr uint16_t kExpectedHeight = 480;
 }
 
 bool BoardDisplay::begin() {
-    Serial.println("[BartzDash] Initializing board");
-    Serial.printf("[BartzDash] PSRAM: %u bytes\n", static_cast<unsigned>(ESP.getPsramSize()));
-    Serial.printf("[BartzDash] Flash: %u bytes\n", static_cast<unsigned>(ESP.getFlashChipSize()));
+    Serial.println("[DIY Dash] Initializing board");
+    Serial.printf("[DIY Dash] PSRAM: %u bytes\n", static_cast<unsigned>(ESP.getPsramSize()));
+    Serial.printf("[DIY Dash] Flash: %u bytes\n", static_cast<unsigned>(ESP.getFlashChipSize()));
+    if (ESP.getPsramSize() == 0U) {
+        Serial.println("[DIY Dash] WARNING: PSRAM not detected");
+    }
 
     board_ = new Board();
     if (board_ == nullptr || !board_->init()) {
-        Serial.println("[BartzDash] ERROR: board init failed");
+        Serial.println("[DIY Dash] ERROR: board init failed");
         return false;
     }
     if (!board_->begin()) {
-        Serial.println("[BartzDash] ERROR: board begin failed");
+        Serial.println("[DIY Dash] ERROR: board begin failed");
         return false;
     }
 
     lcd_ = board_->getLCD();
     touch_ = board_->getTouch();
     if (lcd_ == nullptr) {
-        Serial.println("[BartzDash] ERROR: LCD not available");
+        Serial.println("[DIY Dash] ERROR: LCD not available");
         return false;
     }
 
-    Serial.printf("[BartzDash] LCD: %ux%u\n",
+    Serial.printf("[DIY Dash] LCD: %ux%u\n",
                   static_cast<unsigned>(lcd_->getFrameWidth()),
                   static_cast<unsigned>(lcd_->getFrameHeight()));
+    if (lcd_->getFrameWidth() != kExpectedWidth ||
+        lcd_->getFrameHeight() != kExpectedHeight) {
+        Serial.println("[DIY Dash] ERROR: unexpected LCD resolution");
+        return false;
+    }
 
     lv_init();
 
-    const size_t buffer_pixels = static_cast<size_t>(lcd_->getFrameWidth()) * kBufferLines;
+    const size_t buffer_pixels =
+        DisplayTuning::bufferPixels(lcd_->getFrameWidth());
     const size_t buffer_bytes = buffer_pixels * sizeof(lv_color_t);
 
     draw_buf_1_ = static_cast<lv_color_t*>(heap_caps_malloc(buffer_bytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
     draw_buf_2_ = static_cast<lv_color_t*>(heap_caps_malloc(buffer_bytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
 
     if (draw_buf_1_ == nullptr) {
-        Serial.println("[BartzDash] PSRAM buffer allocation failed, trying internal RAM");
+        Serial.println("[DIY Dash] PSRAM buffer allocation failed, trying internal RAM");
         draw_buf_1_ = static_cast<lv_color_t*>(heap_caps_malloc(buffer_bytes, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
     }
     if (draw_buf_1_ == nullptr) {
-        Serial.println("[BartzDash] ERROR: LVGL buffer allocation failed");
+        Serial.println("[DIY Dash] ERROR: LVGL buffer allocation failed");
         return false;
     }
 
@@ -62,7 +74,7 @@ bool BoardDisplay::begin() {
     disp_drv_.draw_buf = &draw_buf_desc_;
     disp_drv_.user_data = this;
     if (lv_disp_drv_register(&disp_drv_) == nullptr) {
-        Serial.println("[BartzDash] ERROR: LVGL display registration failed");
+        Serial.println("[DIY Dash] ERROR: LVGL display registration failed");
         return false;
     }
 
@@ -72,15 +84,16 @@ bool BoardDisplay::begin() {
         indev_drv_.type = LV_INDEV_TYPE_POINTER;
         indev_drv_.read_cb = touchCallback;
         indev_drv_.user_data = this;
+        indev_drv_.long_press_time = 600U;
         lv_indev_drv_register(&indev_drv_);
-        Serial.println("[BartzDash] Touch: GT911 ready");
+        Serial.println("[DIY Dash] Touch: GT911 ready");
     } else {
-        Serial.println("[BartzDash] WARNING: touch not available");
+        Serial.println("[DIY Dash] WARNING: touch not available");
     }
 
     lvgl_mutex_ = xSemaphoreCreateRecursiveMutex();
     if (lvgl_mutex_ == nullptr) {
-        Serial.println("[BartzDash] ERROR: LVGL mutex allocation failed");
+        Serial.println("[DIY Dash] ERROR: LVGL mutex allocation failed");
         return false;
     }
 
@@ -88,17 +101,17 @@ bool BoardDisplay::begin() {
         .callback = tickCallback,
         .arg = this,
         .dispatch_method = ESP_TIMER_TASK,
-        .name = "bartzdash_lv_tick",
+        .name = "diy_dash_lv_tick",
         .skip_unhandled_events = true,
     };
     if (esp_timer_create(&tick_args, &tick_timer_) != ESP_OK ||
         esp_timer_start_periodic(tick_timer_, kLvTickMs * 1000ULL) != ESP_OK) {
-        Serial.println("[BartzDash] ERROR: LVGL tick timer failed");
+        Serial.println("[DIY Dash] ERROR: LVGL tick timer failed");
         return false;
     }
 
     display_ok_ = true;
-    Serial.println("[BartzDash] Display/LVGL ready");
+    Serial.println("[DIY Dash] Display/LVGL ready");
     return true;
 }
 
@@ -138,6 +151,24 @@ RuntimeDiagnostics BoardDisplay::diagnostics() const {
 
 void BoardDisplay::incrementUiUpdates() {
     ++ui_updates_;
+}
+
+void BoardDisplay::setSoftwareBrightness(uint8_t percent) {
+    percent = constrain(percent, 20U, 100U);
+    if (brightness_layer_ == nullptr) {
+        brightness_layer_ = lv_obj_create(lv_layer_top());
+        lv_obj_set_pos(brightness_layer_, 0, 0);
+        lv_obj_set_size(brightness_layer_, kExpectedWidth, kExpectedHeight);
+        lv_obj_set_style_bg_color(brightness_layer_, lv_color_black(), 0);
+        lv_obj_set_style_border_width(brightness_layer_, 0, 0);
+        lv_obj_set_style_radius(brightness_layer_, 0, 0);
+        lv_obj_clear_flag(brightness_layer_, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_clear_flag(brightness_layer_, LV_OBJ_FLAG_SCROLLABLE);
+    }
+    const uint8_t opacity = static_cast<uint8_t>(
+        ((100U - percent) * static_cast<uint16_t>(LV_OPA_80)) / 80U);
+    lv_obj_set_style_bg_opa(brightness_layer_, opacity, 0);
+    lv_obj_move_foreground(brightness_layer_);
 }
 
 void BoardDisplay::flushCallback(lv_disp_drv_t* drv, const lv_area_t* area, lv_color_t* color_map) {
