@@ -7,8 +7,14 @@ constexpr uint32_t kCanBitrate = 1000000U;
 constexpr uint32_t kCanTimeoutMs = 1500U;
 constexpr uint32_t kUiUpdateIntervalMs = 25U;
 constexpr bool kDemoEnabled = true;
+
+#if defined(BOARD_WAVESHARE_ESP32_S3_TOUCH_LCD_7)
+constexpr uint8_t kCanTxGpio = 20U;
+constexpr uint8_t kCanRxGpio = 19U;
+#else
 constexpr uint8_t kCanTxGpio = 15U;
 constexpr uint8_t kCanRxGpio = 16U;
+#endif
 
 constexpr float kCltWarningC = 105.0f;
 constexpr float kCltCriticalC = 115.0f;
