@@ -12,6 +12,9 @@ namespace {
 constexpr uint32_t kLvTickMs = 2;
 constexpr uint16_t kExpectedWidth = 800;
 constexpr uint16_t kExpectedHeight = 480;
+#if defined(BOARD_WAVESHARE_ESP32_S3_TOUCH_LCD_7)
+constexpr uint8_t kUsbCanMuxExpanderPin = 5U;
+#endif
 }
 
 bool BoardDisplay::begin() {
@@ -31,6 +34,18 @@ bool BoardDisplay::begin() {
         Serial.println("[DIY Dash] ERROR: board begin failed");
         return false;
     }
+
+#if defined(BOARD_WAVESHARE_ESP32_S3_TOUCH_LCD_7)
+    auto* io_expander = board_->getIO_Expander();
+    auto* expander = io_expander == nullptr ? nullptr : io_expander->getBase();
+    if (expander == nullptr ||
+        !expander->pinMode(kUsbCanMuxExpanderPin, OUTPUT) ||
+        !expander->digitalWrite(kUsbCanMuxExpanderPin, HIGH)) {
+        Serial.println("[DIY Dash] ERROR: cannot switch Waveshare 7 USB/CAN mux to CAN");
+        return false;
+    }
+    Serial.println("[DIY Dash] Waveshare 7 USB/CAN mux: CAN mode");
+#endif
 
     lcd_ = board_->getLCD();
     touch_ = board_->getTouch();
