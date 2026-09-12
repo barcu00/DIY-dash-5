@@ -40,8 +40,11 @@ jobs:
       - name: Test firmware packaging
         run: python -m unittest discover -s scripts/tests -v
 
-      - name: Build Waveshare firmware
+      - name: Build Waveshare 5 firmware
         run: pio run -e waveshare_5
+
+      - name: Build Waveshare 7 firmware
+        run: pio run -e waveshare_7
 
       - name: Render 800x480 UI previews
         run: python scripts/ui_preview/render_ui_preview.py --output ui-previews
@@ -50,18 +53,35 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          build_dir=.pio/build/waveshare_5
+          build_5=.pio/build/waveshare_5
+          build_7=.pio/build/waveshare_7
           artifact_dir=artifacts
           mkdir -p "$artifact_dir"
 
           for file in firmware.bin bootloader.bin partitions.bin \
             DIY-Dash-ESP32-S3-Touch-LCD-5-full.bin flash-layout.json; do
-            test -f "$build_dir/$file"
-            cp "$build_dir/$file" "$artifact_dir/"
+            test -f "$build_5/$file"
+            cp "$build_5/$file" "$artifact_dir/$file"
           done
 
-          if test -f "$build_dir/boot_app0.bin"; then
-            cp "$build_dir/boot_app0.bin" "$artifact_dir/"
+          if test -f "$build_5/boot_app0.bin"; then
+            cp "$build_5/boot_app0.bin" "$artifact_dir/boot_app0.bin"
+          fi
+
+          for file in firmware.bin bootloader.bin partitions.bin \
+            DIY-Dash-ESP32-S3-Touch-LCD-5-full.bin flash-layout.json; do
+            test -f "$build_7/$file"
+          done
+
+          cp "$build_7/firmware.bin" "$artifact_dir/DIY-Dash-ESP32-S3-Touch-LCD-7-app.bin"
+          cp "$build_7/bootloader.bin" "$artifact_dir/DIY-Dash-ESP32-S3-Touch-LCD-7-bootloader.bin"
+          cp "$build_7/partitions.bin" "$artifact_dir/DIY-Dash-ESP32-S3-Touch-LCD-7-partitions.bin"
+          cp "$build_7/DIY-Dash-ESP32-S3-Touch-LCD-5-full.bin" \
+            "$artifact_dir/DIY-Dash-ESP32-S3-Touch-LCD-7-full.bin"
+          cp "$build_7/flash-layout.json" "$artifact_dir/DIY-Dash-ESP32-S3-Touch-LCD-7-flash-layout.json"
+
+          if test -f "$build_7/boot_app0.bin"; then
+            cp "$build_7/boot_app0.bin" "$artifact_dir/DIY-Dash-ESP32-S3-Touch-LCD-7-boot_app0.bin"
           fi
           cp ui-previews/*.png "$artifact_dir/"
 
