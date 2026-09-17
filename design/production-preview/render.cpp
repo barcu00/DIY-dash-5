@@ -15,6 +15,7 @@
 namespace {
 unsigned char framebuffer[480][800][3];
 lv_color_t draw_buffer[800*40];
+unsigned char incremental_frame[480][800][3];
 void flush(lv_disp_drv_t* driver,const lv_area_t* area,lv_color_t* pixels) {
     for(int y=area->y1;y<=area->y2;++y)for(int x=area->x1;x<=area->x2;++x) {
         lv_color32_t pixel; pixel.full=lv_color_to32(*pixels++);
@@ -36,6 +37,19 @@ void save(const char* directory,const char* name) {
     std::fprintf(out,"P6\n800 480\n255\n");
     assert(std::fwrite(framebuffer,1,sizeof(framebuffer),out)==sizeof(framebuffer));
     std::fclose(out);
+}
+void compareIncremental(lv_obj_t* screen,const char* scene,unsigned step) {
+    lv_obj_update_layout(screen);lv_refr_now(nullptr);
+    std::memcpy(incremental_frame,framebuffer,sizeof(framebuffer));
+    lv_obj_invalidate(screen);lv_refr_now(nullptr);
+    if(std::memcmp(incremental_frame,framebuffer,sizeof(framebuffer))) {
+        for(int y=0;y<480;y++)for(int x=0;x<800;x++) {
+            if(std::memcmp(incremental_frame[y][x],framebuffer[y][x],3)) {
+                std::fprintf(stderr,"Partial redraw differs: %s step %u pixel %d,%d\n",scene,step,x,y);
+                assert(false);
+            }
+        }
+    }
 }
 }
 
@@ -61,13 +75,19 @@ int main(int argc,char** argv) {
     const char* names[]={"firmware-classic-dash","firmware-classic-track","firmware-analog-style",
         "firmware-side-gear","firmware-strip-style","firmware-analog-flags","firmware-warning-tile",
         "firmware-scale-6000","firmware-flash-on","firmware-flash-off","firmware-compact-flags",
-        "firmware-rpm-10000","firmware-analog-unavailable","firmware-strip-unavailable"};
-    for(int scenario=0;scenario<14;++scenario) {
+        "firmware-rpm-10000","firmware-analog-unavailable","firmware-strip-unavailable",
+        "firmware-modern-motorsport","firmware-modern-7500","firmware-modern-idle",
+        "firmware-modern-redline","firmware-modern-flash-on","firmware-modern-flash-off",
+        "firmware-modern-unavailable","firmware-modern-flags","firmware-modern-hidden-warning",
+        "firmware-analog-7500","firmware-strip-7500"};
+    constexpr int scene_count=sizeof(names)/sizeof(names[0]);
+    for(int scenario=0;scenario<scene_count;++scenario) {
         AppConfig config=AppConfig::defaults();
         config.dash_layout=scenario<5 ? static_cast<DashboardLayout>(scenario):
-            scenario==5 || scenario==12 ? DashboardLayout::AnalogStyle:DashboardLayout::StripStyle;
+            scenario>=14 && scenario<=22 ? DashboardLayout::ModernMotorsport:
+            scenario==5 || scenario==12 || scenario==23 ? DashboardLayout::AnalogStyle:DashboardLayout::StripStyle;
         auto bank=activeTiles(config,PageId::Dash);
-        if(scenario==5 || scenario==10) {
+        if(scenario==5 || scenario==10 || scenario==21) {
             for(int i=0;i<3;++i)bank[i].parameter=ParameterId::CheckEngine;
             bank[0].flag_active_color=FlagActiveColor::Red;
             bank[1].parameter=ParameterId::LaunchControlActive;
@@ -76,8 +96,12 @@ int main(int argc,char** argv) {
             state.invalidate(ParameterId::AntiLagActive);
         }
         if(scenario==7)config.rpm_scale_max=6000;
-        state.set(ParameterId::Rpm,scenario==11 ? 10000:scenario>=8 && scenario<=9 ? 8500:6840,0);
-        const uint32_t now=scenario==9 ? 125:0;
+        if(scenario==15 || scenario==23 || scenario==24)config.rpm_scale_max=7500;
+        if(scenario==17)config.shift.flash_enabled=false;
+        if(scenario==22)bank[0].visible=false;
+        state.set(ParameterId::Rpm,scenario==16 ? 1200:scenario==11 ? 10000:
+            (scenario>=8 && scenario<=9) || (scenario>=17 && scenario<=19) ? 8500:6840,0);
+        const uint32_t now=scenario==9 || scenario==19 ? 125:0;
         for(auto& tile:tiles)tile.hide();
         rpm.apply(config.dash_layout,config.rpm_scale_max); shift.apply(config.dash_layout);
         while(lv_obj_get_child_cnt(screen)>navigation_index)lv_obj_del(lv_obj_get_child(screen,navigation_index));
@@ -90,13 +114,13 @@ int main(int argc,char** argv) {
         lv_obj_update_layout(screen);
         for(unsigned i=0;i<placements.count;++i) {
             const auto slot=placements.items[i].address.slot;
-            const bool supported=!(scenario==12 && slot==1) && !(scenario==13 && slot==0);
-            tiles[slot].update(bank[slot],config.units,state,supported,scenario==6 && slot==1,now);
+            const bool supported=!(scenario==12 && slot==1) && !(scenario==13 && slot==0) && !(scenario==20 && slot==1);
+            tiles[slot].update(bank[slot],config.units,state,supported,(scenario==6 || scenario==22) && slot==1,now);
         }
         rpm.update(state.get(ParameterId::Rpm),now,config.shift);
         shift.update(static_cast<uint16_t>(state.get(ParameterId::Rpm).value),true,now,config.shift);
         lv_obj_update_layout(screen);
-        if(scenario==5 || scenario==10) {
+        if(scenario==5 || scenario==10 || scenario==21) {
             // Guard against unavailable captions overlapping flag pills/values.
             auto* root=lv_obj_get_child(screen,4); // third tile, first two children are RPM/shift
             auto* value=lv_obj_get_child(root,2);
@@ -111,8 +135,8 @@ int main(int argc,char** argv) {
             lv_txt_get_size(&measured,lv_label_get_text(value),lv_obj_get_style_text_font(value,0),0,0,LV_COORD_MAX,LV_TEXT_FLAG_NONE);
             assert(measured.x<=lv_obj_get_width(value));
         }
-        if(scenario==12 || scenario==13) {
-            auto* root=lv_obj_get_child(screen,scenario==12 ? 3:2);
+        if(scenario==12 || scenario==13 || scenario==20) {
+            auto* root=lv_obj_get_child(screen,scenario==13 ? 2:3);
             auto* unit=lv_obj_get_child(root,3);
             lv_area_t r,u; lv_obj_get_coords(root,&r); lv_obj_get_coords(unit,&u);
             assert(u.x1>=r.x1 && u.x2<=r.x2 && u.y1>=r.y1 && u.y2<=r.y2);
@@ -122,7 +146,19 @@ int main(int argc,char** argv) {
         if(scenario==8)assert(pixelMatches(410,50,UiTheme::red()));
         if(scenario==9)assert(pixelMatches(410,50,lv_color_hex(0x151D22)));
         save(argv[1],names[scenario]);
+        if(scenario==2 || scenario==4 || scenario==14) {
+            for(int row=0;row<6;row++)assert(pixelMatches(472,32+68*row,UiTheme::blue()));
+            const float values[]={6860,5500,5499,7000,10000,0,1200,8500,8500,6840};
+            for(unsigned i=0;i<sizeof(values)/sizeof(values[0]);i++) {
+                state.set(ParameterId::Rpm,values[i],(i+1)*125);
+                rpm.update(state.get(ParameterId::Rpm),(i+1)*125,config.shift);
+                compareIncremental(screen,names[scenario],i);
+            }
+            state.invalidate(ParameterId::Rpm);
+            rpm.update(state.get(ParameterId::Rpm),1500,config.shift);
+            compareIncremental(screen,names[scenario],10);
+        }
     }
-    std::puts("Rendered 14 real production-view framebuffers; flash, flags, font fit and unavailable assertions passed.");
+    std::printf("Rendered %d production-view scenes; incremental redraws, flash, flags, font fit, cyan rails and unavailable assertions passed.\n",scene_count);
     return 0;
 }
