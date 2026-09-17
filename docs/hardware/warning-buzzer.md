@@ -40,6 +40,10 @@ Sources: [Waveshare interface description](https://docs.waveshare.com/ESP32-S3-T
 - Schema 6 settings migrate to schema 7 with all preset banks retained and warning
   sound enabled by default. Older schemas retain their existing migration paths.
 
+Migration preserves settings only when existing NVS is retained. Flashing the
+complete full BIN at 0x0 overwrites the flash image, including the NVS region;
+back up existing flash/settings before doing so.
+
 ## Board validation still required
 
 GitHub tests exercise timing, rollover, real warning acknowledgement and saved
