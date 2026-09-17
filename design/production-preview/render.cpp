@@ -60,13 +60,13 @@ int main(int argc,char** argv) {
     state.set(ParameterId::BatteryVoltage,14.2,0); state.set(ParameterId::Tps,78,0);
     const char* names[]={"firmware-classic-dash","firmware-classic-track","firmware-analog-style",
         "firmware-side-gear","firmware-strip-style","firmware-analog-flags","firmware-warning-tile",
-        "firmware-scale-6000","firmware-flash-on","firmware-flash-off"};
-    for(int scenario=0;scenario<10;++scenario) {
+        "firmware-scale-6000","firmware-flash-on","firmware-flash-off","firmware-compact-flags"};
+    for(int scenario=0;scenario<11;++scenario) {
         AppConfig config=AppConfig::defaults();
         config.dash_layout=scenario<5 ? static_cast<DashboardLayout>(scenario):
             scenario==5 ? DashboardLayout::AnalogStyle:DashboardLayout::StripStyle;
         auto bank=activeTiles(config,PageId::Dash);
-        if(scenario==5) {
+        if(scenario==5 || scenario==10) {
             for(int i=0;i<3;++i)bank[i].parameter=ParameterId::CheckEngine;
             bank[0].flag_active_color=FlagActiveColor::Red;
             bank[1].parameter=ParameterId::LaunchControlActive;
@@ -75,7 +75,7 @@ int main(int argc,char** argv) {
             state.invalidate(ParameterId::AntiLagActive);
         }
         if(scenario==7)config.rpm_scale_max=6000;
-        state.set(ParameterId::Rpm,scenario>=8 ? 8500:6840,0);
+        state.set(ParameterId::Rpm,scenario>=8 && scenario<=9 ? 8500:6840,0);
         const uint32_t now=scenario==9 ? 125:0;
         for(auto& tile:tiles)tile.hide();
         rpm.apply(config.dash_layout,config.rpm_scale_max); shift.apply(config.dash_layout);
@@ -93,11 +93,20 @@ int main(int argc,char** argv) {
         }
         rpm.update(state.get(ParameterId::Rpm),now,config.shift);
         shift.update(static_cast<uint16_t>(state.get(ParameterId::Rpm).value),true,now,config.shift);
+        lv_obj_update_layout(screen);
+        if(scenario==5 || scenario==10) {
+            // Guard against unavailable captions overlapping flag pills/values.
+            auto* root=lv_obj_get_child(screen,4); // third tile, first two children are RPM/shift
+            auto* value=lv_obj_get_child(root,2);
+            auto* unit=lv_obj_get_child(root,3);
+            lv_area_t v,u; lv_obj_get_coords(value,&v); lv_obj_get_coords(unit,&u);
+            assert(v.x2<u.x1 || u.x2<v.x1 || v.y2<u.y1 || u.y2<v.y1);
+        }
         std::memset(framebuffer,0,sizeof(framebuffer)); lv_obj_invalidate(screen); lv_refr_now(nullptr);
         if(scenario==8)assert(pixelMatches(410,50,UiTheme::red()));
         if(scenario==9)assert(pixelMatches(410,50,lv_color_hex(0x151D22)));
         save(argv[1],names[scenario]);
     }
-    std::puts("Rendered 10 real production-view framebuffers; flash phase assertions passed.");
+    std::puts("Rendered 11 real production-view framebuffers; flash and compact flag assertions passed.");
     return 0;
 }
