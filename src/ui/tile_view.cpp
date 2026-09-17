@@ -98,7 +98,7 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
         value_font = &race_digits_96;
     else if (geometry.size == TileSize::GearHero)
         value_font = config.parameter == ParameterId::Gear ? &race_digits_140 : &race_digits_64;
-    if (is_flag) value_font = row ? &lv_font_montserrat_20 : &lv_font_montserrat_24;
+    if (is_flag) value_font = row ? &lv_font_montserrat_20 : geometry.height < 90 ? &lv_font_montserrat_16 : &lv_font_montserrat_24;
     lv_obj_set_style_text_font(value_, value_font, 0);
     lv_label_set_long_mode(value_, LV_LABEL_LONG_CLIP);
     lv_obj_set_style_text_font(title_, geometry.size == TileSize::GearHero ? &lv_font_montserrat_24 : &lv_font_montserrat_16, 0);
@@ -155,6 +155,13 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
         lv_obj_align(unit_, LV_ALIGN_BOTTOM_MID, 0, gear ? -18 : geometry.height > 200 ? -43 : -12);
     } else {
         lv_obj_set_style_text_font(unit_, &lv_font_montserrat_16, 0);
+        if (is_flag) {
+            lv_obj_set_style_text_font(unit_,&lv_font_montserrat_12,0);
+            if (!row && geometry.height < 90) {
+                lv_obj_align(title_,LV_ALIGN_TOP_MID,0,7);
+                lv_obj_align(value_,LV_ALIGN_CENTER,0,4);
+            }
+        }
         if (row && !is_flag) {
             lv_obj_set_width(title_, 106);
             lv_obj_set_style_text_align(title_, LV_TEXT_ALIGN_LEFT, 0);
@@ -267,6 +274,7 @@ void TileView::update(const TileConfig& config, const UnitSettings& units,
             stripe_, lv_color_hex(presentation.rail_rgb), 0);
         if (presentation.state == FlagTileState::Unavailable) {
             lv_obj_set_style_bg_opa(value_, LV_OPA_TRANSP, 0);
+            lv_obj_set_style_pad_all(value_,0,0);
             lv_obj_set_style_text_color(value_, UiTheme::muted(), 0);
             unit_text = "UNAVAILABLE";
         } else {
