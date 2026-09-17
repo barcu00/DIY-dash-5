@@ -28,7 +28,7 @@ static void row_centered_text(lv_draw_ctx_t *ctx,int x,int center_y,int width,
     // has a 37px line height but its digits occupy only the top 32px.
     int top=font->line_height,bottom=0; uint32_t index=0;
     while(s[index]) {
-        uint32_t codepoint=lv_txt_encoded_next(s,&index);
+        uint32_t codepoint=_lv_txt_encoded_next(s,&index);
         lv_font_glyph_dsc_t glyph;
         if(lv_font_get_glyph_dsc(font,&glyph,codepoint,0) && glyph.box_h) {
             int glyph_top=font->line_height-font->base_line-glyph.box_h-glyph.ofs_y;
