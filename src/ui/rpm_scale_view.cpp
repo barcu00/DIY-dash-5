@@ -24,8 +24,9 @@ void label(lv_draw_ctx_t* ctx, int x, int y, const char* text,
     dsc.color = UiTheme::text();
     dsc.font = font;
     dsc.align = LV_TEXT_ALIGN_CENTER;
-    lv_area_t area{static_cast<lv_coord_t>(x - 28), static_cast<lv_coord_t>(y - 8),
-                   static_cast<lv_coord_t>(x + 28), static_cast<lv_coord_t>(y + 16)};
+    const int half_width = std::strlen(text) > 6 ? 52 : 28;
+    lv_area_t area{static_cast<lv_coord_t>(x - half_width), static_cast<lv_coord_t>(y - 8),
+                   static_cast<lv_coord_t>(x + half_width), static_cast<lv_coord_t>(y + 16)};
     lv_draw_label(ctx, &dsc, &area, text, nullptr);
 }
 lv_point_t polar(lv_point_t center, float radius, float degrees) {
@@ -181,8 +182,10 @@ void RpmScaleView::drawScale(lv_event_t* event) {
                  {static_cast<lv_coord_t>(x), static_cast<lv_coord_t>(y + 6)}, UiTheme::muted(), 1);
         }
         char text[16];
-        std::snprintf(text, sizeof(text), "%.1f", self->maximum_ * fraction / 1000.0);
-        if (std::strstr(text, ".0")) *std::strstr(text, ".0") = '\0';
+        std::snprintf(text, sizeof(text), "%.2f", self->maximum_ * fraction / 1000.0);
+        size_t length = std::strlen(text);
+        while (length && text[length - 1] == '0') text[--length] = '\0';
+        if (length && text[length - 1] == '.') text[--length] = '\0';
         if (analog) {
             auto p = polar(center, 142, 135.0f + 270.0f * fraction);
             label(ctx, p.x, p.y, text, &lv_font_montserrat_16);

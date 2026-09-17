@@ -1,5 +1,6 @@
 import argparse
 import json
+import math
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
@@ -19,6 +20,9 @@ EXPECTED_PREVIEWS = (
     "ui-preview-flag-tiles.png",
     "ui-preview-flag-editor.png",
     "ui-preview-warning.png",
+    "ui-preview-analog-style.png",
+    "ui-preview-side-gear.png",
+    "ui-preview-strip-style.png",
 )
 ROOT = Path(__file__).resolve().parent
 CONTRACT = json.loads((ROOT / "ui_contract.json").read_text(encoding="utf-8"))
@@ -47,7 +51,7 @@ def base():
 
 
 def shift(draw):
-    colors = [C["green"]] * 6 + [C["yellow"]] * 3 + [C["red"]] * 3
+    colors = [C["green"]] * 4 + [C["yellow"]] * 4 + [C["red"]] * 4
     for index, color in enumerate(colors):
         x = 8 + index * 66
         draw.rounded_rectangle((x, 8, x + 60, 24), 4, fill=color)
@@ -57,10 +61,29 @@ def navigation(draw, active):
     labels = ("DASH", "TRACK", "SETTINGS")
     widths = (267, 266, 267)
     x = 0
-    for label, width in zip(labels, widths):
-        draw.rectangle((x, 430, x + width, 480), fill="#153B57" if label == active else "#10151B")
-        box = draw.textbbox((0, 0), label, font=F14)
-        draw.text((x + (width - (box[2] - box[0])) / 2, 447), label, fill=C["text"], font=F14)
+    for index, (label, width) in enumerate(zip(labels, widths)):
+        color = C["blue"] if label == active else C["muted"]
+        cx, cy = x + width / 2 - 62, 455
+        if index == 0:
+            draw.arc((cx - 12, cy - 12, cx + 12, cy + 12), 135, 405, fill=color, width=2)
+            draw.line((cx, cy, cx + 7, cy - 7), fill=color, width=2)
+        elif index == 1:
+            draw.line((cx - 10, cy - 12, cx - 10, cy + 12), fill=color, width=2)
+            for row in range(3):
+                for col in range(4):
+                    if (row + col) % 2 == 0:
+                        draw.rectangle((cx - 8 + col * 5, cy - 12 + row * 5,
+                                        cx - 4 + col * 5, cy - 8 + row * 5), fill=color)
+        else:
+            draw.ellipse((cx - 9, cy - 9, cx + 9, cy + 9), outline=color, width=2)
+            draw.ellipse((cx - 3, cy - 3, cx + 3, cy + 3), outline=color, width=2)
+            for tooth in range(8):
+                angle = tooth * math.pi / 4
+                draw.line((cx + 9 * math.cos(angle), cy + 9 * math.sin(angle),
+                           cx + 13 * math.cos(angle), cy + 13 * math.sin(angle)), fill=color, width=3)
+        draw.text((x + width / 2 + 16, cy), label, fill=color, font=font(16), anchor="mm")
+        if label == active:
+            draw.rectangle((x + (width - 176) / 2, 477, x + (width + 176) / 2, 479), fill=color)
         x += width
 
 
@@ -83,8 +106,7 @@ def tile(draw, rect, title, value, unit="", centered=False, warning=False):
         temperature = float(value)
         fraction = max(0.0, min(1.0, (temperature - 40.0) / 90.0))
         color = C["blue"] if temperature < 75.0 else (
-            C["red"] if temperature >= 130.0 else (
-                C["yellow"] if temperature >= 116.25 else C["green"]))
+            C["red"] if temperature >= 115.0 else C["green"])
         draw.rounded_rectangle((x + 12, y + h - 11, x + w - 12, y + h - 4),
                                3, fill=C["border"])
         fill_x = x + 12 + int((w - 24) * fraction)
@@ -305,21 +327,113 @@ def settings_units_page():
 
 def settings_layouts_page():
     image, draw = settings_shell("LAYOUTS")
-    draw.rounded_rectangle((28, 72, 194, 112), 6, fill="#153B57")
-    draw.rounded_rectangle((210, 72, 376, 112), 6, fill=C["panel"], outline=C["border"])
-    draw.text((111, 92), "DASH", fill=C["text"], font=F14, anchor="mm")
-    draw.text((293, 92), "TRACK", fill=C["text"], font=F14, anchor="mm")
+    for x, label, preset in ((28, "DASH", "Analog Style"), (408, "TRACK", "Strip Style")):
+        draw.text((x, 85), label, fill=C["text"], font=F12, anchor="lm")
+        draw.rounded_rectangle((x + 60, 66, x + 358, 104), 5, fill=C["panel"], outline=C["border"])
+        draw.text((x + 74, 85), preset + "  ▾", fill=C["text"], font=F14, anchor="lm")
+    for x, label in ((28, "DASH TILES"), (156, "TRACK TILES")):
+        draw.rounded_rectangle((x, 110, x + 120, 146), 5, fill="#153B57")
+        draw.text((x + 60, 128), label, fill=C["text"], font=F12, anchor="mm")
+    draw.text((296, 127), "RPM SCALE MAX: 10000", fill=C["text"], font=F12, anchor="lm")
+    draw.rounded_rectangle((570, 121, 752, 137), 8, fill=C["blue"])
+    draw.ellipse((744, 119, 764, 139), fill=C["text"])
     slots = (("1", "SPEED"), ("2", "MAP"), ("3", "LAMBDA"),
              ("4", "CLT"), ("5", "RPM"), ("6", "GEAR"))
     for index, (slot, value) in enumerate(slots):
         col, row = index % 2, index // 2
-        x, y = 22 + col * 382, 126 + row * 72
-        settings_control(draw, (x, y, x + 366, y + 62), f"SLOT {slot}", f"{value}  |  VISIBLE")
-    draw.rounded_rectangle((22, 354, 182, 404), 6, fill=C["panel"], outline=C["border"])
-    draw.rounded_rectangle((618, 354, 778, 404), 6, fill="#153B57")
-    draw.text((102, 379), "< PREVIOUS", fill=C["muted"], font=F14, anchor="mm")
-    draw.text((400, 379), "1 / 3", fill=C["text"], font=F14, anchor="mm")
-    draw.text((698, 379), "NEXT >", fill=C["text"], font=F14, anchor="mm")
+        x, y = 28 + col * 376, 158 + row * 58
+        draw.rounded_rectangle((x, y, x + 364, y + 50), 6, fill=C["panel"], outline=C["border"])
+        draw.text((x + 12, y + 15), f"SLOT {slot}", fill=C["muted"], font=F12, anchor="lm")
+        draw.text((x + 12, y + 35), f"{value}  |  VISIBLE", fill=C["text"], font=F14, anchor="lm")
+    draw.rounded_rectangle((28, 352, 188, 396), 6, fill=C["panel"], outline=C["border"])
+    draw.rounded_rectangle((612, 352, 772, 396), 6, fill="#153B57")
+    draw.text((108, 374), "< PREVIOUS", fill=C["muted"], font=F14, anchor="mm")
+    draw.text((400, 374), "1 / 1", fill=C["text"], font=F14, anchor="mm")
+    draw.text((692, 374), "NEXT >", fill=C["text"], font=F14, anchor="mm")
+    return image
+
+
+def preset_page(layout, maximum=10000, rpm=6840):
+    """Deterministic geometry preview; not a framebuffer capture from LVGL."""
+    image = base()
+    draw = ImageDraw.Draw(image)
+
+    def hero(rect, title, value, unit="", gear=False):
+        x, y, w, h = rect
+        draw.rounded_rectangle((x, y, x + w, y + h), 8, fill=C["panel"], outline=C["border"])
+        draw.text((x + w / 2, y + 26), title, fill=C["text"], font=font(20), anchor="mm")
+        size = 80 if gear else 64 if w >= 260 else 48
+        draw.text((x + w / 2, y + h / 2), value, fill=C["text"], font=font(size, True), anchor="mm")
+        draw.text((x + w / 2, y + h - 27), unit, fill=C["text"], font=font(20), anchor="mm")
+
+    def rpm_bar(x, y, w, curved=False):
+        fraction = max(0, min(1, rpm / maximum))
+        for i in range(36):
+            a, b = i / 36, (i + 1) / 36
+            x1, x2 = x + 4 + int((w - 8) * a), x + 2 + int((w - 8) * b)
+            y1 = y + (int(12 + 46 * (2 * a - 1) ** 2) if curved else 24)
+            y2 = y + (int(12 + 46 * (2 * b - 1) ** 2) if curved else 24)
+            draw.polygon(((x1, y1), (x2, y2), (x2, y2 + 26), (x1, y1 + 26)), fill="#202830")
+            lit = max(0, min(1, (fraction - a) / (b - a)))
+            if lit:
+                xe, ye = x1 + (x2 - x1) * lit, y1 + (y2 - y1) * lit
+                color = C["green"] if i < 12 else C["yellow"] if i < 24 else C["red"]
+                draw.polygon(((x1, y1), (xe, ye), (xe, ye + 26), (x1, y1 + 26)), fill=color)
+        for i in range(11):
+            f = i / 10
+            tx = max(x + 28, min(x + w - 28, x + 4 + int((w - 8) * f)))
+            ty = y + (int(12 + 46 * (2 * f - 1) ** 2) + 55 if curved else 79)
+            draw.text((tx, ty), f"{maximum * f / 1000:g}", fill=C["text"], font=F12, anchor="mm")
+        draw.text((x + w - 72, y + 8), "RPM x1000", fill=C["text"], font=F12, anchor="mm")
+
+    if layout == "analog":
+        for i in range(12):
+            color = C["green"] if i < 4 else C["yellow"] if i < 8 else C["red"]
+            draw.rounded_rectangle((8 + i * 34, 8, 36 + i * 34, 24), 4, fill=color)
+        cx, cy = 216, 226
+        def polar(radius, fraction):
+            angle = math.radians(135 + 270 * fraction)
+            return cx + radius * math.cos(angle), cy + radius * math.sin(angle)
+        for i in range(51):
+            f = i / 50
+            draw.line((*polar(178, f), *polar(164 if i % 5 == 0 else 171, f)),
+                      fill=C["red"] if f >= .8 else C["text"], width=3 if i % 5 == 0 else 1)
+            if i % 5 == 0:
+                draw.text(polar(142, f), f"{maximum * f / 1000:g}", fill=C["text"], font=font(16), anchor="mm")
+        draw.line((cx, cy, *polar(158, max(0, min(1, rpm / maximum)))), fill=C["red"], width=6)
+        draw.ellipse((cx - 8, cy - 8, cx + 8, cy + 8), fill=C["border"])
+        draw.text((cx, 350), str(rpm), fill=C["text"], font=font(48, True), anchor="mm")
+        draw.text((cx, 396), "RPM", fill=C["text"], font=font(20), anchor="mm")
+        rows = (("SPEED", "137", "km/h"), ("OIL PRESS", "4.8", "bar"),
+                ("OIL TEMP", "108", "°C"), ("CLT", "91", "°C"),
+                ("MAP", "1.18", "bar"), ("LAMBDA", "0.86", ""))
+        for i, (title, value, unit) in enumerate(rows):
+            y = 36 + i * 64
+            draw.rounded_rectangle((432, y, 792, y + 58), 8, fill=C["panel"], outline=C["border"])
+            draw.rectangle((432, y + 1, 436, y + 57), fill=C["blue"])
+            draw.text((442, y + 24), title, fill=C["text"], font=F12, anchor="lm")
+            draw.text((740, y + 26), value, fill=C["text"], font=F28, anchor="rm")
+            draw.text((782, y + 43), unit, fill=C["muted"], font=F12, anchor="rm")
+            if title in ("OIL TEMP", "CLT"):
+                draw.rectangle((444, y + 51, 780, y + 55), fill=C["border"])
+                draw.rectangle((444, y + 51, 444 + int(336 * (float(value) - 40) / 90), y + 55), fill=C["green"])
+    elif layout == "side":
+        rpm_bar(142, 8, 650)
+        hero((8, 8, 126, 318), "GEAR", "3", gear=True)
+        hero((142, 112, 320, 214), "RPM", str(rpm), "rpm")
+        hero((470, 112, 322, 214), "SPEED", "137", "km/h")
+        for i, entry in enumerate((("OIL PRESS", "4.8", "bar"), ("OIL TEMP", "108", "°C"),
+                                    ("CLT", "91", "°C"), ("MAP", "1.18", "bar"), ("LAMBDA", "0.86", ""))):
+            tile(draw, (8 + 158 * i, 334, 150, 88), *entry)
+    else:
+        rpm_bar(8, 8, 784, curved=True)
+        hero((174, 158, 224, 264), "RPM", str(rpm), "rpm")
+        hero((406, 158, 224, 264), "SPEED", "137", "km/h")
+        for x, width, entries in ((8, 158, (("OIL PRESS", "4.8", "bar"), ("OIL TEMP", "108", "°C"), ("FUEL PRESS", "4.1", "bar"))),
+                                  (638, 154, (("CLT", "91", "°C"), ("IAT", "32", "°C"), ("LAMBDA", "0.86", "")))):
+            for i, entry in enumerate(entries):
+                tile(draw, (x, 158 + i * 90, width, 84), *entry)
+    navigation(draw, "TRACK" if layout == "strip" else "DASH")
     return image
 
 
@@ -421,6 +535,7 @@ def render_all(output):
         settings_display_page(), settings_can_page(), settings_shift_page(),
         settings_units_page(), settings_layouts_page(), settings_system_page(),
         editor_page(), flag_tiles_page(), flag_editor_page(), warning_page(),
+        preset_page("analog"), preset_page("side"), preset_page("strip"),
     )
     for name, image in zip(EXPECTED_PREVIEWS, images):
         image.save(output / name, format="PNG", optimize=False)

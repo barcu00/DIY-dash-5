@@ -12,6 +12,11 @@
   "row_y": [36, 134, 232, 332],
   "navigation_y": 430,
   "navigation_height": 50,
+  "dashboard_layouts": ["Classic DASH", "Classic TRACK", "Analog Style", "Side Gear", "Strip Style"],
+  "layout_slot_counts": [14, 12, 6, 8, 8],
+  "rpm_scale_shared": true,
+  "rpm_scale_maximum": 10000,
+  "rpm_scale_step": 100,
   "settings": {
     "content_x": 16,
     "content_y": 66,
