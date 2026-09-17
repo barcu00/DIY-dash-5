@@ -1,6 +1,7 @@
 #include "config_repository.h"
 
 #include <algorithm>
+#include "ui/dashboard_layout.h"
 
 namespace {
 constexpr uint16_t kCurrentMaximumShiftRpm = 10000U;
@@ -138,6 +139,36 @@ void migrateTiles(const std::array<LegacyTileConfigV4, Count>& legacy,
 
 bool normalizeLegacyShiftRange(ShiftLightConfig& shift);
 
+struct LegacyAppConfigV5 {
+    uint32_t schema_version = 5U;
+    DataSource data_source = DataSource::Demo;
+    uint8_t brightness_percent = 100U;
+    CanSettings can{};
+    ShiftLightConfig shift{};
+    UnitSettings units{};
+    std::array<TileConfig, 14> dash_tiles{};
+    std::array<TileConfig, 12> track_tiles{};
+};
+
+LoadResult migrateV5(ConfigBackend& backend, AppConfig& config) {
+    LegacyAppConfigV5 legacy{};
+    if (!backend.read(&legacy, sizeof(legacy)) || legacy.schema_version != 5U)
+        return LoadResult::DefaultsUsed;
+    AppConfig migrated = AppConfig::defaults();
+    migrated.data_source = legacy.data_source;
+    migrated.brightness_percent = legacy.brightness_percent;
+    migrated.can = legacy.can;
+    migrated.shift = legacy.shift;
+    migrated.units = legacy.units;
+    migrated.dash_tiles = legacy.dash_tiles;
+    migrated.track_tiles = legacy.track_tiles;
+    normalizeLegacyShiftRange(migrated.shift);
+    if (!migrated.validate().valid) return LoadResult::DefaultsUsed;
+    config = migrated;
+    return backend.write(&config, sizeof(config))
+        ? LoadResult::Migrated : LoadResult::MigrationWriteFailed;
+}
+
 LoadResult migrateV1(ConfigBackend& backend, AppConfig& config) {
     LegacyAppConfigV1 legacy{};
     if (!backend.read(&legacy, sizeof(legacy)) || legacy.schema_version != 1U) {
@@ -271,6 +302,10 @@ ConfigRepository::ConfigRepository(ConfigBackend& backend) : backend_(backend) {
 
 LoadResult ConfigRepository::load(AppConfig& config) {
     const std::size_t stored_size = backend_.storedSize();
+    if (stored_size == sizeof(LegacyAppConfigV5)) {
+        const LoadResult migration = migrateV5(backend_, config);
+        if (migration != LoadResult::DefaultsUsed) return migration;
+    }
     if (stored_size == sizeof(LegacyAppConfigV1)) {
         const LoadResult migration = migrateV1(backend_, config);
         if (migration != LoadResult::DefaultsUsed) {
@@ -336,9 +371,9 @@ bool ConfigRepository::resetLayout(PageId page, AppConfig& runtime_config) {
     AppConfig candidate = runtime_config;
     const AppConfig defaults = AppConfig::defaults();
     if (page == PageId::Dash) {
-        candidate.dash_tiles = defaults.dash_tiles;
+        resetPageLayouts(candidate, page);
     } else if (page == PageId::Track) {
-        candidate.track_tiles = defaults.track_tiles;
+        resetPageLayouts(candidate, page);
     } else {
         return false;
     }

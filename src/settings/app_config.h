@@ -16,6 +16,18 @@ enum class PageId : uint8_t {
 enum class TileSize : uint8_t {
     Small,
     Wide,
+    CompactRow,
+    Hero,
+    GearHero,
+    CenteredSmall,
+};
+
+enum class DashboardLayout : uint8_t {
+    ClassicDash,
+    ClassicTrack,
+    AnalogStyle,
+    SideGear,
+    StripStyle,
 };
 
 enum class WarningDirection : uint8_t {
@@ -91,9 +103,11 @@ struct ValidationResult {
 };
 
 struct AppConfig {
-    static constexpr uint32_t kSchemaVersion = 5U;
+    static constexpr uint32_t kSchemaVersion = 6U;
     static constexpr std::size_t kDashTileCount = 14U;
     static constexpr std::size_t kTrackTileCount = 12U;
+    static constexpr std::size_t kLayoutTileCapacity = 14U;
+    using TileBank = std::array<TileConfig, kLayoutTileCapacity>;
 
     uint32_t schema_version = kSchemaVersion;
     DataSource data_source = DataSource::Demo;
@@ -103,6 +117,12 @@ struct AppConfig {
     UnitSettings units{};
     std::array<TileConfig, kDashTileCount> dash_tiles{};
     std::array<TileConfig, kTrackTileCount> track_tiles{};
+    DashboardLayout dash_layout = DashboardLayout::ClassicDash;
+    DashboardLayout track_layout = DashboardLayout::ClassicTrack;
+    uint16_t rpm_scale_max = 10000U;
+    // The default preset stays in its original bank; four alternatives/page.
+    std::array<TileBank, 4> dash_alternate_tiles{};
+    std::array<TileBank, 4> track_alternate_tiles{};
 
     static AppConfig defaults();
     ValidationResult validate();
