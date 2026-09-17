@@ -1,0 +1,36 @@
+name: Production LVGL view previews
+on:
+  push:
+    branches: [dashboard-dev]
+    paths: ['src/**', 'design/production-preview/**', '.github/workflows/production-view-previews.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch LVGL 8.4
+        run: |
+          curl -fL https://github.com/lvgl/lvgl/archive/refs/tags/v8.4.0.tar.gz -o /tmp/lvgl.tar.gz
+          tar -xzf /tmp/lvgl.tar.gz -C /tmp
+      - name: Compile real production views
+        shell: bash
+        run: |
+          mkdir -p /tmp/lvgl-objects
+          for source in $(find /tmp/lvgl-8.4.0/src src/ui/fonts -name '*.c'); do
+            gcc -O2 -DLV_CONF_INCLUDE_SIMPLE -DLV_LVGL_H_INCLUDE_SIMPLE -Idesign/production-preview -Isrc -I/tmp/lvgl-8.4.0 -c "$source" -o "/tmp/lvgl-objects/$(basename "$source").o"
+          done
+          g++ -std=c++17 -O2 -DLV_CONF_INCLUDE_SIMPLE -DLV_LVGL_H_INCLUDE_SIMPLE -Idesign/production-preview -Isrc -I/tmp/lvgl-8.4.0 design/production-preview/render.cpp src/settings/app_config.cpp $(find src/telemetry src/ecu src/alarms -name '*.cpp') $(find src/ui -maxdepth 1 -name '*.cpp' ! -name 'ui.cpp') /tmp/lvgl-objects/*.o -lm -o /tmp/production-preview
+      - name: Render and check production framebuffers
+        run: |
+          mkdir -p production-previews
+          /tmp/production-preview production-previews
+          python -m pip install Pillow==11.3.0
+          python design/production-preview/convert.py production-previews
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Production-LVGL-previews
+          path: production-previews/*.png
+          retention-days: 30
