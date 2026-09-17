@@ -82,7 +82,7 @@ TilePlacementList TileEngine::placements(PageId page,
     if (page == PageId::Settings) return output;
     const auto layout = selectedLayout(config, page);
     const auto tiles = activeTiles(config, page);
-    if (layout == DashboardLayout::AnalogStyle) {
+    if (layout == DashboardLayout::AnalogStyle || layout == DashboardLayout::ModernMotorsport) {
         std::array<TileGeometry, 6> rows{};
         for (int i = 0; i < 6; ++i)
             rows[i] = {464, static_cast<int16_t>(16 + 68 * i), 328, 62, TileSize::CompactRow};

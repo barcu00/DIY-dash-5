@@ -19,12 +19,17 @@ lv_color_t temperatureBarColor(TemperatureBarZone zone) {
     }
     return UiTheme::muted();
 }
-lv_color_t accent(ParameterId parameter, bool row) {
-    if (parameter == ParameterId::OilTemperature) return UiTheme::orange();
-    if (parameter == ParameterId::Clt) return row ? UiTheme::blue() : UiTheme::green();
-    if (parameter == ParameterId::Lambda) return UiTheme::yellow();
-    if (parameter == ParameterId::FuelPressure) return UiTheme::green();
-    return UiTheme::blue();
+int opticalTextY(const char* text,const lv_font_t* font,int center) {
+    int top=font->line_height,bottom=0;uint32_t index=0;
+    while(text[index]) {
+        const uint32_t cp=_lv_txt_encoded_next(text,&index);
+        lv_font_glyph_dsc_t glyph;
+        if(lv_font_get_glyph_dsc(font,&glyph,cp,0) && glyph.box_h) {
+            const int y=font->line_height-font->base_line-glyph.box_h-glyph.ofs_y;
+            top=std::min(top,y);bottom=std::max(bottom,y+glyph.box_h);
+        }
+    }
+    return center-(bottom>top ? (top+bottom)/2:font->line_height/2);
 }
 }  // namespace
 
@@ -90,7 +95,7 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
     lv_obj_set_pos(stripe_, row ? 6 : 4, row ? 7 : 5);
     lv_obj_set_size(stripe_, 4, geometry.height - (row ? 14 : 10));
     lv_obj_set_style_radius(stripe_, 2, 0);
-    lv_obj_set_style_bg_color(stripe_, accent(config.parameter,row), 0);
+    lv_obj_set_style_bg_color(stripe_, UiTheme::blue(), 0);
     if (hero) lv_obj_add_flag(stripe_, LV_OBJ_FLAG_HIDDEN);
     else lv_obj_clear_flag(stripe_, LV_OBJ_FLAG_HIDDEN);
     const lv_font_t* value_font = &race_digits_48;
@@ -181,8 +186,8 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
             // Keep flag title and status side-by-side in the short analog row.
             lv_obj_set_width(title_, 136);
             lv_obj_set_style_text_align(title_, LV_TEXT_ALIGN_LEFT, 0);
-            lv_obj_align(title_, LV_ALIGN_LEFT_MID, 10, -5);
-            lv_obj_align(value_, LV_ALIGN_RIGHT_MID, -12, -7);
+            lv_obj_align(title_, LV_ALIGN_LEFT_MID, 10, 0);
+            lv_obj_align(value_, LV_ALIGN_RIGHT_MID, -12, 0);
             lv_obj_set_width(unit_, 112);
             lv_obj_set_style_text_font(unit_, &lv_font_montserrat_12, 0);
             lv_obj_set_style_text_align(unit_, LV_TEXT_ALIGN_RIGHT, 0);
@@ -315,7 +320,7 @@ void TileView::update(const TileConfig& config, const UnitSettings& units,
         lv_obj_set_style_bg_color(
             root_, lv_color_hex(presentation.background_rgb), 0);
         lv_obj_set_style_bg_color(
-            stripe_, lv_color_hex(presentation.rail_rgb), 0);
+            stripe_, UiTheme::blue(), 0);
         if (presentation.state == FlagTileState::Unavailable) {
             lv_obj_set_style_bg_opa(value_, LV_OPA_TRANSP, 0);
             lv_obj_set_style_pad_all(value_,0,0);
@@ -361,7 +366,8 @@ void TileView::update(const TileConfig& config, const UnitSettings& units,
                 if (font->line_height > default_value_font_->line_height) continue;
                 lv_point_t measured;
                 lv_txt_get_size(&measured,value_text,font,0,0,LV_COORD_MAX,LV_TEXT_FLAG_NONE);
-                if (measured.x <= lv_obj_get_width(value_)) { fitted=font; break; }
+                const int capacity=size_==TileSize::CompactRow ? 123:lv_obj_get_width(value_);
+                if (measured.x <= capacity) { fitted=font; break; }
             }
             if (lv_obj_get_style_text_font(value_,LV_PART_MAIN) != fitted)
                 lv_obj_set_style_text_font(value_,fitted,0);
@@ -378,5 +384,30 @@ void TileView::update(const TileConfig& config, const UnitSettings& units,
                       "%s", unit_text);
         unit_text_initialized_ = true;
     }
+    arrangeRow(is_flag);
 }
 TileAddress TileView::address() const { return address_; }
+void TileView::arrangeRow(bool is_flag) {
+    if(size_!=TileSize::CompactRow || is_flag)return;
+    const int border=lv_obj_get_style_border_width(root_,0);
+    const int center=geometry_.height/2-border;
+    lv_obj_set_width(title_,120);
+    lv_obj_set_style_text_align(title_,LV_TEXT_ALIGN_CENTER,0);
+    lv_obj_set_style_text_color(title_,UiTheme::muted(),0);
+    lv_obj_set_pos(title_,12-border,opticalTextY(lv_label_get_text(title_),&lv_font_montserrat_16,center));
+    const auto* font=lv_obj_get_style_text_font(value_,0);
+    lv_point_t v,u;
+    lv_txt_get_size(&v,lv_label_get_text(value_),font,0,0,LV_COORD_MAX,LV_TEXT_FLAG_NONE);
+    const bool unavailable=std::strcmp(lv_label_get_text(unit_),"UNAVAILABLE")==0;
+    lv_txt_get_size(&u,lv_label_get_text(unit_),&lv_font_montserrat_16,0,0,LV_COORD_MAX,LV_TEXT_FLAG_NONE);
+    const int gap=u.x && !unavailable ? 8:0;
+    const int group_width=v.x+gap+(unavailable ? 0:u.x);
+    const int x=228-border-group_width/2;
+    lv_obj_set_width(value_,v.x+1);
+    lv_obj_set_style_text_align(value_,LV_TEXT_ALIGN_LEFT,0);
+    lv_obj_set_pos(value_,x,opticalTextY(lv_label_get_text(value_),font,center-(unavailable ? 7:0)));
+    if(!unavailable) {
+        lv_obj_set_width(unit_,u.x+1);
+        lv_obj_set_pos(unit_,x+v.x+gap,opticalTextY(lv_label_get_text(unit_),&lv_font_montserrat_16,center));
+    }
+}

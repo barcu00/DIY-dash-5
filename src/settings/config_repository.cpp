@@ -170,13 +170,50 @@ LoadResult migrateV6(ConfigBackend& backend, AppConfig& config) {
     migrated.dash_layout = old.dash_layout;
     migrated.track_layout = old.track_layout;
     migrated.rpm_scale_max = old.rpm_scale_max;
-    migrated.dash_alternate_tiles = old.dash_alternate_tiles;
-    migrated.track_alternate_tiles = old.track_alternate_tiles;
+    std::copy(old.dash_alternate_tiles.begin(), old.dash_alternate_tiles.end(), migrated.dash_alternate_tiles.begin());
+    std::copy(old.track_alternate_tiles.begin(), old.track_alternate_tiles.end(), migrated.track_alternate_tiles.begin());
     normalizeLegacyShiftRange(migrated.shift);
     if (!migrated.validate().valid) return LoadResult::DefaultsUsed;
     config = migrated;
     return backend.write(&config, sizeof(config))
         ? LoadResult::Migrated : LoadResult::MigrationWriteFailed;
+}
+
+struct LegacyAppConfigV7 {
+    uint32_t schema_version = 7U;
+    DataSource data_source = DataSource::Demo;
+    uint8_t brightness_percent = 100U;
+    CanSettings can{};
+    ShiftLightConfig shift{};
+    UnitSettings units{};
+    std::array<TileConfig, 14> dash_tiles{};
+    std::array<TileConfig, 12> track_tiles{};
+    DashboardLayout dash_layout = DashboardLayout::ClassicDash;
+    DashboardLayout track_layout = DashboardLayout::ClassicTrack;
+    uint16_t rpm_scale_max = 10000U;
+    std::array<AppConfig::TileBank, 4> dash_alternate_tiles{};
+    std::array<AppConfig::TileBank, 4> track_alternate_tiles{};
+    bool warning_sound_enabled = true;
+};
+
+LoadResult migrateV7(ConfigBackend& backend, AppConfig& config) {
+    LegacyAppConfigV7 old{};
+    if (!backend.read(&old, sizeof(old)) || old.schema_version != 7U)
+        return LoadResult::DefaultsUsed;
+    auto migrated = AppConfig::defaults();
+    migrated.data_source = old.data_source;
+    migrated.brightness_percent = old.brightness_percent;
+    migrated.can = old.can; migrated.shift = old.shift; migrated.units = old.units;
+    migrated.dash_tiles = old.dash_tiles; migrated.track_tiles = old.track_tiles;
+    migrated.dash_layout = old.dash_layout; migrated.track_layout = old.track_layout;
+    migrated.rpm_scale_max = old.rpm_scale_max;
+    migrated.warning_sound_enabled = old.warning_sound_enabled;
+    std::copy(old.dash_alternate_tiles.begin(), old.dash_alternate_tiles.end(), migrated.dash_alternate_tiles.begin());
+    std::copy(old.track_alternate_tiles.begin(), old.track_alternate_tiles.end(), migrated.track_alternate_tiles.begin());
+    normalizeLegacyShiftRange(migrated.shift);
+    if (!migrated.validate().valid) return LoadResult::DefaultsUsed;
+    config = migrated;
+    return backend.write(&config, sizeof(config)) ? LoadResult::Migrated : LoadResult::MigrationWriteFailed;
 }
 
 struct LegacyAppConfigV5 {
@@ -342,6 +379,10 @@ ConfigRepository::ConfigRepository(ConfigBackend& backend) : backend_(backend) {
 
 LoadResult ConfigRepository::load(AppConfig& config) {
     const std::size_t stored_size = backend_.storedSize();
+    if (stored_size == sizeof(LegacyAppConfigV7)) {
+        const auto migration = migrateV7(backend_, config);
+        if (migration != LoadResult::DefaultsUsed) return migration;
+    }
     if (stored_size == sizeof(LegacyAppConfigV6)) {
         const auto migration = migrateV6(backend_, config);
         if (migration != LoadResult::DefaultsUsed) return migration;

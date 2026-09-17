@@ -14,7 +14,7 @@ struct TileBankView {
     Tile* end() const { return data ? data + count : nullptr; }
 };
 
-constexpr std::size_t kDashboardLayoutCount = 5U;
+constexpr std::size_t kDashboardLayoutCount = 6U;
 bool validDashboardLayout(DashboardLayout layout);
 const char* dashboardLayoutName(DashboardLayout layout);
 std::size_t dashboardLayoutSlotCount(DashboardLayout layout);

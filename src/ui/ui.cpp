@@ -445,7 +445,7 @@ void Ui::createUnitSettings(lv_obj_t* panel) {
 }
 
 void Ui::createLayoutSettings(lv_obj_t* panel) {
-    constexpr const char* options = "CLASSIC DASH\nCLASSIC TRACK\nANALOG STYLE\nSIDE GEAR\nSTRIP STYLE";
+    constexpr const char* options = "CLASSIC DASH\nCLASSIC TRACK\nANALOG STYLE\nSIDE GEAR\nSTRIP STYLE\nMODERN MOTORSPORT";
     makeLabel(panel, "DASH", 12, 12, &lv_font_montserrat_12, UiTheme::text());
     makeLabel(panel, "TRACK", 392, 12, &lv_font_montserrat_12, UiTheme::text());
     dash_layout_dropdown_ = lv_dropdown_create(panel);

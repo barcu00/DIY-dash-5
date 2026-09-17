@@ -29,6 +29,7 @@ private:
     TileSize size_ = TileSize::Small;
     TileGeometry geometry_{};
     void arrangeUnit(const char* text, bool is_flag);
+    void arrangeRow(bool is_flag);
     const lv_font_t* default_value_font_ = nullptr;
     DisplaySignalFilter display_filter_{};
     std::array<char, 32> last_value_text_{};

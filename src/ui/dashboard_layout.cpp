@@ -45,13 +45,13 @@ bool validDashboardLayout(DashboardLayout layout) {
 
 const char* dashboardLayoutName(DashboardLayout layout) {
     constexpr const char* names[] = {"CLASSIC DASH", "CLASSIC TRACK",
-        "ANALOG STYLE", "SIDE GEAR", "STRIP STYLE"};
+        "ANALOG STYLE", "SIDE GEAR", "STRIP STYLE", "MODERN MOTORSPORT"};
     return validDashboardLayout(layout) ? names[static_cast<std::size_t>(layout)]
                                         : names[0];
 }
 
 std::size_t dashboardLayoutSlotCount(DashboardLayout layout) {
-    constexpr std::size_t counts[] = {14U, 12U, 6U, 8U, 8U};
+    constexpr std::size_t counts[] = {14U, 12U, 6U, 8U, 8U, 6U};
     return validDashboardLayout(layout) ? counts[static_cast<std::size_t>(layout)] : 0U;
 }
 
@@ -97,7 +97,7 @@ void initializeAlternateLayouts(AppConfig& config) {
                     ParameterId::OilTemperature, ParameterId::FuelPressure,
                     ParameterId::Rpm, ParameterId::Speed, ParameterId::Clt,
                     ParameterId::Iat, ParameterId::Lambda};
-                const ParameterId* parameters = layout == DashboardLayout::AnalogStyle
+                const ParameterId* parameters = (layout == DashboardLayout::AnalogStyle || layout == DashboardLayout::ModernMotorsport)
                     ? analog : layout == DashboardLayout::SideGear ? side : strip;
                 for (std::size_t slot = 0; slot < tiles.size(); ++slot)
                     tiles[slot] = makeTile(parameters[slot]);
