@@ -108,7 +108,10 @@ void RpmScaleView::invalidateBlocks(uint16_t previous,uint16_t current) {
     lv_area_t a;lv_obj_get_coords(indicator_,&a);
     if(layout_!=DashboardLayout::StripStyle) {
         const int width=lv_obj_get_width(indicator_)-8;
-        a.x2=a.x1+4+width*std::max(previous,current)/1000+9;a.x1+=std::max(0,4+width*std::min(previous,current)/1000-5);
+        const int lo=std::clamp<int>(std::min(previous,current)*36/1000,0,35);
+        const int hi=std::clamp<int>(std::max(previous,current)*36/1000,0,35);
+        a.x2=a.x1+4+width*(hi+1)/36+2;
+        a.x1+=4+width*lo/36-2;
     } else {
         const int lo=std::clamp<int>(std::min(previous,current)*36/1000,0,35),hi=std::clamp<int>(std::max(previous,current)*36/1000,0,35);
         int x1=784,x2=0,y1=150,y2=0;

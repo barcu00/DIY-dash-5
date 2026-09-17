@@ -38,6 +38,7 @@ private:
     bool refresh_initialized_ = false;
     bool value_text_initialized_ = false;
     bool unit_text_initialized_ = false;
+    int last_row_border_ = -1;
     bool raw_valid_initialized_ = false;
     bool last_raw_valid_ = false;
     bool warning_initialized_ = false;

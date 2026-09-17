@@ -1,4 +1,5 @@
 #include "tile_view.h"
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include "telemetry/parameter_registry.h"
@@ -212,6 +213,7 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
     refresh_initialized_ = false;
     value_text_initialized_ = false;
     unit_text_initialized_ = false;
+    last_row_border_ = -1;
     raw_valid_initialized_ = false;
     warning_initialized_ = false;
     temperature_bar_initialized_ = false;
@@ -352,6 +354,10 @@ void TileView::update(const TileConfig& config, const UnitSettings& units,
         if (size_ == TileSize::Hero && config.parameter == ParameterId::Rpm) unit_text = "RPM";
     }
 
+    const bool row_changed = !value_text_initialized_ || !unit_text_initialized_ ||
+        std::strcmp(last_value_text_.data(), value_text) != 0 ||
+        std::strcmp(last_unit_text_.data(), unit_text) != 0 ||
+        last_row_border_ != lv_obj_get_style_border_width(root_,0);
     if (!unit_text_initialized_ || std::strcmp(last_unit_text_.data(), unit_text) != 0)
         arrangeUnit(unit_text, is_flag);
     if (!value_text_initialized_ ||
@@ -384,17 +390,18 @@ void TileView::update(const TileConfig& config, const UnitSettings& units,
                       "%s", unit_text);
         unit_text_initialized_ = true;
     }
-    arrangeRow(is_flag);
+    if(row_changed)arrangeRow(is_flag);
 }
 TileAddress TileView::address() const { return address_; }
 void TileView::arrangeRow(bool is_flag) {
     if(size_!=TileSize::CompactRow || is_flag)return;
     const int border=lv_obj_get_style_border_width(root_,0);
+    last_row_border_=border;
     const int center=geometry_.height/2-border;
     lv_obj_set_width(title_,120);
     lv_obj_set_style_text_align(title_,LV_TEXT_ALIGN_CENTER,0);
     lv_obj_set_style_text_color(title_,UiTheme::muted(),0);
-    lv_obj_set_pos(title_,12-border,opticalTextY(lv_label_get_text(title_),&lv_font_montserrat_16,center));
+    lv_obj_align(title_,LV_ALIGN_TOP_LEFT,12-border,opticalTextY(lv_label_get_text(title_),&lv_font_montserrat_16,center));
     const auto* font=lv_obj_get_style_text_font(value_,0);
     lv_point_t v,u;
     lv_txt_get_size(&v,lv_label_get_text(value_),font,0,0,LV_COORD_MAX,LV_TEXT_FLAG_NONE);
@@ -405,9 +412,9 @@ void TileView::arrangeRow(bool is_flag) {
     const int x=228-border-group_width/2;
     lv_obj_set_width(value_,v.x+1);
     lv_obj_set_style_text_align(value_,LV_TEXT_ALIGN_LEFT,0);
-    lv_obj_set_pos(value_,x,opticalTextY(lv_label_get_text(value_),font,center-(unavailable ? 7:0)));
+    lv_obj_align(value_,LV_ALIGN_TOP_LEFT,x,opticalTextY(lv_label_get_text(value_),font,center-(unavailable ? 7:0)));
     if(!unavailable) {
         lv_obj_set_width(unit_,u.x+1);
-        lv_obj_set_pos(unit_,x+v.x+gap,opticalTextY(lv_label_get_text(unit_),&lv_font_montserrat_16,center));
+        lv_obj_align(unit_,LV_ALIGN_TOP_LEFT,x+v.x+gap,opticalTextY(lv_label_get_text(unit_),&lv_font_montserrat_16,center));
     }
 }
