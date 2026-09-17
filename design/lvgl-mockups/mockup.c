@@ -78,11 +78,11 @@ static void small(lv_draw_ctx_t *ctx,int x,int y,int w,int h,const char *title,c
     rect(ctx,x,y,w,h,BLACK,FRAME,6); rect(ctx,x+4,y+5,4,h-10,rail,0,2);
     if(h<90) {
         text(ctx,x+15,y+7,w-25,title,&lv_font_montserrat_16,MUTED,LV_TEXT_ALIGN_LEFT);
-        text(ctx,x+12,y+20,unit[0] ? 96 : w-24,value,&race_digits_48,WHITE,LV_TEXT_ALIGN_CENTER);
+        text(ctx,x+12,y+26,unit[0] ? 96 : w-24,value,&race_digits_48,WHITE,LV_TEXT_ALIGN_CENTER);
         text(ctx,x+108,y+43,w-114,unit,&lv_font_montserrat_16,MUTED,LV_TEXT_ALIGN_LEFT);
     } else {
         text(ctx,x+12,y+9,w-24,title,&lv_font_montserrat_16,MUTED,LV_TEXT_ALIGN_CENTER);
-        text(ctx,x+12,y+25,w-24,value,&race_digits_48,WHITE,LV_TEXT_ALIGN_CENTER);
+        text(ctx,x+12,y+31,w-24,value,&race_digits_48,WHITE,LV_TEXT_ALIGN_CENTER);
         text(ctx,x+12,y+h-27,w-24,unit,&lv_font_montserrat_16,MUTED,LV_TEXT_ALIGN_CENTER);
     }
     if(temp) slim_temperature(ctx,x+14,y+h-7,w-28,temp==1 ?.75f:.57f);
@@ -130,9 +130,9 @@ static void analog(lv_draw_ctx_t *ctx) {
         lv_point_t out=polar(cx,cy,190,a),in=polar(cx,cy,i%10==0 ? 176:184,a);
         line(ctx,out.x,out.y,in.x,in.y,WHITE,i%10==0 ? 3:1);
         if(i%10==0) { lv_point_t t=polar(cx,cy,159,a); char s[8]; snprintf(s,sizeof(s),"%d",i/10);
-            text(ctx,t.x-18,t.y-12,36,s,&lv_font_montserrat_24,WHITE,LV_TEXT_ALIGN_CENTER); }
+            text(ctx,t.x-18-(i==0 ? 20:0),t.y-12,36,s,&lv_font_montserrat_24,WHITE,LV_TEXT_ALIGN_CENTER); }
     }
-    lv_point_t ten=polar(cx,cy,159,1); text(ctx,ten.x-20,ten.y-12,40,"10",&lv_font_montserrat_24,WHITE,LV_TEXT_ALIGN_CENTER);
+    lv_point_t ten=polar(cx,cy,159,1); text(ctx,ten.x,ten.y-12,40,"10",&lv_font_montserrat_24,WHITE,LV_TEXT_ALIGN_CENTER);
     lv_point_t tip=polar(cx,cy,168,.684f);
     float dx=tip.x-cx,dy=tip.y-cy,len=sqrtf(dx*dx+dy*dy);
     lv_point_t needle[3]={{cx-dy*4/len,cy+dx*4/len},{tip.x,tip.y},{cx+dy*4/len,cy-dx*4/len}};
