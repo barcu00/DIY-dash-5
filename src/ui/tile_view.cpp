@@ -78,6 +78,7 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
     const bool is_flag = parameterDescriptor(config.parameter).kind ==
                          ParameterKind::Flag;
     size_ = geometry.size;
+    geometry_ = geometry;
     base_border_ = geometry.size != TileSize::Hero;
     lv_obj_clear_flag(root_, LV_OBJ_FLAG_HIDDEN);
     lv_obj_set_pos(root_, geometry.x, geometry.y);
@@ -211,6 +212,43 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
     temperature_bar_initialized_ = false;
 }
 void TileView::hide() { if (root_) lv_obj_add_flag(root_, LV_OBJ_FLAG_HIDDEN); }
+void TileView::arrangeUnit(const char* text, bool is_flag) {
+    const bool row = size_ == TileSize::CompactRow;
+    lv_obj_set_width(unit_, LV_SIZE_CONTENT);
+    if (std::strcmp(text, "UNAVAILABLE") == 0) {
+        lv_obj_set_style_text_font(unit_, &lv_font_montserrat_12, 0);
+        lv_obj_set_width(unit_, row ? 136 : geometry_.width - 24);
+        lv_obj_set_style_text_align(unit_, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_align(unit_, row ? LV_ALIGN_BOTTOM_RIGHT : LV_ALIGN_BOTTOM_MID,
+                     row ? -12 : 0, -2);
+        if (!is_flag && !row && geometry_.height < 90) {
+            lv_obj_set_width(value_, geometry_.width - 24);
+            lv_obj_align(value_, LV_ALIGN_TOP_MID, 0, 28);
+        }
+    } else if (is_flag) {
+        lv_obj_set_style_text_font(unit_, &lv_font_montserrat_12, 0);
+        lv_obj_set_width(unit_, geometry_.width - 24);
+        lv_obj_align(unit_, LV_ALIGN_BOTTOM_MID, 0, -2);
+    } else if (size_ == TileSize::Hero || size_ == TileSize::GearHero) {
+        lv_obj_set_style_text_font(unit_, &lv_font_montserrat_24, 0);
+        lv_obj_align(unit_, LV_ALIGN_BOTTOM_MID, 0,
+                     size_ == TileSize::GearHero ? -18 : geometry_.height > 200 ? -43 : -12);
+    } else if (row) {
+        lv_obj_set_style_text_font(unit_, &lv_font_montserrat_16, 0);
+        lv_obj_align(unit_, LV_ALIGN_TOP_LEFT, 260, 31);
+    } else if (size_ == TileSize::Wide) {
+        lv_obj_set_style_text_font(unit_, &lv_font_montserrat_12, 0);
+        lv_obj_align(unit_, LV_ALIGN_TOP_RIGHT, -8, 56);
+    } else if (geometry_.height < 90) {
+        lv_obj_set_style_text_font(unit_, &lv_font_montserrat_16, 0);
+        lv_obj_align(unit_, LV_ALIGN_TOP_LEFT, 108, 43);
+        lv_obj_set_width(value_, text[0] ? 96 : geometry_.width - 24);
+        lv_obj_align(value_, LV_ALIGN_TOP_LEFT, 12, 26);
+    } else {
+        lv_obj_set_style_text_font(unit_, &lv_font_montserrat_16, 0);
+        lv_obj_align(unit_, LV_ALIGN_TOP_MID, 0, geometry_.height - 27);
+    }
+}
 void TileView::update(const TileConfig& config, const UnitSettings& units,
                       const VehicleState& state, bool supported,
                       bool warning_active,
@@ -251,6 +289,11 @@ void TileView::update(const TileConfig& config, const UnitSettings& units,
         : display_filter_.sample(raw, now_ms, interval_ms * 2U);
     const TemperatureBarState temperature = temperatureBarState(
         config.parameter, signal, config.temperature_bar);
+    const bool bar_visible = temperature.visible && supported;
+    if (bar_visible == lv_obj_has_flag(temperature_bar_, LV_OBJ_FLAG_HIDDEN)) {
+        if (bar_visible) lv_obj_clear_flag(temperature_bar_, LV_OBJ_FLAG_HIDDEN);
+        else lv_obj_add_flag(temperature_bar_, LV_OBJ_FLAG_HIDDEN);
+    }
     if (temperature.visible &&
         (!temperature_bar_initialized_ ||
          temperature.fill_per_mille != last_temperature_fill_ ||
@@ -304,6 +347,8 @@ void TileView::update(const TileConfig& config, const UnitSettings& units,
         if (size_ == TileSize::Hero && config.parameter == ParameterId::Rpm) unit_text = "RPM";
     }
 
+    if (!unit_text_initialized_ || std::strcmp(last_unit_text_.data(), unit_text) != 0)
+        arrangeUnit(unit_text, is_flag);
     if (!value_text_initialized_ ||
         std::strcmp(last_value_text_.data(), value_text) != 0) {
         if (!is_flag) {
@@ -312,6 +357,7 @@ void TileView::update(const TileConfig& config, const UnitSettings& units,
                 &race_digits_48,&lv_font_montserrat_24,&lv_font_montserrat_16};
             const lv_font_t* fitted=&lv_font_montserrat_16;
             for (const auto* font:candidates) {
+                if (!supported && font->line_height > lv_font_montserrat_24.line_height) continue;
                 if (font->line_height > default_value_font_->line_height) continue;
                 lv_point_t measured;
                 lv_txt_get_size(&measured,value_text,font,0,0,LV_COORD_MAX,LV_TEXT_FLAG_NONE);
