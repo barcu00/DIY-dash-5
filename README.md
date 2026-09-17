@@ -49,17 +49,27 @@ steps and does not change shift-light thresholds. Changes save on screen exit.
 Hidden tiles compact within their group; holding a tile opens the existing
 full-screen editor. Navigation includes gauge, checkered flag, and gear icons.
 
-The GitHub Actions firmware artifact includes 16 deterministic 800×480
-previews, including the three new presets. These are geometry previews, not
-LVGL framebuffer captures or hardware photographs.
+The five development layouts below are **real production-view LVGL 8.4
+framebuffer captures**, rendered on GitHub with the firmware's TileView,
+RpmScaleView, ShiftLightView and navigation code. No UI reconstruction is used.
+Black panels, condensed white digits, fine blue-grey frames and cyan navigation
+follow the approved visual prototypes. The Analog preset uses a colored ring
+and red needle; Side Gear shares one RPM/speed frame; Strip has a curved,
+slanted RPM strip without a logo. Physical performance still needs board testing.
 
 | Analog Style | Side Gear | Strip Style |
 | --- | --- | --- |
-| ![Analog Style](docs/ui/screenshots/ui-preview-analog-style.png) | ![Side Gear](docs/ui/screenshots/ui-preview-side-gear.png) | ![Strip Style](docs/ui/screenshots/ui-preview-strip-style.png) |
+| ![Analog Style](docs/ui/screenshots/firmware-analog-style.png) | ![Side Gear](docs/ui/screenshots/firmware-side-gear.png) | ![Strip Style](docs/ui/screenshots/firmware-strip-style.png) |
 
 | DASH | TRACK |
 | --- | --- |
-| ![DIY Dash dashboard](docs/ui/screenshots/ui-preview-dash.png) | ![DIY Dash track screen](docs/ui/screenshots/ui-preview-track.png) |
+| ![DIY Dash dashboard](docs/ui/screenshots/firmware-classic-dash.png) | ![DIY Dash track screen](docs/ui/screenshots/firmware-classic-track.png) |
+
+The [production preview workflow](.github/workflows/production-view-previews.yml)
+checks 14 scenes, including flags, warning borders, 6000/10000 RPM, red flash
+phases and unavailable captions. Its artifacts provide all captured scenes.
+The settings/editor/flag/modal illustrations below remain geometry previews,
+not full-production framebuffer captures.
 
 | SETTINGS | TILE SETTINGS |
 | --- | --- |
@@ -69,7 +79,7 @@ LVGL framebuffer captures or hardware photographs.
 | --- | --- |
 | ![Configurable status flags](docs/ui/screenshots/ui-preview-flag-tiles.png) | ![Large warning modal](docs/ui/screenshots/ui-preview-warning.png) |
 
-The original 13 previews and three new development presets are available in
+The real layout captures and earlier geometry previews are available in
 [`docs/ui/screenshots`](docs/ui/screenshots).
 
 ## Main features

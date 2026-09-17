@@ -17,6 +17,16 @@ remain independent. Analog dials and strips always show RPM, while numeric tiles
 remain assignable to any available parameter. These features are not in the
 published v0.2.1 release. Settings save when leaving the category.
 
+The approved development appearance uses black panels, thin blue-grey outlines,
+condensed Rajdhani digits, parameter-colored rails, and cyan navigation. Side
+Gear shares one RPM/speed frame; Strip Style has no center-card outlines or logo.
+Analog uses a colored dial ring. Its configured shift flash accents the needle
+and RPM digits, not the whole static dial, to avoid full-gauge repainting.
+Side/Strip flash their entire segmented RPM bar; the Classic presets keep the
+12-segment 4+4+4 shift strip. All use the existing 4-Hz configured flash behavior.
+Production-view PNGs are captured by the standalone LVGL harness documented in
+`design/production-preview/README.md`, separately from older Pillow previews.
+
 Hold a visible tile for about 600 ms to open its independent full-screen editor;
 a short tap does nothing. Live tiles, layout work, warnings, and shift-light
 rendering pause while this screen is open, but CAN reception continues. SAVE
