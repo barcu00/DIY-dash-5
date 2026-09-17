@@ -11,7 +11,7 @@ struct TileBankView {
     Tile& operator[](std::size_t index) const { return data[index]; }
     std::size_t size() const { return count; }
     Tile* begin() const { return data; }
-    Tile* end() const { return data + count; }
+    Tile* end() const { return data ? data + count : nullptr; }
 };
 
 constexpr std::size_t kDashboardLayoutCount = 5U;

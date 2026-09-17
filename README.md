@@ -36,6 +36,23 @@ Flash the complete image at address **`0x0`**. Its expected SHA-256 is:
 
 ## Interface preview
 
+### Development: five selectable layouts
+
+The `dashboard-dev` branch adds **Classic DASH, Classic TRACK, Analog Style,
+Side Gear, and Strip Style**. This is newer than the published v0.2.1 BIN above;
+it is not yet a released firmware.
+
+In `SETTINGS > LAYOUTS`, assign any preset independently to DASH and TRACK.
+Each page retains its own tile settings for every preset. The shared
+`RPM SCALE MAX` slider controls both pages from 100 to 10,000 RPM in 100-RPM
+steps and does not change shift-light thresholds. Changes save on screen exit.
+Hidden tiles compact within their group; holding a tile opens the existing
+full-screen editor. Navigation includes gauge, checkered flag, and gear icons.
+
+The GitHub Actions firmware artifact includes 16 deterministic 800×480
+previews, including the three new presets. These are geometry previews, not
+LVGL framebuffer captures or hardware photographs.
+
 | DASH | TRACK |
 | --- | --- |
 | ![DIY Dash dashboard](docs/ui/screenshots/ui-preview-dash.png) | ![DIY Dash track screen](docs/ui/screenshots/ui-preview-track.png) |

@@ -5,6 +5,18 @@ The bottom navigation contains DASH, TRACK, and SETTINGS; DIAG is not present.
 
 ## Tiles and layout
 
+The development firmware offers five presets: Classic DASH (14 slots),
+Classic TRACK (12), Analog Style (6), Side Gear (8), and Strip Style (8).
+Both selectors in `SETTINGS > LAYOUTS` offer all five presets. DASH and TRACK
+can use the same preset and retain separate configuration banks when switching.
+Use DASH TILES / TRACK TILES to edit the selected page's visible and hidden slots.
+
+`RPM SCALE MAX` is shared across both pages, starts at 100 RPM, ends at 10,000,
+and uses 100-RPM steps. The scale always starts at zero. Shift-light thresholds
+remain independent. Analog dials and strips always show RPM, while numeric tiles
+remain assignable to any available parameter. These features are not in the
+published v0.2.1 release. Settings save when leaving the category.
+
 Hold a visible tile for about 600 ms to open its independent full-screen editor;
 a short tap does nothing. Live tiles, layout work, warnings, and shift-light
 rendering pause while this screen is open, but CAN reception continues. SAVE

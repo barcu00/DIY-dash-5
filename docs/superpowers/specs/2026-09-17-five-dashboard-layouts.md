@@ -14,4 +14,4 @@ Approved by the user on 2026-09-17, including permission to implement.
 - Reuse LVGL objects and invalidate only changed values/indicator areas; pause dashboard rendering in settings and editor.
 - Run unit tests, packaging tests, firmware build, and deterministic 800×480 previews on GitHub Actions, not locally. Do not create a public release or merge main without a separate request.
 
-Implementation uses a shared layout model for preset names, slot counts, and geometry; a dedicated low-object-count RPM view; and uniform 14-slot banks. Classic Track displays only its first 12 slots. Extra layout banks are data only, not persistent LVGL screens. Default page selections remain unchanged.
+Implementation uses a shared layout model for preset names, slot counts, and geometry; a dedicated low-object-count RPM view; and 14-slot alternate banks. The original default banks retain their frozen 14/12-slot sizes for migration compatibility. Accessors expose only each preset's active slots. Extra layout banks are data only, not persistent LVGL screens. Default page selections remain unchanged.

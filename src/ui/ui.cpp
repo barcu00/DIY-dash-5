@@ -556,7 +556,9 @@ void Ui::createSystemSettings(lv_obj_t* panel) {
 void Ui::update(const VehicleState& state, const RuntimeDiagnostics& diagnostics,
                 const UiRuntimeStatus& status, const AppConfig& config,
                 TileWarningEngine& warnings) {
-    if (update_policy_.allowLayoutUpdates() &&
+    if ((update_policy_.shouldUpdateData(PageId::Dash) ||
+         update_policy_.shouldUpdateData(PageId::Track)) &&
+        update_policy_.allowLayoutUpdates() &&
         update_policy_.takeLayoutDirty()) {
         applyLayout(Page::Dash, config);
         applyLayout(Page::Track, config);
