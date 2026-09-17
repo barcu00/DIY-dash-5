@@ -27,25 +27,25 @@
 
 Files: src/settings/app_config.h, src/settings/config_repository.cpp, src/ui/dashboard_layout.{h,cpp}, src/ui/tile_engine.cpp, src/ui/ui.cpp, src/ui/shift_light_view.cpp, test/test_dashboard_layout/test_main.cpp, test/test_config_repository/test_main.cpp.
 
-- [ ] Add native behavior tests for enum value 5, six right-row placements, independent page banks, E save/load and v7 migration preserving sound and all old banks.
-- [ ] Push test-only commit and inspect failing GitHub native logs before implementing.
-- [ ] Append ModernMotorsport, expand alternatives to five banks, bump schema to 8; copy_n old bank arrays in v6/v7 migration. Add dropdown choice, placement reuse and integrated shift behavior.
-- [ ] Run full GitHub native tests and packaging tests.
+- [x] Add native behavior tests for enum value 5, six right-row placements, independent page banks, E save/load and v7 migration preserving sound and all old banks.
+- [x] Push test-only commit and inspect failing GitHub native logs before implementing.
+- [x] Append ModernMotorsport, expand alternatives to five banks, bump schema to 8; copy_n old bank arrays in v6/v7 migration. Add dropdown choice, placement reuse and integrated shift behavior.
+- [x] Run full GitHub native tests and packaging tests.
 
 ## Task 2: Real LVGL styles and redraw safety
 
 Files: src/ui/rpm_scale_view.{h,cpp}, src/ui/tile_view.{h,cpp}, src/ui/dashboard_layout.{h,cpp}, design/production-preview/{render.cpp,convert.py}.
 
-- [ ] Add actual framebuffer assertions for centered white digits and cyan rails, shared scale and new E scenes.
-- [ ] Render on GitHub against old views to observe failures.
-- [ ] Use native circular arcs for Analog and E. Precompute Strip congruent circular sector polygons with clipped geometry, rather than per-frame supersampled prototype rasterization.
-- [ ] Draw radial D rectangle, E progress cap and continuous fill; invalidate old and new marker regions, E changed arc strip and changed Strip sectors. Repaint the entire indicator on flash/validity changes.
-- [ ] Center visible glyph bounds and value/unit group on compact rows, refitting and repositioning only on text changes. Preserve flag and unavailable captions.
-- [ ] Add E idle, redline, scale 7500, warning/flag/unavailable scenarios and incremental-versus-full framebuffer comparisons.
-- [ ] Run production rendering and full firmware build on GitHub; visually inspect downloaded images.
+- [x] Add actual framebuffer assertions for centered white digits and cyan rails, shared scale and new E scenes.
+- [x] Render on GitHub against old views to observe failures.
+- [x] Use native circular arcs for Analog and E. Precompute Strip congruent circular sector polygons with clipped geometry, rather than per-frame supersampled prototype rasterization.
+- [x] Draw radial D rectangle, E progress cap and continuous fill; invalidate old and new marker regions, E changed arc strip and changed Strip sectors. Repaint the entire indicator on flash/validity changes.
+- [x] Center visible glyph bounds and value/unit group on compact rows, refitting and repositioning only on text changes. Preserve flag and unavailable captions.
+- [x] Add E idle, redline, scale 7500, warning/flag/unavailable scenarios and incremental-versus-full framebuffer comparisons.
+- [x] Run production rendering and full firmware build on GitHub; visually inspect downloaded images.
 
 ## Task 3: Review and firmware handoff
 
-- [ ] Request a read-only reviewer for changes since 991e653; fix important findings.
-- [ ] Record successful native/Python counts, production render assertions and build memory usage.
-- [ ] Download the full firmware binary, verify length and SHA256; show real firmware screen images and the local full-bin link with offset 0x0 and NVS overwrite caution.
+- [x] Request a read-only reviewer for changes since 991e653; fix important findings.
+- [x] Record successful native/Python counts, production render assertions and build memory usage.
+- [x] Download the full firmware binary, verify length and SHA256; show real firmware screen images and the local full-bin link with offset 0x0 and NVS overwrite caution.

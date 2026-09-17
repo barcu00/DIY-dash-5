@@ -36,10 +36,10 @@ Flash the complete image at address **`0x0`**. Its expected SHA-256 is:
 
 ## Interface preview
 
-### Development: five selectable layouts
+### Development: six selectable layouts
 
 The `dashboard-dev` branch adds **Classic DASH, Classic TRACK, Analog Style,
-Side Gear, and Strip Style**. This is newer than the published v0.2.1 BIN above;
+Side Gear, Strip Style, and Modern Motorsport**. This is newer than the published v0.2.1 BIN above;
 it is not yet a released firmware.
 
 In `SETTINGS > LAYOUTS`, assign any preset independently to DASH and TRACK.
@@ -49,25 +49,36 @@ steps and does not change shift-light thresholds. Changes save on screen exit.
 Hidden tiles compact within their group; holding a tile opens the existing
 full-screen editor. Navigation includes gauge, checkered flag, and gear icons.
 
-The five development layouts below are **real production-view LVGL 8.4
+The six development layouts below are **real production-view LVGL 8.4
 framebuffer captures**, rendered on GitHub with the firmware's TileView,
 RpmScaleView, ShiftLightView and navigation code. No UI reconstruction is used.
 Black panels, condensed white digits, fine blue-grey frames and cyan navigation
-follow the approved visual prototypes. The Analog preset uses a colored ring
-and red needle; Side Gear shares one RPM/speed frame; Strip has a curved,
-slanted RPM strip without a logo. Physical performance still needs board testing.
+follow the approved visual prototypes. Analog D uses a colored ring, a moving
+white rectangular index and centered RPM. Modern Motorsport E adds a continuous
+upper semicircle with dim future zones and a white progress cap. Side Gear
+shares one RPM/speed frame; Strip uses equal circular RPM sectors without a logo.
+Tile rails are cyan, compact-row labels and values are optically centered, and
+scale labels always use whole thousands. Physical performance still needs board testing.
 
 | Analog Style | Side Gear | Strip Style |
 | --- | --- | --- |
 | ![Analog Style](docs/ui/screenshots/firmware-analog-style.png) | ![Side Gear](docs/ui/screenshots/firmware-side-gear.png) | ![Strip Style](docs/ui/screenshots/firmware-strip-style.png) |
+
+![Modern Motorsport E](docs/ui/screenshots/firmware-modern-motorsport.png)
 
 | DASH | TRACK |
 | --- | --- |
 | ![DIY Dash dashboard](docs/ui/screenshots/firmware-classic-dash.png) | ![DIY Dash track screen](docs/ui/screenshots/firmware-classic-track.png) |
 
 The [production preview workflow](.github/workflows/production-view-previews.yml)
-checks 14 scenes, including flags, warning borders, 6000/10000 RPM, red flash
-phases and unavailable captions. Its artifacts provide all captured scenes.
+checks 25 scenes, including flags, warning borders, 6000/7500/10000 RPM, red flash
+phases and unavailable captions. It compares incremental redraws against full
+framebuffers for Analog, Side Gear, Strip and Modern Motorsport, including small
+RPM changes and validity transitions. Its artifacts provide all captured scenes.
+Configuration schema v8 migrates v6/v7 settings while retaining the original
+layout banks and warning-sound preference; the new layout starts with its own defaults.
+See [six-layout validation and test firmware](docs/ui/six-layout-validation.md)
+for the successful build, full-image checksum and flashing precautions.
 The settings/editor/flag/modal illustrations below remain geometry previews,
 not full-production framebuffer captures.
 
