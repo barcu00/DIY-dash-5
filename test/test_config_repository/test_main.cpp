@@ -567,8 +567,49 @@ void test_failed_layout_reset_keeps_runtime_configuration() {
     TEST_ASSERT_FALSE(runtime.dash_tiles[0].visible);
 }
 
+// Frozen schema-5 layout: changing today's slot counts must not change this
+// binary fixture or migration will silently discard older user's settings.
+struct LegacyAppConfigV5 {
+    uint32_t schema_version = 5U;
+    DataSource data_source = DataSource::Demo;
+    uint8_t brightness_percent = 100U;
+    CanSettings can{};
+    ShiftLightConfig shift{};
+    UnitSettings units{};
+    std::array<TileConfig, 14> dash_tiles{};
+    std::array<TileConfig, 12> track_tiles{};
+};
+
+void test_schema_v5_preserves_saved_tiles_when_adding_selectable_layouts() {
+    const AppConfig defaults = AppConfig::defaults();
+    LegacyAppConfigV5 legacy;
+    legacy.can = defaults.can;
+    legacy.dash_tiles = defaults.dash_tiles;
+    for (std::size_t i = 0; i < 12U; ++i)
+        legacy.track_tiles[i] = defaults.track_tiles[i];
+    legacy.dash_tiles[0].visible = false;
+    legacy.track_tiles[10].warning =
+        {true, WarningDirection::Above, 110.5f, 2.5f, 400U};
+    legacy.track_tiles[10].temperature_bar =
+        {true, 35.0f, 72.5f, 112.0f, 130.0f};
+    MemoryBackend backend;
+    TEST_ASSERT_TRUE(backend.write(&legacy, sizeof(legacy)));
+    ConfigRepository repository(backend);
+    AppConfig loaded{};
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(LoadResult::Migrated),
+        static_cast<uint8_t>(repository.load(loaded)));
+    TEST_ASSERT_FALSE(loaded.dash_tiles[0].visible);
+    TEST_ASSERT_TRUE(loaded.track_tiles[10].warning.enabled);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 110.5f,
+        loaded.track_tiles[10].warning.threshold_native);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 112.0f,
+        loaded.track_tiles[10].temperature_bar.red_native);
+    TEST_ASSERT_EQUAL_UINT32(AppConfig::kSchemaVersion, loaded.schema_version);
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
+    RUN_TEST(test_schema_v5_preserves_saved_tiles_when_adding_selectable_layouts);
     RUN_TEST(test_missing_configuration_loads_safe_defaults);
     RUN_TEST(test_schema_mismatch_loads_safe_defaults);
     RUN_TEST(test_valid_configuration_round_trips_through_backend);
