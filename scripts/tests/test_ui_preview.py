@@ -21,6 +21,20 @@ SETTINGS_PREVIEWS = (
 
 
 class PreviewContractTest(unittest.TestCase):
+    def test_approved_layout_previews_are_generated_and_distinct(self):
+        names = ("ui-preview-analog-style.png", "ui-preview-side-gear.png",
+                 "ui-preview-strip-style.png")
+        with tempfile.TemporaryDirectory() as output:
+            render_all(Path(output))
+            pixels = []
+            for name in names:
+                path = Path(output) / name
+                self.assertTrue(path.exists(), f"Missing approved preset: {name}")
+                image = Image.open(path)
+                self.assertEqual((800, 480), image.size)
+                pixels.append(image.tobytes())
+            self.assertEqual(3, len(set(pixels)))
+
     def test_renderer_creates_all_800x480_views(self):
         with tempfile.TemporaryDirectory() as output:
             render_all(Path(output))

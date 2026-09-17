@@ -9,6 +9,7 @@
 // writes changing runtime state, or reset erasing without restoring defaults.
 
 #include "settings/config_repository.h"
+#include "ui/dashboard_layout.h"
 
 namespace {
 struct LegacyShiftLightConfigV1 {
@@ -607,9 +608,47 @@ void test_schema_v5_preserves_saved_tiles_when_adding_selectable_layouts() {
     TEST_ASSERT_EQUAL_UINT32(AppConfig::kSchemaVersion, loaded.schema_version);
 }
 
+void test_all_preset_banks_and_shared_scale_round_trip_without_losing_flags() {
+    MemoryBackend backend;
+    ConfigRepository repository(backend);
+    AppConfig candidate = AppConfig::defaults();
+    candidate.dash_layout = DashboardLayout::SideGear;
+    candidate.track_layout = DashboardLayout::ClassicDash;
+    candidate.rpm_scale_max = 6700;
+    for (auto page : {PageId::Dash, PageId::Track}) {
+        for (std::size_t i = 0; i < 5; ++i) {
+            auto tiles = layoutTiles(candidate, page, static_cast<DashboardLayout>(i));
+            tiles[0].parameter = ParameterId::CheckEngine;
+            tiles[0].visible = false;
+            tiles[0].flag_active_color = FlagActiveColor::Red;
+            tiles[1].warning = {true, WarningDirection::Above, 105.5f, 2.5f, 250};
+        }
+    }
+    AppConfig runtime = AppConfig::defaults();
+    TEST_ASSERT_TRUE(repository.saveCandidate(candidate, runtime));
+    AppConfig loaded{};
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(LoadResult::Loaded),
+        static_cast<uint8_t>(repository.load(loaded)));
+    TEST_ASSERT_EQUAL_UINT16(6700, loaded.rpm_scale_max);
+    TEST_ASSERT_EQUAL_UINT8(3, static_cast<uint8_t>(loaded.dash_layout));
+    TEST_ASSERT_EQUAL_UINT8(0, static_cast<uint8_t>(loaded.track_layout));
+    for (auto page : {PageId::Dash, PageId::Track}) {
+        for (std::size_t i = 0; i < 5; ++i) {
+            auto tiles = layoutTiles(loaded, page, static_cast<DashboardLayout>(i));
+            TEST_ASSERT_FALSE(tiles[0].visible);
+            TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(ParameterId::CheckEngine),
+                static_cast<uint8_t>(tiles[0].parameter));
+            TEST_ASSERT_EQUAL_UINT8(2, static_cast<uint8_t>(tiles[0].flag_active_color));
+            TEST_ASSERT_TRUE(tiles[1].warning.enabled);
+            TEST_ASSERT_FLOAT_WITHIN(0.001f, 105.5f, tiles[1].warning.threshold_native);
+        }
+    }
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_schema_v5_preserves_saved_tiles_when_adding_selectable_layouts);
+    RUN_TEST(test_all_preset_banks_and_shared_scale_round_trip_without_losing_flags);
     RUN_TEST(test_missing_configuration_loads_safe_defaults);
     RUN_TEST(test_schema_mismatch_loads_safe_defaults);
     RUN_TEST(test_valid_configuration_round_trips_through_backend);
