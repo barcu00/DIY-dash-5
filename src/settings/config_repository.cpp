@@ -369,7 +369,6 @@ bool ConfigRepository::saveCandidate(const AppConfig& candidate,
 
 bool ConfigRepository::resetLayout(PageId page, AppConfig& runtime_config) {
     AppConfig candidate = runtime_config;
-    const AppConfig defaults = AppConfig::defaults();
     if (page == PageId::Dash) {
         resetPageLayouts(candidate, page);
     } else if (page == PageId::Track) {

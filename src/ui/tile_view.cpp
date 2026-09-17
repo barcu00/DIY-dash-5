@@ -7,6 +7,7 @@
 #include "ui/ui_theme.h"
 #include "ui/unit_presenter.h"
 #include "ui/tile_view_policy.h"
+#include "ui/fonts/numeric_fonts.h"
 namespace {
 lv_color_t temperatureBarColor(TemperatureBarZone zone) {
     switch (zone) {
@@ -79,9 +80,10 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
     const lv_font_t* value_font = &lv_font_montserrat_24;
     if (row) value_font = &lv_font_montserrat_28;
     else if (geometry.size == TileSize::Hero)
-        value_font = geometry.width >= 260 ? &lv_font_montserrat_64 : &lv_font_montserrat_48;
+        value_font = geometry.width >= 260 ? &dash_numeric_64 : &lv_font_montserrat_48;
     else if (geometry.size == TileSize::GearHero)
-        value_font = config.parameter == ParameterId::Gear ? &lv_font_montserrat_80 : &lv_font_montserrat_24;
+        value_font = config.parameter == ParameterId::Gear ? &dash_numeric_80 : &lv_font_montserrat_24;
+    if (is_flag) value_font = &lv_font_montserrat_24;
     lv_obj_set_style_text_font(value_, value_font, 0);
     lv_label_set_long_mode(value_, LV_LABEL_LONG_CLIP);
     lv_obj_set_style_text_font(title_, hero ? &lv_font_montserrat_20 : &lv_font_montserrat_12, 0);
