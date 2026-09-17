@@ -696,10 +696,6 @@ void test_warning_sound_round_trip_and_failed_save_preserves_runtime() {
     TEST_ASSERT_FALSE(repo.saveCandidate(candidate,runtime));
     TEST_ASSERT_FALSE(runtime.warning_sound_enabled);
 }
-struct LegacyAppConfigV7 : LegacyAppConfigV6 {
-    // V7 placed the bool in V6's tail padding; use a field-for-field fixture
-    // below rather than inheritance for the actual serialized layout.
-};
 struct StoredAppConfigV7 {
     uint32_t schema_version=7;
     DataSource data_source=DataSource::Demo;
