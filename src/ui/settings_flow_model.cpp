@@ -31,7 +31,13 @@ void SettingsFlowModel::selectLayout(PageId page) {
         return;
     }
     layout_ = page;
+    layout_tile_count_ = page == PageId::Dash ? AppConfig::kDashTileCount : AppConfig::kTrackTileCount;
     page_index_ = 0U;
+}
+
+void SettingsFlowModel::setLayoutTileCount(std::size_t count) {
+    layout_tile_count_ = std::clamp<std::size_t>(count, 1U, AppConfig::kLayoutTileCapacity);
+    if (page_index_ >= pageCount()) page_index_ = pageCount() - 1U;
 }
 
 PageId SettingsFlowModel::layout() const {
@@ -43,9 +49,7 @@ std::size_t SettingsFlowModel::pageIndex() const {
 }
 
 std::size_t SettingsFlowModel::pageCount() const {
-    const std::size_t slots = layout_ == PageId::Dash
-                                  ? AppConfig::kDashTileCount
-                                  : AppConfig::kTrackTileCount;
+    const std::size_t slots = layout_tile_count_;
     return (slots + kSlotsPerPage - 1U) / kSlotsPerPage;
 }
 

@@ -48,6 +48,7 @@ public:
     SettingsCategory category() const;
 
     void selectLayout(PageId page);
+    void setLayoutTileCount(std::size_t count);
     PageId layout() const;
     std::size_t pageIndex() const;
     std::size_t pageCount() const;
@@ -69,6 +70,7 @@ private:
     SettingsCategory category_ = SettingsCategory::Home;
     PageId layout_ = PageId::Dash;
     std::size_t page_index_ = 0U;
+    std::size_t layout_tile_count_ = 14U;
     SettingsResetTarget reset_target_ = SettingsResetTarget::DashLayout;
     bool reset_pending_ = false;
 };

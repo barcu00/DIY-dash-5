@@ -62,7 +62,10 @@ void TileView::create(lv_obj_t* parent, TileAddress address, lv_event_cb_t callb
     lv_obj_add_flag(temperature_bar_, LV_OBJ_FLAG_HIDDEN);
 }
 void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
-    const bool centered = geometry.size == TileSize::Wide;
+    const bool hero = geometry.size == TileSize::Hero || geometry.size == TileSize::GearHero;
+    const bool row = geometry.size == TileSize::CompactRow;
+    const bool centered = geometry.size == TileSize::Wide || hero ||
+                          geometry.size == TileSize::CenteredSmall;
     const bool is_flag = parameterDescriptor(config.parameter).kind ==
                          ParameterKind::Flag;
     lv_obj_clear_flag(root_, LV_OBJ_FLAG_HIDDEN);
@@ -71,6 +74,18 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
     lv_obj_set_style_bg_color(root_, UiTheme::panel(), 0);
     lv_obj_set_size(stripe_, 4, geometry.height - 16);
     lv_obj_set_style_bg_color(stripe_, UiTheme::blue(), 0);
+    if (hero) lv_obj_add_flag(stripe_, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_clear_flag(stripe_, LV_OBJ_FLAG_HIDDEN);
+    const lv_font_t* value_font = &lv_font_montserrat_24;
+    if (row) value_font = &lv_font_montserrat_28;
+    else if (geometry.size == TileSize::Hero)
+        value_font = geometry.width >= 260 ? &lv_font_montserrat_64 : &lv_font_montserrat_48;
+    else if (geometry.size == TileSize::GearHero)
+        value_font = config.parameter == ParameterId::Gear ? &lv_font_montserrat_80 : &lv_font_montserrat_24;
+    lv_obj_set_style_text_font(value_, value_font, 0);
+    lv_label_set_long_mode(value_, LV_LABEL_LONG_CLIP);
+    lv_obj_set_style_text_font(title_, hero ? &lv_font_montserrat_20 : &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_color(title_, hero || row ? UiTheme::text() : UiTheme::muted(), 0);
     lv_label_set_text(title_, parameterDescriptor(config.parameter).short_name);
     lv_obj_set_width(title_, geometry.width - 24);
     lv_obj_set_style_text_align(
@@ -110,6 +125,24 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
     } else {
         lv_obj_add_flag(temperature_bar_, LV_OBJ_FLAG_HIDDEN);
     }
+    if (hero) {
+        lv_obj_set_width(value_, is_flag ? 92 : geometry.width - 24);
+        lv_obj_align(value_, LV_ALIGN_CENTER, 0, 0);
+        lv_obj_align(title_, LV_ALIGN_TOP_MID, 0, 16);
+        lv_obj_set_style_text_font(unit_, &lv_font_montserrat_20, 0);
+        lv_obj_align(unit_, LV_ALIGN_BOTTOM_MID, 0, temperature_bar_visible ? -22 : -16);
+    } else {
+        lv_obj_set_style_text_font(unit_, &lv_font_montserrat_12, 0);
+        if (row && !is_flag) {
+            lv_obj_set_width(title_, 136);
+            lv_obj_align(title_, LV_ALIGN_LEFT_MID, 10, -5);
+            lv_obj_set_width(value_, 136);
+            lv_obj_set_style_text_align(value_, LV_TEXT_ALIGN_RIGHT, 0);
+            lv_obj_align(value_, LV_ALIGN_RIGHT_MID, -52, -3);
+            lv_obj_align(unit_, LV_ALIGN_BOTTOM_RIGHT, -4, temperature_bar_visible ? -12 : -4);
+            lv_obj_set_height(temperature_bar_, 4);
+        }
+    }
     display_filter_.reset();
     refresh_initialized_ = false;
     value_text_initialized_ = false;
@@ -123,6 +156,7 @@ void TileView::update(const TileConfig& config, const UnitSettings& units,
                       const VehicleState& state, bool supported,
                       bool warning_active,
                       uint32_t now_ms) {
+    if (!root_ || lv_obj_has_flag(root_, LV_OBJ_FLAG_HIDDEN)) return;
     if (!warning_initialized_ || warning_active != last_warning_active_) {
         lv_obj_set_style_border_width(root_, warning_active ? 3 : 1, 0);
         lv_obj_set_style_border_color(

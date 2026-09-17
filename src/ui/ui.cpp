@@ -7,6 +7,8 @@
 #include "ui/ui_theme.h"
 #include "telemetry/parameter_registry.h"
 #include "ui/unit_presenter.h"
+#include "ui/dashboard_layout.h"
+#include "ui/navigation_icon.h"
 Ui* Ui::instance_ = nullptr;
 namespace {
 lv_obj_t* makeLabel(lv_obj_t* parent, const char* text, int x, int y,
@@ -65,6 +67,8 @@ enum SettingsAction : intptr_t {
     ShiftMaxChanged,
     ShiftFlashEnabledChanged,
     UnitsChanged,
+    LayoutPresetChanged,
+    RpmScaleChanged,
 };
 
 lv_obj_t* makeSettingsCard(lv_obj_t* parent, const char* title,
@@ -103,6 +107,7 @@ void Ui::createDataPage(Page page, const AppConfig& config) {
     lv_obj_t*& screen = page == Page::Dash ? dash_ : track_;
     screen = lv_obj_create(nullptr); styleScreen(screen);
     (page == Page::Dash ? dash_shift_ : track_shift_).create(screen);
+    (page == Page::Dash ? dash_rpm_ : track_rpm_).create(screen);
     if (page == Page::Dash) {
         for (std::size_t i = 0U; i < dash_tiles_.size(); ++i)
             dash_tiles_[i].create(screen, {PageId::Dash, static_cast<uint8_t>(i)}, tileEvent);
@@ -120,28 +125,44 @@ void Ui::createNavigation(lv_obj_t* parent, Page active) {
         lv_obj_set_pos(button, x, TileLayout::kNavigationY);
         lv_obj_set_size(button, widths[i], TileLayout::kNavigationHeight); x += widths[i];
         lv_obj_set_style_radius(button, 0, 0); lv_obj_set_style_border_width(button, 0, 0);
-        lv_obj_set_style_bg_color(button, static_cast<int>(active) == i
-            ? lv_color_hex(0x153B57) : lv_color_hex(0x10151B), 0);
+        const bool selected = static_cast<int>(active) == i;
+        lv_obj_set_style_bg_color(button, UiTheme::background(), 0);
+        lv_obj_set_style_text_color(button, selected ? UiTheme::blue() : UiTheme::muted(), 0);
+        lv_obj_add_event_cb(button, drawNavigationIcon, LV_EVENT_DRAW_MAIN,
+            reinterpret_cast<void*>(static_cast<intptr_t>(i)));
         lv_obj_add_event_cb(button, navEvent, LV_EVENT_CLICKED,
                             reinterpret_cast<void*>(static_cast<intptr_t>(i)));
         lv_obj_t* text = lv_label_create(button); lv_label_set_text(text, names[i]);
-        lv_obj_set_style_text_font(text, &lv_font_montserrat_14, 0); lv_obj_center(text);
+        lv_obj_set_style_text_font(text, &lv_font_montserrat_16, 0);
+        lv_obj_align(text, LV_ALIGN_CENTER, 16, 0);
+        if (selected) {
+            lv_obj_t* underline = lv_obj_create(button);
+            lv_obj_set_size(underline, 176, 3);
+            lv_obj_set_style_bg_color(underline, UiTheme::blue(), 0);
+            lv_obj_set_style_border_width(underline, 0, 0);
+            lv_obj_clear_flag(underline, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+            lv_obj_align(underline, LV_ALIGN_BOTTOM_MID, 0, 3);
+        }
     }
 }
 void Ui::applyLayout(Page page, const AppConfig& config) {
     const PageId id = page == Page::Dash ? PageId::Dash : PageId::Track;
+    const auto layout = selectedLayout(config, id);
+    const auto tiles = activeTiles(config, id);
+    (page == Page::Dash ? dash_shift_ : track_shift_).apply(layout);
+    (page == Page::Dash ? dash_rpm_ : track_rpm_).apply(layout, config.rpm_scale_max);
     const TilePlacementList placements = TileEngine::placements(id, config);
     if (page == Page::Dash) {
         for (TileView& tile : dash_tiles_) tile.hide();
         for (std::size_t i = 0U; i < placements.count; ++i) {
             const TilePlacement& p = placements.items[i];
-            dash_tiles_[p.address.slot].apply(config.dash_tiles[p.address.slot], p.geometry);
+            dash_tiles_[p.address.slot].apply(tiles[p.address.slot], p.geometry);
         }
     } else {
         for (TileView& tile : track_tiles_) tile.hide();
         for (std::size_t i = 0U; i < placements.count; ++i) {
             const TilePlacement& p = placements.items[i];
-            track_tiles_[p.address.slot].apply(config.track_tiles[p.address.slot], p.geometry);
+            track_tiles_[p.address.slot].apply(tiles[p.address.slot], p.geometry);
         }
     }
 }
@@ -168,6 +189,10 @@ void Ui::clearSettingsWidgets() {
     pressure_unit_ = nullptr;
     speed_unit_ = nullptr;
     mixture_unit_ = nullptr;
+    dash_layout_dropdown_ = nullptr;
+    track_layout_dropdown_ = nullptr;
+    rpm_scale_slider_ = nullptr;
+    rpm_scale_value_ = nullptr;
     layout_labels_.fill(nullptr);
     layout_slots_.fill(0U);
 }
@@ -442,21 +467,44 @@ void Ui::createUnitSettings(lv_obj_t* panel) {
 }
 
 void Ui::createLayoutSettings(lv_obj_t* panel) {
-    makeButton(panel, "DASH", 20, 8, 170, 38, layoutSelectEvent,
+    constexpr const char* options = "CLASSIC DASH\nCLASSIC TRACK\nANALOG STYLE\nSIDE GEAR\nSTRIP STYLE";
+    makeLabel(panel, "DASH", 12, 12, &lv_font_montserrat_12, UiTheme::text());
+    makeLabel(panel, "TRACK", 392, 12, &lv_font_montserrat_12, UiTheme::text());
+    dash_layout_dropdown_ = lv_dropdown_create(panel);
+    track_layout_dropdown_ = lv_dropdown_create(panel);
+    const std::array<lv_obj_t*, 2> selectors{dash_layout_dropdown_, track_layout_dropdown_};
+    for (std::size_t i = 0; i < selectors.size(); ++i) {
+        lv_obj_set_pos(selectors[i], i == 0 ? 72 : 454, 0);
+        lv_obj_set_size(selectors[i], 298, 38);
+        lv_dropdown_set_options(selectors[i], options);
+        lv_dropdown_set_selected(selectors[i], static_cast<uint16_t>(
+            i == 0 ? config_->dash_layout : config_->track_layout));
+        lv_obj_add_event_cb(selectors[i], settingsEvent, LV_EVENT_VALUE_CHANGED,
+            reinterpret_cast<void*>(LayoutPresetChanged));
+    }
+    makeButton(panel, "DASH TILES", 12, 44, 120, 36, layoutSelectEvent,
                reinterpret_cast<void*>(static_cast<intptr_t>(PageId::Dash)));
-    makeButton(panel, "TRACK", 202, 8, 170, 38, layoutSelectEvent,
+    makeButton(panel, "TRACK TILES", 140, 44, 128, 36, layoutSelectEvent,
                reinterpret_cast<void*>(static_cast<intptr_t>(PageId::Track)));
-    const std::size_t count = settings_flow_.layout() == PageId::Dash
-                                  ? AppConfig::kDashTileCount
-                                  : AppConfig::kTrackTileCount;
+    char scale[48];
+    std::snprintf(scale, sizeof(scale), "RPM SCALE MAX: %u", static_cast<unsigned>(config_->rpm_scale_max));
+    rpm_scale_value_ = makeLabel(panel, scale, 280, 54, &lv_font_montserrat_12, UiTheme::text());
+    rpm_scale_slider_ = lv_slider_create(panel);
+    lv_obj_set_pos(rpm_scale_slider_, 554, 55);
+    lv_obj_set_size(rpm_scale_slider_, 182, 16);
+    lv_slider_set_range(rpm_scale_slider_, 100, 10000);
+    lv_slider_set_value(rpm_scale_slider_, config_->rpm_scale_max, LV_ANIM_OFF);
+    lv_obj_add_event_cb(rpm_scale_slider_, settingsEvent, LV_EVENT_VALUE_CHANGED,
+        reinterpret_cast<void*>(RpmScaleChanged));
+    const auto tiles = activeTiles(*config_, settings_flow_.layout());
+    const std::size_t count = tiles.size();
+    settings_flow_.setLayoutTileCount(count);
     const std::size_t first = settings_flow_.firstSlot();
     for (std::size_t index = 0U;
          index < SettingsFlowModel::kSlotsPerPage && first + index < count;
          ++index) {
         const std::size_t slot = first + index;
-        const TileConfig& tile = settings_flow_.layout() == PageId::Dash
-                                     ? config_->dash_tiles[slot]
-                                     : config_->track_tiles[slot];
+        const TileConfig& tile = tiles[slot];
         char text[80];
         std::snprintf(text, sizeof(text), "SLOT %u  %s  %s",
                       static_cast<unsigned>(slot + 1U),
@@ -465,7 +513,7 @@ void Ui::createLayoutSettings(lv_obj_t* panel) {
         const int column = static_cast<int>(index % 2U);
         const int row = static_cast<int>(index / 2U);
         lv_obj_t* button = makeSettingsCard(
-            panel, text, 12 + column * 376, 54 + row * 72, 364, 62,
+            panel, text, 12 + column * 376, 92 + row * 58, 364, 50,
             layoutSlotEvent, reinterpret_cast<void*>(slot));
         layout_labels_[index] = lv_obj_get_child(button, 0);
         layout_slots_[index] = slot;
@@ -514,16 +562,18 @@ void Ui::update(const VehicleState& state, const RuntimeDiagnostics& diagnostics
         applyLayout(Page::Track, config);
     }
     if (update_policy_.shouldUpdateData(PageId::Dash)) {
-        for (std::size_t i = 0U; i < dash_tiles_.size(); ++i)
-            dash_tiles_[i].update(config.dash_tiles[i], config.units, state,
-                capabilities_.supports(config.dash_tiles[i].parameter),
+        const auto tiles = activeTiles(config, PageId::Dash);
+        for (std::size_t i = 0U; i < tiles.size(); ++i)
+            dash_tiles_[i].update(tiles[i], config.units, state,
+                capabilities_.supports(tiles[i].parameter),
                 warnings.isHighlighted({PageId::Dash, static_cast<uint8_t>(i)}),
                 diagnostics.uptime_ms);
     }
     if (update_policy_.shouldUpdateData(PageId::Track)) {
-        for (std::size_t i = 0U; i < track_tiles_.size(); ++i)
-            track_tiles_[i].update(config.track_tiles[i], config.units, state,
-                capabilities_.supports(config.track_tiles[i].parameter),
+        const auto tiles = activeTiles(config, PageId::Track);
+        for (std::size_t i = 0U; i < tiles.size(); ++i)
+            track_tiles_[i].update(tiles[i], config.units, state,
+                capabilities_.supports(tiles[i].parameter),
                 warnings.isHighlighted({PageId::Track, static_cast<uint8_t>(i)}),
                 diagnostics.uptime_ms);
     }
@@ -570,9 +620,11 @@ void Ui::updateShiftLight(const VehicleState& state, uint32_t now_ms,
                                    : 0U;
     if (update_policy_.shouldUpdateData(PageId::Dash)) {
         dash_shift_.update(rpm_value, rpm.valid, now_ms, config);
+        dash_rpm_.update(rpm, now_ms, config);
     }
     if (update_policy_.shouldUpdateData(PageId::Track)) {
         track_shift_.update(rpm_value, rpm.valid, now_ms, config);
+        track_rpm_.update(rpm, now_ms, config);
     }
 }
 void Ui::navEvent(lv_event_t* event) {
@@ -980,11 +1032,11 @@ void Ui::confirmReset() {
     bool staged = false;
     if (target == SettingsResetTarget::DashLayout) {
         AppConfig candidate = *config_;
-        candidate.dash_tiles = AppConfig::defaults().dash_tiles;
+        resetPageLayouts(candidate, PageId::Dash);
         staged = stageSettings(candidate, false);
     } else if (target == SettingsResetTarget::TrackLayout) {
         AppConfig candidate = *config_;
-        candidate.track_tiles = AppConfig::defaults().track_tiles;
+        resetPageLayouts(candidate, PageId::Track);
         staged = stageSettings(candidate, false);
     } else {
         *config_ = AppConfig::defaults();
@@ -1025,6 +1077,30 @@ void Ui::settingsEvent(lv_event_t* event) {
     if (!instance_ || !instance_->config_) return;
     const intptr_t action = reinterpret_cast<intptr_t>(lv_event_get_user_data(event));
     AppConfig candidate = *instance_->config_;
+
+    if (action == LayoutPresetChanged) {
+        auto* dropdown = lv_event_get_target(event);
+        const auto layout = static_cast<DashboardLayout>(lv_dropdown_get_selected(dropdown));
+        if (dropdown == instance_->dash_layout_dropdown_) candidate.dash_layout = layout;
+        else candidate.track_layout = layout;
+        if (instance_->stageSettings(candidate, false)) {
+            instance_->update_policy_.markLayoutDirty();
+            instance_->settings_flow_.selectLayout(instance_->settings_flow_.layout());
+            instance_->showSettings(SettingsCategory::Layouts);
+        }
+        return;
+    }
+    if (action == RpmScaleChanged) {
+        candidate.rpm_scale_max = normalizedRpmScale(static_cast<uint16_t>(
+            lv_slider_get_value(instance_->rpm_scale_slider_)));
+        if (instance_->stageSettings(candidate, false)) {
+            char text[48];
+            std::snprintf(text, sizeof(text), "RPM SCALE MAX: %u", static_cast<unsigned>(candidate.rpm_scale_max));
+            lv_label_set_text(instance_->rpm_scale_value_, text);
+            instance_->update_policy_.markLayoutDirty();
+        }
+        return;
+    }
 
     if (action == BrightnessPreview) {
         instance_->update_policy_.setInteractionActive(true);

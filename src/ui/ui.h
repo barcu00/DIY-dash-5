@@ -16,6 +16,7 @@
 #include "ui/settings_flow_model.h"
 #include "ui/tile_view.h"
 #include "ui/ui_update_policy.h"
+#include "ui/rpm_scale_view.h"
 struct UiRuntimeStatus {
     CanStatus can_status = CanStatus::Waiting;
     bool demo_active = false;
@@ -90,7 +91,9 @@ private:
     lv_obj_t* settings_ = nullptr;
     lv_obj_t* settings_status_ = nullptr;
     std::array<TileView, AppConfig::kDashTileCount> dash_tiles_{};
-    std::array<TileView, AppConfig::kTrackTileCount> track_tiles_{};
+    std::array<TileView, AppConfig::kLayoutTileCapacity> track_tiles_{};
+    RpmScaleView dash_rpm_{};
+    RpmScaleView track_rpm_{};
     ShiftLightView dash_shift_{};
     ShiftLightView track_shift_{};
     UiUpdatePolicy update_policy_{};
@@ -126,6 +129,10 @@ private:
     lv_obj_t* pressure_unit_ = nullptr;
     lv_obj_t* speed_unit_ = nullptr;
     lv_obj_t* mixture_unit_ = nullptr;
+    lv_obj_t* dash_layout_dropdown_ = nullptr;
+    lv_obj_t* track_layout_dropdown_ = nullptr;
+    lv_obj_t* rpm_scale_slider_ = nullptr;
+    lv_obj_t* rpm_scale_value_ = nullptr;
     std::array<lv_obj_t*, SettingsFlowModel::kSlotsPerPage> layout_labels_{};
     std::array<std::size_t, SettingsFlowModel::kSlotsPerPage> layout_slots_{};
     lv_obj_t* reset_overlay_ = nullptr;

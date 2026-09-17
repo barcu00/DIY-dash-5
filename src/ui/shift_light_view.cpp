@@ -27,6 +27,16 @@ void ShiftLightView::create(lv_obj_t* parent) {
     lv_obj_add_event_cb(strip_, drawEvent, LV_EVENT_DRAW_MAIN, this);
 }
 
+void ShiftLightView::apply(DashboardLayout layout) {
+    if (layout == DashboardLayout::SideGear || layout == DashboardLayout::StripStyle) {
+        lv_obj_add_flag(strip_, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_clear_flag(strip_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_width(strip_, layout == DashboardLayout::AnalogStyle ? 416 : 784);
+    }
+    state_initialized_ = false;
+}
+
 void ShiftLightView::drawEvent(lv_event_t* event) {
     auto* self = static_cast<ShiftLightView*>(lv_event_get_user_data(event));
     if (self == nullptr || self->strip_ == nullptr) return;
@@ -48,16 +58,18 @@ void ShiftLightView::drawEvent(lv_event_t* event) {
             if (self->last_states_[i].color == ShiftColor::Red)
                 dsc.bg_color = UiTheme::red();
         }
+        const int spacing = lv_obj_get_width(self->strip_) / 12;
         lv_area_t segment{
-            static_cast<lv_coord_t>(strip_area.x1 + static_cast<int>(i) * 66),
+            static_cast<lv_coord_t>(strip_area.x1 + static_cast<int>(i) * spacing),
             strip_area.y1,
-            static_cast<lv_coord_t>(strip_area.x1 + static_cast<int>(i) * 66 + 59),
+            static_cast<lv_coord_t>(strip_area.x1 + static_cast<int>(i) * spacing + spacing - 5),
             strip_area.y2};
         lv_draw_rect(draw_ctx, &dsc, &segment);
     }
 }
 void ShiftLightView::update(uint16_t rpm, bool rpm_valid, uint32_t now_ms,
                             const ShiftLightConfig& config) {
+    if (strip_ == nullptr || lv_obj_has_flag(strip_, LV_OBJ_FLAG_HIDDEN)) return;
     const ShiftSegmentStates states =
         ShiftLightModel::segments(rpm, rpm_valid, now_ms, config);
     if (state_initialized_ && sameStates(states, last_states_)) {
