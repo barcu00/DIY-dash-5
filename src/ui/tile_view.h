@@ -25,6 +25,8 @@ private:
     lv_obj_t* unit_ = nullptr;
     lv_obj_t* temperature_bar_ = nullptr;
     TileAddress address_{};
+    bool base_border_ = true;
+    TileSize size_ = TileSize::Small;
     DisplaySignalFilter display_filter_{};
     std::array<char, 32> last_value_text_{};
     std::array<char, 16> last_unit_text_{};

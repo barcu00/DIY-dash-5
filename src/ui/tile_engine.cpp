@@ -85,31 +85,31 @@ TilePlacementList TileEngine::placements(PageId page,
     if (layout == DashboardLayout::AnalogStyle) {
         std::array<TileGeometry, 6> rows{};
         for (int i = 0; i < 6; ++i)
-            rows[i] = {432, static_cast<int16_t>(36 + 64 * i), 360, 58, TileSize::CompactRow};
+            rows[i] = {464, static_cast<int16_t>(16 + 68 * i), 328, 62, TileSize::CompactRow};
         appendGroup(output, page, tiles, 0U, TileGroup::DashRight, rows);
     } else if (layout == DashboardLayout::SideGear) {
-        const std::array<TileGeometry, 1> gear{{{8, 8, 126, 318, TileSize::GearHero}}};
+        const std::array<TileGeometry, 1> gear{{{8, 16, 136, 292, TileSize::GearHero}}};
         const std::array<TileGeometry, 2> main{{
-            {142, 112, 320, 214, TileSize::Hero},
-            {470, 112, 322, 214, TileSize::Hero}}};
+            {170, 145, 292, 155, TileSize::Hero},
+            {480, 145, 292, 155, TileSize::Hero}}};
         std::array<TileGeometry, 5> bottom{};
         for (int i = 0; i < 5; ++i)
-            bottom[i] = {static_cast<int16_t>(8 + i * 158), 334, 150, 88, TileSize::CenteredSmall};
+            bottom[i] = {static_cast<int16_t>(8 + i * 158), 316, static_cast<int16_t>(i==4 ? 152:150), 106, TileSize::CenteredSmall};
         appendGroup(output, page, tiles, 0U, TileGroup::DashLeft, gear);
         appendGroup(output, page, tiles, 1U, TileGroup::DashCenterWide, main);
         appendGroup(output, page, tiles, 3U, TileGroup::DashCenterSmall, bottom);
     } else if (layout == DashboardLayout::StripStyle) {
         const std::array<TileGeometry, 3> left{{
-            {8, 158, 158, 84, TileSize::CenteredSmall},
-            {8, 248, 158, 84, TileSize::CenteredSmall},
-            {8, 338, 158, 84, TileSize::CenteredSmall}}};
+            {8, 178, 158, 76, TileSize::CenteredSmall},
+            {8, 262, 158, 76, TileSize::CenteredSmall},
+            {8, 346, 158, 76, TileSize::CenteredSmall}}};
         const std::array<TileGeometry, 2> center{{
-            {174, 158, 224, 264, TileSize::Hero},
-            {406, 158, 224, 264, TileSize::Hero}}};
+            {176, 178, 218, 244, TileSize::Hero},
+            {410, 178, 214, 244, TileSize::Hero}}};
         const std::array<TileGeometry, 3> right{{
-            {638, 158, 154, 84, TileSize::CenteredSmall},
-            {638, 248, 154, 84, TileSize::CenteredSmall},
-            {638, 338, 154, 84, TileSize::CenteredSmall}}};
+            {634, 178, 158, 76, TileSize::CenteredSmall},
+            {634, 262, 158, 76, TileSize::CenteredSmall},
+            {634, 346, 158, 76, TileSize::CenteredSmall}}};
         appendGroup(output, page, tiles, 0U, TileGroup::DashLeft, left);
         appendGroup(output, page, tiles, 3U, TileGroup::DashCenterWide, center);
         appendGroup(output, page, tiles, 5U, TileGroup::DashRight, right);
