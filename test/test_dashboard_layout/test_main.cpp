@@ -156,8 +156,39 @@ void test_approved_style_placements_preserve_touch_targets_and_frame_spacing() {
     }
 }
 
+void test_sixth_layout_has_independent_editable_rows_and_packs_hidden_tiles_down() {
+    const auto layout=static_cast<DashboardLayout>(5);
+    TEST_ASSERT_TRUE(validDashboardLayout(layout));
+    AppConfig config=AppConfig::defaults();
+    config.dash_layout=config.track_layout=layout;
+    auto dash=activeTiles(config,PageId::Dash),track=activeTiles(config,PageId::Track);
+    TEST_ASSERT_EQUAL_UINT32(6,dash.size());
+    TEST_ASSERT_EQUAL_UINT32(6,track.size());
+    TEST_ASSERT_NOT_EQUAL(dash.data,track.data);
+    TEST_ASSERT_NOT_EQUAL(dash.data,layoutTiles(config,PageId::Dash,DashboardLayout::AnalogStyle).data);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(ParameterId::OilPressure),static_cast<uint8_t>(dash[1].parameter));
+    dash[0].visible=false;
+    TEST_ASSERT_TRUE(track[0].visible);
+    auto placements=TileEngine::placements(PageId::Dash,config);
+    TEST_ASSERT_EQUAL_UINT32(5,placements.count);
+    TEST_ASSERT_EQUAL_INT16(464,placements.items[0].geometry.x);
+    TEST_ASSERT_EQUAL_INT16(84,placements.items[0].geometry.y);
+    TEST_ASSERT_EQUAL_INT16(356,placements.items[4].geometry.y);
+    TileEditorModel editor;
+    TEST_ASSERT_TRUE(editor.open({PageId::Dash,1},config));
+    editor.setWarning({true,WarningDirection::Below,2.5f,.2f,0});
+    TEST_ASSERT_TRUE(editor.applyTo(config));
+    VehicleState state;state.set(ParameterId::OilPressure,1.f,100);
+    TileWarningEngine warnings;warnings.evaluate(config,state,100);
+    TEST_ASSERT_TRUE(warnings.nextModal().has_value());
+    config.dash_layout=DashboardLayout::AnalogStyle;
+    warnings.evaluate(config,state,120);
+    TEST_ASSERT_FALSE(warnings.nextModal().has_value());
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
+    RUN_TEST(test_sixth_layout_has_independent_editable_rows_and_packs_hidden_tiles_down);
     RUN_TEST(test_each_page_can_assign_any_preset_and_keep_its_tile_bank);
     RUN_TEST(test_all_five_presets_fit_both_pages_without_overlapping_navigation);
     RUN_TEST(test_shared_scale_clamps_snaps_and_never_changes_shift_thresholds);
