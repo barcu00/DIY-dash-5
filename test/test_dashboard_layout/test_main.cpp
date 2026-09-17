@@ -119,9 +119,40 @@ void test_hidden_strip_column_tiles_pack_down_without_moving_center() {
     TEST_ASSERT_EQUAL_UINT32(7, placements.count);
     for (std::size_t i = 0; i < placements.count; ++i) {
         auto p = placements.items[i];
-        if (p.address.slot == 1) TEST_ASSERT_EQUAL_INT16(248, p.geometry.y);
-        if (p.address.slot == 2) TEST_ASSERT_EQUAL_INT16(338, p.geometry.y);
-        if (p.address.slot == 3) TEST_ASSERT_EQUAL_INT16(158, p.geometry.y);
+        if (p.address.slot == 1) TEST_ASSERT_EQUAL_INT16(262, p.geometry.y);
+        if (p.address.slot == 2) TEST_ASSERT_EQUAL_INT16(346, p.geometry.y);
+        if (p.address.slot == 3) TEST_ASSERT_EQUAL_INT16(178, p.geometry.y);
+    }
+}
+
+void test_approved_style_placements_preserve_touch_targets_and_frame_spacing() {
+    AppConfig config = AppConfig::defaults();
+    struct Fixture { DashboardLayout layout; uint8_t slot; int x,y,w,h; };
+    const Fixture fixtures[] = {
+        {DashboardLayout::AnalogStyle,0,464,16,328,62},
+        {DashboardLayout::AnalogStyle,5,464,356,328,62},
+        {DashboardLayout::SideGear,0,8,16,136,292},
+        {DashboardLayout::SideGear,1,170,145,292,155},
+        {DashboardLayout::SideGear,3,8,316,150,106},
+        {DashboardLayout::StripStyle,0,8,178,158,76},
+        {DashboardLayout::StripStyle,3,176,178,218,244},
+    };
+    for (const auto& fixture : fixtures) {
+        config.dash_layout = config.track_layout = fixture.layout;
+        for (auto page : {PageId::Dash,PageId::Track}) {
+            auto placements = TileEngine::placements(page,config);
+            bool found=false;
+            for (std::size_t i=0;i<placements.count;i++) {
+                if (placements.items[i].address.slot != fixture.slot) continue;
+                const auto& g=placements.items[i].geometry;
+                TEST_ASSERT_EQUAL_INT16(fixture.x,g.x);
+                TEST_ASSERT_EQUAL_INT16(fixture.y,g.y);
+                TEST_ASSERT_EQUAL_INT16(fixture.w,g.width);
+                TEST_ASSERT_EQUAL_INT16(fixture.h,g.height);
+                found=true;
+            }
+            TEST_ASSERT_TRUE(found);
+        }
     }
 }
 
@@ -133,5 +164,6 @@ int main(int, char**) {
     RUN_TEST(test_invalid_layouts_restore_original_page_choices);
     RUN_TEST(test_editor_and_warnings_use_only_the_selected_bank);
     RUN_TEST(test_hidden_strip_column_tiles_pack_down_without_moving_center);
+    RUN_TEST(test_approved_style_placements_preserve_touch_targets_and_frame_spacing);
     return UNITY_END();
 }
