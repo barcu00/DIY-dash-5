@@ -1,7 +1,10 @@
 # LVGL appearance approval prototype
 
 Isolated, static 800×480 prototypes for Analog Style (9), Side Gear (5),
-and Strip Style (4). Not compiled into the firmware and not a hardware test.
+Strip Style (4), Classic DASH, and Classic TRACK. Not compiled into the firmware
+and not a hardware test. The first three appearances were approved by the user.
+The Classic variants retain their original 14/12 slots, column geometry, and
+12-segment shift-light strip, with the same typography and panel treatment.
 The LVGL 8.4 software renderer writes actual display framebuffers to PPM;
 Pillow only converts their file format losslessly to PNG. GitHub Actions
 performs compilation and rendering. No firmware source or saved configuration

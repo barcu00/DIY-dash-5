@@ -5,6 +5,7 @@
 #include <string.h>
 
 LV_FONT_DECLARE(race_digits_48);
+LV_FONT_DECLARE(race_digits_64);
 LV_FONT_DECLARE(race_digits_96);
 LV_FONT_DECLARE(race_digits_140);
 
@@ -56,20 +57,23 @@ static void arc_line(lv_draw_ctx_t *ctx,int cx,int cy,int r,unsigned rgb,int wid
         line(ctx,a.x,a.y,b.x,b.y,rgb,width); }
 }
 static void nav(lv_draw_ctx_t *ctx) {
+    const int track=preset==4;
+    const unsigned dash_color=track ? MUTED:CYAN;
+    const unsigned track_color=track ? CYAN:MUTED;
     line(ctx,8,434,792,434,FRAME,1);
     line(ctx,266,444,266,474,FRAME,1); line(ctx,533,444,533,474,FRAME,1);
-    arc_line(ctx,82,459,13,CYAN,2); line(ctx,82,459,88,450,CYAN,2);
-    rect(ctx,80,457,5,5,CYAN,0,3);
-    text(ctx,109,447,130,"DASH",&lv_font_montserrat_20,CYAN,LV_TEXT_ALIGN_LEFT);
+    arc_line(ctx,82,459,13,dash_color,2); line(ctx,82,459,88,450,dash_color,2);
+    rect(ctx,80,457,5,5,dash_color,0,3);
+    text(ctx,109,447,130,"DASH",&lv_font_montserrat_20,dash_color,LV_TEXT_ALIGN_LEFT);
     for(int r=0;r<3;r++) for(int c=0;c<4;c++) if((r+c)%2==0)
-        rect(ctx,350+c*5+r,447+r*5,5,5,MUTED,0,0);
-    line(ctx,351,446,346,472,MUTED,2);
-    text(ctx,384,447,120,"TRACK",&lv_font_montserrat_20,MUTED,LV_TEXT_ALIGN_LEFT);
+        rect(ctx,350+c*5+r,447+r*5,5,5,track_color,0,0);
+    line(ctx,351,446,346,472,track_color,2);
+    text(ctx,384,447,120,"TRACK",&lv_font_montserrat_20,track_color,LV_TEXT_ALIGN_LEFT);
     for(int i=0;i<8;i++) { float a=i*3.14159265f/4;
         line(ctx,623+9*cosf(a),459+9*sinf(a),623+14*cosf(a),459+14*sinf(a),MUTED,4); }
     rect(ctx,613,449,21,21,BLACK,MUTED,11); rect(ctx,619,455,9,9,BLACK,MUTED,5);
     text(ctx,651,447,142,"SETTINGS",&lv_font_montserrat_20,MUTED,LV_TEXT_ALIGN_LEFT);
-    line(ctx,52,478,220,478,CYAN,3);
+    line(ctx,track ? 319:52,478,track ? 487:220,478,CYAN,3);
 }
 static void slim_temperature(lv_draw_ctx_t *ctx,int x,int y,int width,float f) {
     rect(ctx,x,y,width,3,DIM,0,1); rect(ctx,x,y,lroundf(width*f),3,GREEN,0,1);
@@ -182,9 +186,44 @@ static void strip(lv_draw_ctx_t *ctx) {
     text(ctx,176,350,218,"RPM",&lv_font_montserrat_24,WHITE,LV_TEXT_ALIGN_CENTER);
     text(ctx,410,350,214,"km/h",&lv_font_montserrat_24,WHITE,LV_TEXT_ALIGN_CENTER);
 }
+static void wide(lv_draw_ctx_t *ctx,int y,const char *title,const char *value,const char *unit,unsigned rail) {
+    rect(ctx,192,y,416,90,BLACK,FRAME,6);
+    rect(ctx,196,y+5,4,80,rail,0,2);
+    text(ctx,204,y+7,392,title,&lv_font_montserrat_16,MUTED,LV_TEXT_ALIGN_CENTER);
+    text(ctx,232,y+29,336,value,&race_digits_64,WHITE,LV_TEXT_ALIGN_CENTER);
+    text(ctx,548,y+56,52,unit,&lv_font_montserrat_12,MUTED,LV_TEXT_ALIGN_RIGHT);
+}
+static void classic(lv_draw_ctx_t *ctx,int track) {
+    // Original 14-slot DASH / 12-slot TRACK geometry is intentionally retained.
+    const int rows[]={36,134,232,332};
+    for(int i=0;i<12;i++) {
+        unsigned rgb=i<4 ? GREEN : i<8 ? YELLOW : RED;
+        rect(ctx,8+i*66,8,60,16,rgb,0,3);
+    }
+    small(ctx,8,rows[0],176,90,"SPEED","137","km/h",CYAN,0);
+    small(ctx,8,rows[1],176,90,track ? "CLT":"LAMBDA",track ? "91":"0.86",track ? "°C":"",track ? GREEN:YELLOW,track ? 2:0);
+    small(ctx,8,rows[2],176,90,track ? "OIL T":"CLT",track ? "108":"91","°C",track ? ORANGE:GREEN,track ? 1:2);
+    small(ctx,8,rows[3],176,90,track ? "BATTERY":"OIL P",track ? "14.2":"4.8",track ? "V":"bar",CYAN,0);
+    small(ctx,616,rows[0],176,90,track ? "OIL P":"TPS",track ? "4.8":"78",track ? "bar":"%",track ? ORANGE:CYAN,0);
+    small(ctx,616,rows[1],176,90,track ? "LAMBDA":"IAT",track ? "0.86":"32",track ? "":"°C",track ? YELLOW:CYAN,0);
+    small(ctx,616,rows[2],176,90,track ? "IAT":"OIL T",track ? "32":"108","°C",track ? CYAN:ORANGE,track ? 0:1);
+    small(ctx,616,rows[3],176,90,track ? "TPS":"BATTERY",track ? "78":"14.2",track ? "%":"V",CYAN,0);
+    wide(ctx,rows[0],"RPM","6840","rpm",CYAN);
+    wide(ctx,rows[1],"GEAR","3","",CYAN);
+    if(track) {
+        wide(ctx,rows[2],"BOOST","1.18","bar",CYAN);
+        wide(ctx,rows[3],"FUEL P","4.1","bar",GREEN);
+    } else {
+        small(ctx,192,rows[2],204,90,"BOOST","1.18","bar",CYAN,0);
+        small(ctx,404,rows[2],204,90,"FUEL P","4.1","bar",GREEN,0);
+        small(ctx,192,rows[3],204,90,"TPS","78","%",CYAN,0);
+        small(ctx,404,rows[3],204,90,"BATTERY","14.2","V",CYAN,0);
+    }
+}
 static void draw(lv_event_t *event) {
     lv_draw_ctx_t *ctx=lv_event_get_draw_ctx(event);
-    if(preset==0)analog(ctx); else if(preset==1)side(ctx); else strip(ctx);
+    if(preset==0)analog(ctx); else if(preset==1)side(ctx); else if(preset==2)strip(ctx);
+    else classic(ctx,preset==4);
     nav(ctx);
 }
 int main(int argc,char **argv) {
@@ -195,8 +234,8 @@ int main(int argc,char **argv) {
     lv_obj_t *screen=lv_scr_act(); lv_obj_remove_style_all(screen);
     lv_obj_set_style_bg_color(screen,color(BLACK),0); lv_obj_set_style_bg_opa(screen,LV_OPA_COVER,0);
     lv_obj_clear_flag(screen,LV_OBJ_FLAG_SCROLLABLE); lv_obj_add_event_cb(screen,draw,LV_EVENT_DRAW_MAIN,NULL);
-    const char *names[]={"lvgl-analog-style","lvgl-side-gear","lvgl-strip-style"};
-    for(preset=0;preset<3;preset++) {
+    const char *names[]={"lvgl-analog-style","lvgl-side-gear","lvgl-strip-style","lvgl-classic-dash","lvgl-classic-track"};
+    for(preset=0;preset<5;preset++) {
         memset(framebuffer,0,sizeof(framebuffer)); lv_obj_invalidate(screen); lv_refr_now(NULL);
         char path[512]; snprintf(path,sizeof(path),"%s/%s.ppm",argv[1],names[preset]);
         FILE *out=fopen(path,"wb"); if(!out)return 3;
