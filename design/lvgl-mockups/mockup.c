@@ -79,7 +79,7 @@ static void slim_temperature(lv_draw_ctx_t *ctx,int x,int y,int width,float f) {
     rect(ctx,x,y,width,3,DIM,0,1); rect(ctx,x,y,lroundf(width*f),3,GREEN,0,1);
 }
 static void small(lv_draw_ctx_t *ctx,int x,int y,int w,int h,const char *title,const char *value,const char *unit,unsigned rail,int temp) {
-    rect(ctx,x,y,w,h,BLACK,FRAME,6);
+    rect(ctx,x,y,w,h,BLACK,FRAME,6); rect(ctx,x+4,y+5,4,h-10,CYAN,0,2);
     if(h<90) {
         text(ctx,x+15,y+7,w-25,title,&lv_font_montserrat_16,MUTED,LV_TEXT_ALIGN_LEFT);
         text(ctx,x+12,y+26,unit[0] ? 96 : w-24,value,&race_digits_48,WHITE,LV_TEXT_ALIGN_CENTER);
@@ -148,7 +148,7 @@ static void analog(lv_draw_ctx_t *ctx) {
     const char *units[]={"km/h","bar","°C","°C","bar",""};
     unsigned rails[]={CYAN,ORANGE,ORANGE,CYAN,GREEN,YELLOW};
     for(int i=0;i<6;i++) {
-        int y=16+i*68; rect(ctx,464,y,328,62,BLACK,FRAME,6);
+        int y=16+i*68; rect(ctx,464,y,328,62,BLACK,FRAME,6); rect(ctx,470,y+7,4,48,CYAN,0,2);
         text(ctx,486,y+22,115,titles[i],&lv_font_montserrat_16,WHITE,LV_TEXT_ALIGN_LEFT);
         text(ctx,592,y+2,123,values[i],&race_digits_48,WHITE,LV_TEXT_ALIGN_RIGHT);
         text(ctx,724,y+31,62,units[i],&lv_font_montserrat_16,MUTED,LV_TEXT_ALIGN_LEFT);
@@ -188,6 +188,7 @@ static void strip(lv_draw_ctx_t *ctx) {
 }
 static void wide(lv_draw_ctx_t *ctx,int y,const char *title,const char *value,const char *unit,unsigned rail) {
     rect(ctx,192,y,416,90,BLACK,FRAME,6);
+    rect(ctx,196,y+5,4,80,CYAN,0,2);
     text(ctx,204,y+7,392,title,&lv_font_montserrat_16,MUTED,LV_TEXT_ALIGN_CENTER);
     text(ctx,232,y+29,336,value,&race_digits_64,WHITE,LV_TEXT_ALIGN_CENTER);
     text(ctx,548,y+56,52,unit,&lv_font_montserrat_12,MUTED,LV_TEXT_ALIGN_RIGHT);

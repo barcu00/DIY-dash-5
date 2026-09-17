@@ -6,7 +6,8 @@
 #include <assert.h>
 
 static float maximum_rpm=10000.f;
-static const float yellow_from=5500.f, red_from=7000.f, current_rpm=6840.f;
+static const float yellow_from=5500.f, red_from=7000.f;
+static float current_rpm=6840.f;
 static unsigned rpm_zone(float rpm) {
     return rpm>=red_from ? RED : rpm>=yellow_from ? YELLOW : GREEN;
 }
@@ -42,6 +43,18 @@ static void analog_motorsport(lv_draw_ctx_t *ctx) {
     text(ctx,148,101,160,"RPM x1000",&lv_font_montserrat_16,MUTED,LV_TEXT_ALIGN_CENTER);
     const lv_point_t tip=polar(cx,cy,174,current_rpm/maximum_rpm);
     const float dx=tip.x-cx,dy=tip.y-cy,length=hypotf(dx,dy);
+    if(preset==7) {
+        // Variant D: an inward-pointing marker beside the scale, no central hand.
+        float f=current_rpm/maximum_rpm;
+        lv_point_t base=polar(cx,cy,195,f),point=polar(cx,cy,173,f);
+        lv_point_t outline[3]={{lroundf(base.x-dy*12.f/length),lroundf(base.y+dx*12.f/length)},point,
+                              {lroundf(base.x+dy*12.f/length),lroundf(base.y-dx*12.f/length)}};
+        polygon(ctx,outline,3,WHITE);
+        base=polar(cx,cy,192,f);point=polar(cx,cy,177,f);
+        lv_point_t marker[3]={{lroundf(base.x-dy*9.f/length),lroundf(base.y+dx*9.f/length)},point,
+                             {lroundf(base.x+dy*9.f/length),lroundf(base.y-dx*9.f/length)}};
+        polygon(ctx,marker,3,RED);
+    } else {
     // Broad white body with a prominent red spearhead.
     lv_point_t needle[3]={{lroundf(cx-dy*7.f/length),lroundf(cy+dx*7.f/length)},tip,
                           {lroundf(cx+dy*7.f/length),lroundf(cy-dx*7.f/length)}};
@@ -51,13 +64,17 @@ static void analog_motorsport(lv_draw_ctx_t *ctx) {
                        {lroundf(tail.x+dy*5.f/length),lroundf(tail.y-dx*5.f/length)}};
     polygon(ctx,head,3,RED);
     rect(ctx,cx-10,cy-10,21,21,BLACK,WHITE,11);
+    }
     text(ctx,88,305,280,"6840",&race_digits_96,WHITE,LV_TEXT_ALIGN_CENTER);
     text(ctx,128,386,200,"RPM",&lv_font_montserrat_20,MUTED,LV_TEXT_ALIGN_CENTER);
+}
+static void analog_rows(lv_draw_ctx_t *ctx) {
     const char *titles[]={"SPEED","OIL PRESS","OIL TEMP","CLT","MAP","LAMBDA"};
     const char *values[]={"137","4.8","108","91","1.18","0.86"};
     const char *units[]={"km/h","bar","°C","°C","bar",""};
     for(int i=0;i<6;i++) {
         int y=16+i*68; rect(ctx,464,y,328,62,BLACK,FRAME,6);
+        rect(ctx,470,y+7,4,48,CYAN,0,2);
         text(ctx,476,y+22,120,titles[i],&lv_font_montserrat_16,MUTED,LV_TEXT_ALIGN_CENTER);
         lv_point_t value_size,unit_size;
         lv_txt_get_size(&value_size,values[i],&race_digits_48,0,0,400,LV_TEXT_FLAG_NONE);
@@ -68,6 +85,33 @@ static void analog_motorsport(lv_draw_ctx_t *ctx) {
         text(ctx,x+value_size.x+gap,y+29,unit_size.x+1,units[i],&lv_font_montserrat_16,MUTED,LV_TEXT_ALIGN_LEFT);
         if(i==2 || i==3)slim_temperature(ctx,486,y+55,294,i==2 ? .75f:.57f);
     }
+}
+static void continuous_semicircle(lv_draw_ctx_t *ctx) {
+    const int cx=228,cy=236,radius=202;
+    true_arc(ctx,cx,cy,207,180,360,FRAME,1);
+    true_arc(ctx,cx,cy,radius,180,360,DIM,22);
+    const float progress=fmaxf(0,fminf(1,current_rpm/maximum_rpm));
+    const float thresholds[]={0,yellow_from,red_from,maximum_rpm};
+    const unsigned zones[]={GREEN,YELLOW,RED};
+    for(int i=0;i<3;i++) {
+        float lo=fminf(1,thresholds[i]/maximum_rpm);
+        float hi=fminf(progress,thresholds[i+1]/maximum_rpm);
+        if(hi>lo)true_arc(ctx,cx,cy,radius,lroundf(180+180*lo),lroundf(180+180*hi),zones[i],22);
+    }
+    for(int rpm=0;rpm<=maximum_rpm;rpm+=200) {
+        float angle=180+180*rpm/maximum_rpm;
+        lv_point_t a=circle_point(cx,cy,173,angle),b=circle_point(cx,cy,rpm%1000 ? 168:160,angle);
+        line(ctx,a.x,a.y,b.x,b.y,rpm%1000 ? MUTED:WHITE,rpm%1000 ? 1:2);
+        if(rpm%1000==0) {
+            lv_point_t p=circle_point(cx,cy,141,angle);
+            char s[8];snprintf(s,sizeof(s),"%d",rpm/1000);
+            text(ctx,p.x-25,p.y-12,50,s,&lv_font_montserrat_24,WHITE,LV_TEXT_ALIGN_CENTER);
+        }
+    }
+    text(ctx,148,181,160,"RPM x1000",&lv_font_montserrat_16,MUTED,LV_TEXT_ALIGN_CENTER);
+    char rpm_value[16];snprintf(rpm_value,sizeof(rpm_value),"%.0f",current_rpm);
+    text(ctx,88,275,280,rpm_value,&race_digits_96,WHITE,LV_TEXT_ALIGN_CENTER);
+    text(ctx,128,370,200,"RPM",&lv_font_montserrat_20,MUTED,LV_TEXT_ALIGN_CENTER);
 }
 static void circular_strip(lv_draw_ctx_t *ctx) {
     const int cx=400,cy=1234;
@@ -119,7 +163,12 @@ static void circular_strip(lv_draw_ctx_t *ctx) {
 }
 static void draw_refined(lv_event_t *event) {
     lv_draw_ctx_t *ctx=lv_event_get_draw_ctx(event);
-    if(preset==0 || preset==5)analog_motorsport(ctx);
+    if(preset==0 || preset==5 || preset==7) {
+        analog_motorsport(ctx);analog_rows(ctx);
+    }
+    else if(preset>=8) {
+        continuous_semicircle(ctx);analog_rows(ctx);
+    }
     else if(preset==1 || preset==6)circular_strip(ctx);
     else if(preset==2)side(ctx);
     else classic(ctx,preset==4);
@@ -139,9 +188,12 @@ int main(int argc,char **argv) {
     lv_obj_add_event_cb(screen,draw_refined,LV_EVENT_DRAW_MAIN,NULL);
     const char *names[]={"lvgl-analog-motorsport-v3","lvgl-strip-circular-v3",
         "lvgl-side-gear-v3","lvgl-classic-dash-v3","lvgl-classic-track-v3",
-        "lvgl-analog-7500-v3","lvgl-strip-7500-v3"};
-    for(preset=0;preset<7;preset++) {
-        maximum_rpm=preset>=5 ? 7500.f:10000.f;
+        "lvgl-analog-7500-v3","lvgl-strip-7500-v3",
+        "lvgl-analog-d-outer-pointer","lvgl-layout-e-semicircle",
+        "lvgl-layout-e-7500","lvgl-layout-e-idle","lvgl-layout-e-redline"};
+    for(preset=0;preset<12;preset++) {
+        maximum_rpm=(preset==5 || preset==6 || preset==9) ? 7500.f:10000.f;
+        current_rpm=preset==10 ? 1200.f:preset==11 ? 8500.f:6840.f;
         memset(framebuffer,0,sizeof(framebuffer));
         lv_obj_invalidate(screen); lv_refr_now(NULL);
         char path[512]; snprintf(path,sizeof(path),"%s/%s.ppm",argv[1],names[preset]);
