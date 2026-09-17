@@ -44,16 +44,15 @@ static void analog_motorsport(lv_draw_ctx_t *ctx) {
     const lv_point_t tip=polar(cx,cy,174,current_rpm/maximum_rpm);
     const float dx=tip.x-cx,dy=tip.y-cy,length=hypotf(dx,dy);
     if(preset==7) {
-        // Variant D: an inward-pointing marker beside the scale, no central hand.
+        // Variant D: a true rectangular white index, radial to the scale.
         float f=current_rpm/maximum_rpm;
-        lv_point_t base=polar(cx,cy,195,f),point=polar(cx,cy,173,f);
-        lv_point_t outline[3]={{lroundf(base.x-dy*12.f/length),lroundf(base.y+dx*12.f/length)},point,
-                              {lroundf(base.x+dy*12.f/length),lroundf(base.y-dx*12.f/length)}};
-        polygon(ctx,outline,3,WHITE);
-        base=polar(cx,cy,192,f);point=polar(cx,cy,177,f);
-        lv_point_t marker[3]={{lroundf(base.x-dy*9.f/length),lroundf(base.y+dx*9.f/length)},point,
-                             {lroundf(base.x+dy*9.f/length),lroundf(base.y-dx*9.f/length)}};
-        polygon(ctx,marker,3,RED);
+        lv_point_t out=polar(cx,cy,205,f),in=polar(cx,cy,175,f);
+        float tx=-dy/length*5.f,ty=dx/length*5.f;
+        lv_point_t marker[4]={{lroundf(out.x+tx),lroundf(out.y+ty)},
+            {lroundf(out.x-tx),lroundf(out.y-ty)},
+            {lroundf(in.x-tx),lroundf(in.y-ty)},
+            {lroundf(in.x+tx),lroundf(in.y+ty)}};
+        polygon(ctx,marker,4,WHITE);
     } else {
     // Broad white body with a prominent red spearhead.
     lv_point_t needle[3]={{lroundf(cx-dy*7.f/length),lroundf(cy+dx*7.f/length)},tip,
@@ -65,8 +64,8 @@ static void analog_motorsport(lv_draw_ctx_t *ctx) {
     polygon(ctx,head,3,RED);
     rect(ctx,cx-10,cy-10,21,21,BLACK,WHITE,11);
     }
-    text(ctx,88,305,280,"6840",&race_digits_96,WHITE,LV_TEXT_ALIGN_CENTER);
-    text(ctx,128,386,200,"RPM",&lv_font_montserrat_20,MUTED,LV_TEXT_ALIGN_CENTER);
+    text(ctx,88,preset==7 ? 174:305,280,"6840",&race_digits_96,WHITE,LV_TEXT_ALIGN_CENTER);
+    text(ctx,128,preset==7 ? 271:386,200,"RPM",&lv_font_montserrat_20,MUTED,LV_TEXT_ALIGN_CENTER);
 }
 static void analog_rows(lv_draw_ctx_t *ctx) {
     const char *titles[]={"SPEED","OIL PRESS","OIL TEMP","CLT","MAP","LAMBDA"};
@@ -87,31 +86,44 @@ static void analog_rows(lv_draw_ctx_t *ctx) {
     }
 }
 static void continuous_semicircle(lv_draw_ctx_t *ctx) {
-    const int cx=228,cy=236,radius=202;
-    true_arc(ctx,cx,cy,207,180,360,FRAME,1);
-    true_arc(ctx,cx,cy,radius,180,360,DIM,22);
+    const int cx=228,cy=280,radius=210;
+    // Two precise hairlines frame a slim continuous active band.
+    true_arc(ctx,cx,cy,219,180,360,FRAME,1);
+    true_arc(ctx,cx,cy,214,180,360,0x183A4B,1);
+    true_arc(ctx,cx,cy,radius,180,360,DIM,14);
     const float progress=fmaxf(0,fminf(1,current_rpm/maximum_rpm));
     const float thresholds[]={0,yellow_from,red_from,maximum_rpm};
     const unsigned zones[]={GREEN,YELLOW,RED};
     for(int i=0;i<3;i++) {
         float lo=fminf(1,thresholds[i]/maximum_rpm);
-        float hi=fminf(progress,thresholds[i+1]/maximum_rpm);
-        if(hi>lo)true_arc(ctx,cx,cy,radius,lroundf(180+180*lo),lroundf(180+180*hi),zones[i],22);
+        float zone_end=fminf(1,thresholds[i+1]/maximum_rpm);
+        // Dim zone preview is part of the unfilled band, never extra blocks.
+        unsigned dim=i==0 ? 0x122322:i==1 ? 0x34321A:0x361D23;
+        if(zone_end>lo)true_arc(ctx,cx,cy,radius,lroundf(180+180*lo),lroundf(180+180*zone_end),dim,14);
+        float hi=fminf(progress,zone_end);
+        if(hi>lo)true_arc(ctx,cx,cy,radius,lroundf(180+180*lo),lroundf(180+180*hi),zones[i],14);
     }
+    // White moving cap across the active arc, independent of the scale labels.
+    float cap_angle=180+180*progress;
+    lv_point_t cap_out=circle_point(cx,cy,213,cap_angle),cap_in=circle_point(cx,cy,191,cap_angle);
+    line(ctx,cap_out.x,cap_out.y,cap_in.x,cap_in.y,WHITE,4);
     for(int rpm=0;rpm<=maximum_rpm;rpm+=200) {
         float angle=180+180*rpm/maximum_rpm;
-        lv_point_t a=circle_point(cx,cy,173,angle),b=circle_point(cx,cy,rpm%1000 ? 168:160,angle);
+        lv_point_t a=circle_point(cx,cy,187,angle),b=circle_point(cx,cy,rpm%1000 ? 183:176,angle);
         line(ctx,a.x,a.y,b.x,b.y,rpm%1000 ? MUTED:WHITE,rpm%1000 ? 1:2);
         if(rpm%1000==0) {
-            lv_point_t p=circle_point(cx,cy,141,angle);
+            lv_point_t p=circle_point(cx,cy,159,angle);
             char s[8];snprintf(s,sizeof(s),"%d",rpm/1000);
             text(ctx,p.x-25,p.y-12,50,s,&lv_font_montserrat_24,WHITE,LV_TEXT_ALIGN_CENTER);
         }
     }
-    text(ctx,148,181,160,"RPM x1000",&lv_font_montserrat_16,MUTED,LV_TEXT_ALIGN_CENTER);
+    text(ctx,148,150,160,"RPM x1000",&lv_font_montserrat_16,MUTED,LV_TEXT_ALIGN_CENTER);
     char rpm_value[16];snprintf(rpm_value,sizeof(rpm_value),"%.0f",current_rpm);
-    text(ctx,88,275,280,rpm_value,&race_digits_96,WHITE,LV_TEXT_ALIGN_CENTER);
-    text(ctx,128,370,200,"RPM",&lv_font_montserrat_20,MUTED,LV_TEXT_ALIGN_CENTER);
+    text(ctx,88,182,280,rpm_value,&race_digits_96,WHITE,LV_TEXT_ALIGN_CENTER);
+    text(ctx,128,282,200,"RPM",&lv_font_montserrat_20,MUTED,LV_TEXT_ALIGN_CENTER);
+    // Understated instrument baseline, rather than a second heavy frame.
+    line(ctx,80,326,376,326,0x183A4B,1);
+    line(ctx,204,326,252,326,CYAN,2);
 }
 static void circular_strip(lv_draw_ctx_t *ctx) {
     const int cx=400,cy=1234;
