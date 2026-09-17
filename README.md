@@ -53,6 +53,10 @@ The GitHub Actions firmware artifact includes 16 deterministic 800×480
 previews, including the three new presets. These are geometry previews, not
 LVGL framebuffer captures or hardware photographs.
 
+| Analog Style | Side Gear | Strip Style |
+| --- | --- | --- |
+| ![Analog Style](docs/ui/screenshots/ui-preview-analog-style.png) | ![Side Gear](docs/ui/screenshots/ui-preview-side-gear.png) | ![Strip Style](docs/ui/screenshots/ui-preview-strip-style.png) |
+
 | DASH | TRACK |
 | --- | --- |
 | ![DIY Dash dashboard](docs/ui/screenshots/ui-preview-dash.png) | ![DIY Dash track screen](docs/ui/screenshots/ui-preview-track.png) |
@@ -65,7 +69,7 @@ LVGL framebuffer captures or hardware photographs.
 | --- | --- |
 | ![Configurable status flags](docs/ui/screenshots/ui-preview-flag-tiles.png) | ![Large warning modal](docs/ui/screenshots/ui-preview-warning.png) |
 
-All 13 deterministic 800 × 480 previews are available in
+The original 13 previews and three new development presets are available in
 [`docs/ui/screenshots`](docs/ui/screenshots).
 
 ## Main features
