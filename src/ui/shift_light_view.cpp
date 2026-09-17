@@ -28,11 +28,12 @@ void ShiftLightView::create(lv_obj_t* parent) {
 }
 
 void ShiftLightView::apply(DashboardLayout layout) {
-    if (layout == DashboardLayout::SideGear || layout == DashboardLayout::StripStyle) {
+    if (layout == DashboardLayout::SideGear || layout == DashboardLayout::StripStyle ||
+        layout == DashboardLayout::AnalogStyle) {
         lv_obj_add_flag(strip_, LV_OBJ_FLAG_HIDDEN);
     } else {
         lv_obj_clear_flag(strip_, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_set_width(strip_, layout == DashboardLayout::AnalogStyle ? 416 : 784);
+        lv_obj_set_width(strip_, 786);
     }
     state_initialized_ = false;
 }

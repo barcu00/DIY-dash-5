@@ -9,6 +9,7 @@
 #include "ui/unit_presenter.h"
 #include "ui/dashboard_layout.h"
 #include "ui/navigation_icon.h"
+#include "ui/navigation_view.h"
 Ui* Ui::instance_ = nullptr;
 namespace {
 lv_obj_t* makeLabel(lv_obj_t* parent, const char* text, int x, int y,
@@ -118,32 +119,7 @@ void Ui::createDataPage(Page page, const AppConfig& config) {
     createNavigation(screen, page); applyLayout(page, config);
 }
 void Ui::createNavigation(lv_obj_t* parent, Page active) {
-    constexpr const char* names[] = {"DASH", "TRACK", "SETTINGS"};
-    constexpr int widths[] = {267, 266, 267}; int x = 0;
-    for (int i = 0; i < 3; ++i) {
-        lv_obj_t* button = lv_btn_create(parent);
-        lv_obj_set_pos(button, x, TileLayout::kNavigationY);
-        lv_obj_set_size(button, widths[i], TileLayout::kNavigationHeight); x += widths[i];
-        lv_obj_set_style_radius(button, 0, 0); lv_obj_set_style_border_width(button, 0, 0);
-        const bool selected = static_cast<int>(active) == i;
-        lv_obj_set_style_bg_color(button, UiTheme::background(), 0);
-        lv_obj_set_style_text_color(button, selected ? UiTheme::blue() : UiTheme::muted(), 0);
-        lv_obj_add_event_cb(button, drawNavigationIcon, LV_EVENT_DRAW_MAIN,
-            reinterpret_cast<void*>(static_cast<intptr_t>(i)));
-        lv_obj_add_event_cb(button, navEvent, LV_EVENT_CLICKED,
-                            reinterpret_cast<void*>(static_cast<intptr_t>(i)));
-        lv_obj_t* text = lv_label_create(button); lv_label_set_text(text, names[i]);
-        lv_obj_set_style_text_font(text, &lv_font_montserrat_16, 0);
-        lv_obj_align(text, LV_ALIGN_CENTER, 16, 0);
-        if (selected) {
-            lv_obj_t* underline = lv_obj_create(button);
-            lv_obj_set_size(underline, 176, 3);
-            lv_obj_set_style_bg_color(underline, UiTheme::blue(), 0);
-            lv_obj_set_style_border_width(underline, 0, 0);
-            lv_obj_clear_flag(underline, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
-            lv_obj_align(underline, LV_ALIGN_BOTTOM_MID, 0, 3);
-        }
-    }
+    createNavigationView(parent,static_cast<int>(active),navEvent);
 }
 void Ui::applyLayout(Page page, const AppConfig& config) {
     const PageId id = page == Page::Dash ? PageId::Dash : PageId::Track;

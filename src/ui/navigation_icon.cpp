@@ -8,7 +8,7 @@ void drawNavigationIcon(lv_event_t* event) {
     const int icon = static_cast<int>(reinterpret_cast<intptr_t>(lv_event_get_user_data(event)));
     lv_area_t a;
     lv_obj_get_coords(obj, &a);
-    lv_point_t c{static_cast<lv_coord_t>(a.x1 + (a.x2 - a.x1) / 2 - 62),
+    lv_point_t c{static_cast<lv_coord_t>(a.x1 + (a.x2 - a.x1) / 2 - (icon==2 ? 43:52)),
                  static_cast<lv_coord_t>(a.y1 + 25)};
     const auto color = lv_obj_get_style_text_color(obj, LV_PART_MAIN);
     auto stroke = [&](lv_point_t p, lv_point_t q, int width = 2) {
