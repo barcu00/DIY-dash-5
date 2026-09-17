@@ -69,10 +69,10 @@ int main(int argc,char** argv) {
         if(scenario==5) {
             for(int i=0;i<3;++i)bank[i].parameter=ParameterId::CheckEngine;
             bank[0].flag_active_color=FlagActiveColor::Red;
-            bank[1].parameter=ParameterId::LaunchControl;
-            bank[2].parameter=ParameterId::AntiLag;
-            state.set(ParameterId::CheckEngine,1,0); state.set(ParameterId::LaunchControl,0,0);
-            state.invalidate(ParameterId::AntiLag);
+            bank[1].parameter=ParameterId::LaunchControlActive;
+            bank[2].parameter=ParameterId::AntiLagActive;
+            state.set(ParameterId::CheckEngine,1,0); state.set(ParameterId::LaunchControlActive,0,0);
+            state.invalidate(ParameterId::AntiLagActive);
         }
         if(scenario==7)config.rpm_scale_max=6000;
         state.set(ParameterId::Rpm,scenario>=8 ? 8500:6840,0);
