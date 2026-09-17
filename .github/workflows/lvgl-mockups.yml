@@ -1,0 +1,31 @@
+name: LVGL approval mockups
+on:
+  push:
+    branches: [dashboard-dev]
+    paths: ['design/lvgl-mockups/**', '.github/workflows/lvgl-mockups.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch LVGL 8.4
+        run: |
+          curl -fL https://github.com/lvgl/lvgl/archive/refs/tags/v8.4.0.tar.gz -o /tmp/lvgl.tar.gz
+          tar -xzf /tmp/lvgl.tar.gz -C /tmp
+      - name: Compile isolated desktop mockup
+        run: |
+          gcc -O2 -DLV_CONF_INCLUDE_SIMPLE -Idesign/lvgl-mockups -I/tmp/lvgl-8.4.0 design/lvgl-mockups/mockup.c design/lvgl-mockups/fonts/*.c $(find /tmp/lvgl-8.4.0/src -name '*.c') -lm -o /tmp/dash-mockup
+      - name: Render actual LVGL framebuffers
+        run: |
+          mkdir -p lvgl-mockups
+          /tmp/dash-mockup lvgl-mockups
+          python -m pip install Pillow==11.3.0
+          python design/lvgl-mockups/convert.py lvgl-mockups
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LVGL-approval-mockups
+          path: lvgl-mockups/*.png
+          retention-days: 30
