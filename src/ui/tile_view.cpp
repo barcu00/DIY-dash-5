@@ -83,7 +83,7 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
         value_font = geometry.width >= 260 ? &dash_numeric_64 : &lv_font_montserrat_48;
     else if (geometry.size == TileSize::GearHero)
         value_font = config.parameter == ParameterId::Gear ? &dash_numeric_80 : &lv_font_montserrat_24;
-    if (is_flag) value_font = &lv_font_montserrat_24;
+    if (is_flag) value_font = row ? &lv_font_montserrat_20 : &lv_font_montserrat_24;
     lv_obj_set_style_text_font(value_, value_font, 0);
     lv_label_set_long_mode(value_, LV_LABEL_LONG_CLIP);
     lv_obj_set_style_text_font(title_, hero ? &lv_font_montserrat_20 : &lv_font_montserrat_12, 0);
@@ -143,6 +143,15 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
             lv_obj_align(value_, LV_ALIGN_RIGHT_MID, -52, -3);
             lv_obj_align(unit_, LV_ALIGN_BOTTOM_RIGHT, -4, temperature_bar_visible ? -12 : -4);
             lv_obj_set_height(temperature_bar_, 4);
+        } else if (row) {
+            // Keep flag title and status side-by-side in the short analog row.
+            lv_obj_set_width(title_, 136);
+            lv_obj_set_style_text_align(title_, LV_TEXT_ALIGN_LEFT, 0);
+            lv_obj_align(title_, LV_ALIGN_LEFT_MID, 10, -5);
+            lv_obj_align(value_, LV_ALIGN_RIGHT_MID, -4, -7);
+            lv_obj_set_width(unit_, 112);
+            lv_obj_set_style_text_align(unit_, LV_TEXT_ALIGN_RIGHT, 0);
+            lv_obj_align(unit_, LV_ALIGN_BOTTOM_RIGHT, -4, -2);
         }
     }
     display_filter_.reset();
