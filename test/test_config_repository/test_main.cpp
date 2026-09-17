@@ -645,8 +645,47 @@ void test_all_preset_banks_and_shared_scale_round_trip_without_losing_flags() {
     }
 }
 
+struct LegacyAppConfigV6 {
+    uint32_t schema_version = 6;
+    DataSource data_source = DataSource::Demo;
+    uint8_t brightness_percent = 100;
+    CanSettings can{};
+    ShiftLightConfig shift{};
+    UnitSettings units{};
+    std::array<TileConfig,14> dash_tiles{};
+    std::array<TileConfig,12> track_tiles{};
+    DashboardLayout dash_layout = DashboardLayout::ClassicDash;
+    DashboardLayout track_layout = DashboardLayout::ClassicTrack;
+    uint16_t rpm_scale_max = 10000;
+    std::array<AppConfig::TileBank,4> dash_alternate_tiles{};
+    std::array<AppConfig::TileBank,4> track_alternate_tiles{};
+};
+void test_schema_v6_migration_preserves_all_layout_banks() {
+    const auto defaults=AppConfig::defaults();
+    LegacyAppConfigV6 old;
+    old.can=defaults.can; old.shift=defaults.shift; old.units=defaults.units;
+    old.dash_tiles=defaults.dash_tiles; old.track_tiles=defaults.track_tiles;
+    old.dash_alternate_tiles=defaults.dash_alternate_tiles;
+    old.track_alternate_tiles=defaults.track_alternate_tiles;
+    old.dash_layout=DashboardLayout::StripStyle;
+    old.track_layout=DashboardLayout::AnalogStyle;
+    old.rpm_scale_max=6500;
+    old.brightness_percent=60;
+    old.dash_alternate_tiles[3][0].visible=false;
+    old.track_alternate_tiles[1][1].flag_active_color=FlagActiveColor::Red;
+    MemoryBackend backend; TEST_ASSERT_TRUE(backend.write(&old,sizeof(old)));
+    ConfigRepository repo(backend); AppConfig loaded;
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(LoadResult::Migrated),static_cast<uint8_t>(repo.load(loaded)));
+    TEST_ASSERT_EQUAL_UINT16(6500,loaded.rpm_scale_max);
+    TEST_ASSERT_EQUAL_UINT8(60,loaded.brightness_percent);
+    TEST_ASSERT_EQUAL_UINT8(4,static_cast<uint8_t>(loaded.dash_layout));
+    TEST_ASSERT_EQUAL_UINT8(2,static_cast<uint8_t>(loaded.track_layout));
+    TEST_ASSERT_FALSE(loaded.dash_alternate_tiles[3][0].visible);
+    TEST_ASSERT_EQUAL_UINT8(2,static_cast<uint8_t>(loaded.track_alternate_tiles[1][1].flag_active_color));
+}
 int main(int, char**) {
     UNITY_BEGIN();
+    RUN_TEST(test_schema_v6_migration_preserves_all_layout_banks);
     RUN_TEST(test_schema_v5_preserves_saved_tiles_when_adding_selectable_layouts);
     RUN_TEST(test_all_preset_banks_and_shared_scale_round_trip_without_losing_flags);
     RUN_TEST(test_missing_configuration_loads_safe_defaults);
