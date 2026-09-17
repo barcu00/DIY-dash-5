@@ -18,10 +18,12 @@ jobs:
       - name: Compile isolated desktop mockup
         run: |
           gcc -O2 -DLV_CONF_INCLUDE_SIMPLE -DLV_LVGL_H_INCLUDE_SIMPLE -Idesign/lvgl-mockups -I/tmp/lvgl-8.4.0 design/lvgl-mockups/mockup.c design/lvgl-mockups/fonts/*.c $(find /tmp/lvgl-8.4.0/src -name '*.c') -lm -o /tmp/dash-mockup
+          gcc -O2 -DLV_CONF_INCLUDE_SIMPLE -DLV_LVGL_H_INCLUDE_SIMPLE -Idesign/lvgl-mockups -I/tmp/lvgl-8.4.0 design/lvgl-mockups/refined.c design/lvgl-mockups/fonts/*.c $(find /tmp/lvgl-8.4.0/src -name '*.c') -lm -o /tmp/refined-mockup
       - name: Render actual LVGL framebuffers
         run: |
           mkdir -p lvgl-mockups
           /tmp/dash-mockup lvgl-mockups
+          /tmp/refined-mockup lvgl-mockups
           python -m pip install Pillow==11.3.0
           python design/lvgl-mockups/convert.py lvgl-mockups
       - uses: actions/upload-artifact@v4
