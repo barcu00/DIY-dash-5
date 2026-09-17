@@ -84,6 +84,11 @@ The real layout captures and earlier geometry previews are available in
 
 ## Main features
 
+Development firmware also supports an active 12 V warning buzzer on DO0: one
+startup test chirp, intermittent unacknowledged-warning sound and a persistent
+`SETTINGS > SYSTEM > WARNING SOUND` option. See [wiring and behavior](docs/hardware/warning-buzzer.md).
+This is not included in the older published v0.2.1 BIN.
+
 ### Configurable DASH and TRACK pages
 
 - DASH has four small tiles on the left, four on the right, two centered wide

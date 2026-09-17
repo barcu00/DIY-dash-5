@@ -23,7 +23,7 @@
 - [ ] Add test/test_buzzer/test_main.cpp to exercise startup boundaries, pulses, disabling, ACK/rearm and uint32 rollover. Run GitHub RED before implementing src/alarms/buzzer_model.h/.cpp.
 - [ ] Add WARNING SOUND to AppConfig (schema 7), legacy schema-6 migration and test preservation/round trip. Run GitHub RED before migration implementation.
 - [ ] Connect BoardDisplay beginBuzzer/setBuzzer through existing expander, initialize OFF, cache successful writes and retry failures. Connect App after UI startup and inside loop LVGL lock; use warnings.nextModal().has_value() for unacknowledged warnings.
-- [ ] Add SYSTEM checkbox and stageSettings(candidate,false), retaining exit-save. Document wiring (+12 V to buzzer+, buzzer- to DO0, supply- to DO COM), external power and hardware test limits.
+- [ ] Add SYSTEM checkbox and stageSettings(candidate,false), retaining exit-save. Document wiring (+12 V to buzzer+, buzzer- to DO0, supply- to board GND, not DI_COM), external power and hardware test limits.
 - [ ] GitHub GREEN tests, firmware build and production-view render; read-only review; download full BIN and record tested commit/hash.
 
 ## Test contract

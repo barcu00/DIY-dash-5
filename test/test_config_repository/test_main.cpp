@@ -677,15 +677,28 @@ void test_schema_v6_migration_preserves_all_layout_banks() {
     ConfigRepository repo(backend); AppConfig loaded;
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(LoadResult::Migrated),static_cast<uint8_t>(repo.load(loaded)));
     TEST_ASSERT_EQUAL_UINT16(6500,loaded.rpm_scale_max);
+    TEST_ASSERT_TRUE(loaded.warning_sound_enabled);
     TEST_ASSERT_EQUAL_UINT8(60,loaded.brightness_percent);
     TEST_ASSERT_EQUAL_UINT8(4,static_cast<uint8_t>(loaded.dash_layout));
     TEST_ASSERT_EQUAL_UINT8(2,static_cast<uint8_t>(loaded.track_layout));
     TEST_ASSERT_FALSE(loaded.dash_alternate_tiles[3][0].visible);
     TEST_ASSERT_EQUAL_UINT8(2,static_cast<uint8_t>(loaded.track_alternate_tiles[1][1].flag_active_color));
 }
+void test_warning_sound_round_trip_and_failed_save_preserves_runtime() {
+    MemoryBackend backend; ConfigRepository repo(backend);
+    auto runtime=AppConfig::defaults(); auto candidate=runtime;
+    candidate.warning_sound_enabled=false;
+    TEST_ASSERT_TRUE(repo.saveCandidate(candidate,runtime));
+    AppConfig loaded; TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(LoadResult::Loaded),static_cast<uint8_t>(repo.load(loaded)));
+    TEST_ASSERT_FALSE(loaded.warning_sound_enabled);
+    backend.fail_writes=true; candidate.warning_sound_enabled=true;
+    TEST_ASSERT_FALSE(repo.saveCandidate(candidate,runtime));
+    TEST_ASSERT_FALSE(runtime.warning_sound_enabled);
+}
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_schema_v6_migration_preserves_all_layout_banks);
+    RUN_TEST(test_warning_sound_round_trip_and_failed_save_preserves_runtime);
     RUN_TEST(test_schema_v5_preserves_saved_tiles_when_adding_selectable_layouts);
     RUN_TEST(test_all_preset_banks_and_shared_scale_round_trip_without_losing_flags);
     RUN_TEST(test_missing_configuration_loads_safe_defaults);
