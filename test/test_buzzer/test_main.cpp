@@ -59,6 +59,22 @@ void test_real_warning_delay_acknowledge_and_rebreach() {
     warnings.evaluate(config,state,1300);
     TEST_ASSERT_TRUE(b.update(1300,true,warnings.nextModal().has_value()));
 }
+void test_delayed_first_update_still_produces_full_startup_chirp() {
+    BuzzerModel b; b.begin(0);
+    TEST_ASSERT_TRUE(b.update(1000,false,false));
+    TEST_ASSERT_TRUE(b.update(1199,false,false));
+    TEST_ASSERT_FALSE(b.update(1200,false,false));
+    TEST_ASSERT_FALSE(b.update(1650,false,false));
+}
+void test_warning_at_startup_has_quiet_gap_after_test_chirp() {
+    BuzzerModel b; b.begin(0);
+    TEST_ASSERT_TRUE(b.update(0,true,true));
+    TEST_ASSERT_TRUE(b.update(199,true,true));
+    TEST_ASSERT_FALSE(b.update(200,true,true));
+    TEST_ASSERT_FALSE(b.update(649,true,true));
+    TEST_ASSERT_TRUE(b.update(650,true,true));
+    TEST_ASSERT_FALSE(b.update(800,true,true));
+}
 int main(int,char**) {
     UNITY_BEGIN();
     RUN_TEST(test_startup_chirps_once_even_when_warning_sound_disabled);
@@ -66,5 +82,7 @@ int main(int,char**) {
     RUN_TEST(test_disable_silences_immediately_without_replaying_startup);
     RUN_TEST(test_startup_and_warning_across_millis_rollover);
     RUN_TEST(test_real_warning_delay_acknowledge_and_rebreach);
+    RUN_TEST(test_delayed_first_update_still_produces_full_startup_chirp);
+    RUN_TEST(test_warning_at_startup_has_quiet_gap_after_test_chirp);
     return UNITY_END();
 }
