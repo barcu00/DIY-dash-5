@@ -99,6 +99,7 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
     else if (geometry.size == TileSize::GearHero)
         value_font = config.parameter == ParameterId::Gear ? &race_digits_140 : &race_digits_64;
     if (is_flag) value_font = row ? &lv_font_montserrat_20 : geometry.height < 90 ? &lv_font_montserrat_16 : &lv_font_montserrat_24;
+    default_value_font_ = value_font;
     lv_obj_set_style_text_font(value_, value_font, 0);
     lv_label_set_long_mode(value_, LV_LABEL_LONG_CLIP);
     lv_obj_set_style_text_font(title_, geometry.size == TileSize::GearHero ? &lv_font_montserrat_24 : &lv_font_montserrat_16, 0);
@@ -144,7 +145,7 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
         lv_obj_add_flag(temperature_bar_, LV_OBJ_FLAG_HIDDEN);
     }
     if (hero && !is_flag) {
-        lv_obj_set_width(value_, is_flag ? 92 : geometry.width - 24);
+        lv_obj_set_width(value_,geometry.size == TileSize::Hero ? geometry.width : geometry.width - 24);
         lv_obj_set_style_text_align(value_, LV_TEXT_ALIGN_CENTER, 0);
         const bool gear = geometry.size == TileSize::GearHero;
         lv_obj_align(value_, LV_ALIGN_TOP_MID, 0, gear ? 100 : geometry.height > 200 ? 60 : 10);
@@ -305,6 +306,20 @@ void TileView::update(const TileConfig& config, const UnitSettings& units,
 
     if (!value_text_initialized_ ||
         std::strcmp(last_value_text_.data(), value_text) != 0) {
+        if (!is_flag) {
+            // Fit the actual presented text, including decimals and unit conversion.
+            const lv_font_t* candidates[]={default_value_font_,&race_digits_96,&race_digits_64,
+                &race_digits_48,&lv_font_montserrat_24,&lv_font_montserrat_16};
+            const lv_font_t* fitted=&lv_font_montserrat_16;
+            for (const auto* font:candidates) {
+                if (font->line_height > default_value_font_->line_height) continue;
+                lv_point_t measured;
+                lv_txt_get_size(&measured,value_text,font,0,0,LV_COORD_MAX,LV_TEXT_FLAG_NONE);
+                if (measured.x <= lv_obj_get_width(value_)) { fitted=font; break; }
+            }
+            if (lv_obj_get_style_text_font(value_,LV_PART_MAIN) != fitted)
+                lv_obj_set_style_text_font(value_,fitted,0);
+        }
         lv_label_set_text(value_, value_text);
         std::snprintf(last_value_text_.data(), last_value_text_.size(),
                       "%s", value_text);

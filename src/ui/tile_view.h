@@ -27,6 +27,7 @@ private:
     TileAddress address_{};
     bool base_border_ = true;
     TileSize size_ = TileSize::Small;
+    const lv_font_t* default_value_font_ = nullptr;
     DisplaySignalFilter display_filter_{};
     std::array<char, 32> last_value_text_{};
     std::array<char, 16> last_unit_text_{};
