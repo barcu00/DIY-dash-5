@@ -21,6 +21,23 @@ static lv_point_t circle_point(int cx,int cy,float radius,float angle) {
     float a=angle*3.14159265f/180.f;
     return (lv_point_t){lroundf(cx+radius*cosf(a)),lroundf(cy+radius*sinf(a))};
 }
+static void row_centered_text(lv_draw_ctx_t *ctx,int x,int center_y,int width,
+                              const char *s,const lv_font_t *font,unsigned rgb,
+                              lv_text_align_t align) {
+    // Center visible glyphs, not the nominal font line box. The numeric font
+    // has a 37px line height but its digits occupy only the top 32px.
+    int top=font->line_height,bottom=0; uint32_t index=0;
+    while(s[index]) {
+        uint32_t codepoint=lv_txt_encoded_next(s,&index);
+        lv_font_glyph_dsc_t glyph;
+        if(lv_font_get_glyph_dsc(font,&glyph,codepoint,0) && glyph.box_h) {
+            int glyph_top=font->line_height-font->base_line-glyph.box_h-glyph.ofs_y;
+            if(glyph_top<top)top=glyph_top;
+            if(glyph_top+glyph.box_h>bottom)bottom=glyph_top+glyph.box_h;
+        }
+    }
+    if(bottom>top)text(ctx,x,center_y-(top+bottom)/2,width,s,font,rgb,align);
+}
 static void analog_motorsport(lv_draw_ctx_t *ctx) {
     const int cx=228,cy=220;
     true_arc(ctx,cx,cy,207,135,405,FRAME,1);
@@ -74,14 +91,14 @@ static void analog_rows(lv_draw_ctx_t *ctx) {
     for(int i=0;i<6;i++) {
         int y=16+i*68; rect(ctx,464,y,328,62,BLACK,FRAME,6);
         rect(ctx,470,y+7,4,48,CYAN,0,2);
-        text(ctx,476,y+22,120,titles[i],&lv_font_montserrat_16,MUTED,LV_TEXT_ALIGN_CENTER);
+        row_centered_text(ctx,476,y+31,120,titles[i],&lv_font_montserrat_16,MUTED,LV_TEXT_ALIGN_CENTER);
         lv_point_t value_size,unit_size;
         lv_txt_get_size(&value_size,values[i],&race_digits_48,0,0,400,LV_TEXT_FLAG_NONE);
         lv_txt_get_size(&unit_size,units[i],&lv_font_montserrat_16,0,0,400,LV_TEXT_FLAG_NONE);
         int gap=units[i][0] ? 8:0;
         int x=692-(value_size.x+gap+unit_size.x)/2;
-        text(ctx,x,y+7,value_size.x+1,values[i],&race_digits_48,WHITE,LV_TEXT_ALIGN_LEFT);
-        text(ctx,x+value_size.x+gap,y+29,unit_size.x+1,units[i],&lv_font_montserrat_16,MUTED,LV_TEXT_ALIGN_LEFT);
+        row_centered_text(ctx,x,y+31,value_size.x+1,values[i],&race_digits_48,WHITE,LV_TEXT_ALIGN_LEFT);
+        row_centered_text(ctx,x+value_size.x+gap,y+31,unit_size.x+1,units[i],&lv_font_montserrat_16,MUTED,LV_TEXT_ALIGN_LEFT);
         if(i==2 || i==3)slim_temperature(ctx,486,y+55,294,i==2 ? .75f:.57f);
     }
 }
