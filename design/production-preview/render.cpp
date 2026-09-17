@@ -146,9 +146,10 @@ int main(int argc,char** argv) {
         if(scenario==8)assert(pixelMatches(410,50,UiTheme::red()));
         if(scenario==9)assert(pixelMatches(410,50,lv_color_hex(0x151D22)));
         save(argv[1],names[scenario]);
-        if(scenario==2 || scenario==4 || scenario==14) {
-            for(int row=0;row<6;row++)assert(pixelMatches(472,32+68*row,UiTheme::blue()));
-            const float values[]={6860,5500,5499,7000,10000,0,1200,8500,8500,6840};
+        if(scenario==2 || scenario==3 || scenario==4 || scenario==14) {
+            if(scenario==2 || scenario==14)
+                for(int row=0;row<6;row++)assert(pixelMatches(472,32+68*row,UiTheme::blue()));
+            const float values[]={200,210,220,6860,5500,5499,7000,10000,0,1200,8500,8500,6840};
             for(unsigned i=0;i<sizeof(values)/sizeof(values[0]);i++) {
                 state.set(ParameterId::Rpm,values[i],(i+1)*125);
                 rpm.update(state.get(ParameterId::Rpm),(i+1)*125,config.shift);
