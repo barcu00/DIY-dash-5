@@ -12,7 +12,8 @@
 
 ## Constraints
 
-- Startup test always runs once after successful initialization: 200 ms.
+- Startup test always runs once after successful initialization: 200 ms, timed
+  from its first ON request, then 450 ms quiet before any warning pulse.
 - Warning cadence: 150 ms on / 450 ms off; any unacknowledged warning requests sound.
 - WARNING SOUND disables warning audio only, not the requested startup test.
 - No new I2C bus, whole-port output writes, PWM or blocking tone delays. DO1 and LCD/touch IO retained.

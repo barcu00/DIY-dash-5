@@ -8,6 +8,7 @@ public:
                 bool unacknowledged_warning);
 private:
     bool startup_ = false;
+    bool startup_started_ = false;
     bool sounding_warning_ = false;
     uint32_t startup_since_ = 0;
     uint32_t warning_since_ = 0;

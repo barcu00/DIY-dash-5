@@ -32,11 +32,16 @@ void test_disable_silences_immediately_without_replaying_startup() {
 }
 void test_startup_and_warning_across_millis_rollover() {
     BuzzerModel b; b.begin(UINT32_MAX-99);
+    TEST_ASSERT_TRUE(b.update(UINT32_MAX-99,true,false));
     TEST_ASSERT_TRUE(b.update(99,true,false));
     TEST_ASSERT_FALSE(b.update(100,true,false));
-    TEST_ASSERT_TRUE(b.update(UINT32_MAX-49,true,true));
-    TEST_ASSERT_FALSE(b.update(100,true,true));
-    TEST_ASSERT_TRUE(b.update(550,true,true));
+    TEST_ASSERT_FALSE(b.update(549,true,false));
+    TEST_ASSERT_FALSE(b.update(550,true,false));
+    BuzzerModel warning; warning.begin(0); warning.update(0,true,false);
+    warning.update(650,true,false);
+    TEST_ASSERT_TRUE(warning.update(UINT32_MAX-49,true,true));
+    TEST_ASSERT_FALSE(warning.update(100,true,true));
+    TEST_ASSERT_TRUE(warning.update(550,true,true));
 }
 void test_real_warning_delay_acknowledge_and_rebreach() {
     BuzzerModel b; b.begin(0); b.update(200,true,false);

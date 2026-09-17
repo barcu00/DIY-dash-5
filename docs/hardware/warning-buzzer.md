@@ -28,6 +28,8 @@ Sources: [Waveshare interface description](https://docs.waveshare.com/ESP32-S3-T
 ## Behavior
 
 - One 200 ms test chirp after successful UI/board initialization, at each reboot.
+- Timing starts at the first ON request, so initial rendering does not consume
+  the chirp. A 450 ms quiet gap separates it from any warning already active.
 - Warning sound: 150 ms ON, 450 ms OFF while any tile warning is unacknowledged.
 - ACKNOWLEDGE silences that alarm. Other unacknowledged alarms still sound;
   an alarm that clears and then breaches again sounds again.
