@@ -4,6 +4,7 @@
 #include <cmath>
 
 #include "telemetry/parameter_registry.h"
+#include "ui/dashboard_layout.h"
 
 std::optional<std::size_t> TileWarningEngine::indexOf(TileAddress address) {
     if (address.page == PageId::Dash &&
@@ -11,7 +12,7 @@ std::optional<std::size_t> TileWarningEngine::indexOf(TileAddress address) {
         return address.slot;
     }
     if (address.page == PageId::Track &&
-        address.slot < AppConfig::kTrackTileCount) {
+        address.slot < AppConfig::kLayoutTileCapacity) {
         return AppConfig::kDashTileCount + address.slot;
     }
     return std::nullopt;
@@ -27,10 +28,10 @@ TileAddress TileWarningEngine::addressOf(std::size_t index) {
 
 const TileConfig& TileWarningEngine::tileAt(const AppConfig& config,
                                             std::size_t index) {
-    if (index < AppConfig::kDashTileCount) {
-        return config.dash_tiles[index];
-    }
-    return config.track_tiles[index - AppConfig::kDashTileCount];
+    const auto address = addressOf(index);
+    const auto tiles = activeTiles(config, address.page);
+    static const TileConfig unused{};
+    return address.slot < tiles.size() ? tiles[address.slot] : unused;
 }
 
 bool TileWarningEngine::sameSignature(const RuntimeWarning& runtime,
@@ -79,6 +80,14 @@ float TileWarningEngine::priority(const RuntimeWarning& runtime) {
 void TileWarningEngine::evaluate(const AppConfig& config,
                                  const VehicleState& state,
                                  uint32_t now_ms) {
+    for (std::size_t page = 0; page < 2U; ++page) {
+        const auto layout = selectedLayout(config, page == 0U ? PageId::Dash : PageId::Track);
+        if (layout != evaluated_layouts_[page]) {
+            for (std::size_t i = 0; i < AppConfig::kLayoutTileCapacity; ++i)
+                runtime_[page * AppConfig::kLayoutTileCapacity + i] = RuntimeWarning{};
+            evaluated_layouts_[page] = layout;
+        }
+    }
     for (std::size_t index = 0U; index < runtime_.size(); ++index) {
         const TileConfig& tile = tileAt(config, index);
         RuntimeWarning& runtime = runtime_[index];

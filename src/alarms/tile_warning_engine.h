@@ -33,7 +33,7 @@ public:
 
 private:
     static constexpr std::size_t kRuntimeCount =
-        AppConfig::kDashTileCount + AppConfig::kTrackTileCount;
+        2U * AppConfig::kLayoutTileCapacity;
 
     struct RuntimeWarning {
         TileAlarmPhase phase = TileAlarmPhase::Safe;
@@ -59,4 +59,6 @@ private:
     static float priority(const RuntimeWarning& runtime);
 
     std::array<RuntimeWarning, kRuntimeCount> runtime_{};
+    std::array<DashboardLayout, 2> evaluated_layouts_{
+        DashboardLayout::ClassicDash, DashboardLayout::ClassicTrack};
 };

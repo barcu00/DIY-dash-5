@@ -1,6 +1,7 @@
 #include "tile_engine.h"
 
 #include <array>
+#include "ui/dashboard_layout.h"
 
 namespace {
 using TileGeometryList = std::array<TileGeometry, 4>;
@@ -53,9 +54,9 @@ constexpr TileGeometryList kTrackCenterGeometry{{
     wide(TileLayout::kRowY[3]),
 }};
 
-template <std::size_t ConfigCount, std::size_t GeometryCount>
+template <typename Tiles, std::size_t GeometryCount>
 void appendGroup(TilePlacementList& output, PageId page,
-                 const std::array<TileConfig, ConfigCount>& tiles,
+                 const Tiles& tiles,
                  uint8_t first_slot, TileGroup group,
                  const std::array<TileGeometry, GeometryCount>& geometry) {
     std::array<uint8_t, GeometryCount> visible_slots{};
@@ -78,21 +79,55 @@ void appendGroup(TilePlacementList& output, PageId page,
 TilePlacementList TileEngine::placements(PageId page,
                                          const AppConfig& config) {
     TilePlacementList output;
-    if (page == PageId::Dash) {
-        appendGroup(output, page, config.dash_tiles, 0U,
+    if (page == PageId::Settings) return output;
+    const auto layout = selectedLayout(config, page);
+    const auto tiles = activeTiles(config, page);
+    if (layout == DashboardLayout::AnalogStyle) {
+        std::array<TileGeometry, 6> rows{};
+        for (int i = 0; i < 6; ++i)
+            rows[i] = {432, static_cast<int16_t>(36 + 64 * i), 360, 58, TileSize::CompactRow};
+        appendGroup(output, page, tiles, 0U, TileGroup::DashRight, rows);
+    } else if (layout == DashboardLayout::SideGear) {
+        const std::array<TileGeometry, 1> gear{{{8, 8, 126, 318, TileSize::GearHero}}};
+        const std::array<TileGeometry, 2> main{{
+            {142, 112, 320, 214, TileSize::Hero},
+            {470, 112, 322, 214, TileSize::Hero}}};
+        std::array<TileGeometry, 5> bottom{};
+        for (int i = 0; i < 5; ++i)
+            bottom[i] = {static_cast<int16_t>(8 + i * 158), 334, 150, 88, TileSize::CenteredSmall};
+        appendGroup(output, page, tiles, 0U, TileGroup::DashLeft, gear);
+        appendGroup(output, page, tiles, 1U, TileGroup::DashCenterWide, main);
+        appendGroup(output, page, tiles, 3U, TileGroup::DashCenterSmall, bottom);
+    } else if (layout == DashboardLayout::StripStyle) {
+        const std::array<TileGeometry, 3> left{{
+            {8, 158, 158, 84, TileSize::CenteredSmall},
+            {8, 248, 158, 84, TileSize::CenteredSmall},
+            {8, 338, 158, 84, TileSize::CenteredSmall}}};
+        const std::array<TileGeometry, 2> center{{
+            {174, 158, 224, 264, TileSize::Hero},
+            {406, 158, 224, 264, TileSize::Hero}}};
+        const std::array<TileGeometry, 3> right{{
+            {638, 158, 154, 84, TileSize::CenteredSmall},
+            {638, 248, 154, 84, TileSize::CenteredSmall},
+            {638, 338, 154, 84, TileSize::CenteredSmall}}};
+        appendGroup(output, page, tiles, 0U, TileGroup::DashLeft, left);
+        appendGroup(output, page, tiles, 3U, TileGroup::DashCenterWide, center);
+        appendGroup(output, page, tiles, 5U, TileGroup::DashRight, right);
+    } else if (layout == DashboardLayout::ClassicDash) {
+        appendGroup(output, page, tiles, 0U,
                     TileGroup::DashLeft, kLeftGeometry);
-        appendGroup(output, page, config.dash_tiles, 4U,
+        appendGroup(output, page, tiles, 4U,
                     TileGroup::DashCenterWide, kDashWideGeometry);
-        appendGroup(output, page, config.dash_tiles, 6U,
+        appendGroup(output, page, tiles, 6U,
                     TileGroup::DashCenterSmall, kDashCenterSmallGeometry);
-        appendGroup(output, page, config.dash_tiles, 10U,
+        appendGroup(output, page, tiles, 10U,
                     TileGroup::DashRight, kRightGeometry);
-    } else if (page == PageId::Track) {
-        appendGroup(output, page, config.track_tiles, 0U,
+    } else if (layout == DashboardLayout::ClassicTrack) {
+        appendGroup(output, page, tiles, 0U,
                     TileGroup::TrackLeft, kLeftGeometry);
-        appendGroup(output, page, config.track_tiles, 4U,
+        appendGroup(output, page, tiles, 4U,
                     TileGroup::TrackCenter, kTrackCenterGeometry);
-        appendGroup(output, page, config.track_tiles, 8U,
+        appendGroup(output, page, tiles, 8U,
                     TileGroup::TrackRight, kRightGeometry);
     }
     return output;

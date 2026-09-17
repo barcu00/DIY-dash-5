@@ -4,30 +4,17 @@
 #include <cstddef>
 
 #include "telemetry/parameter_registry.h"
+#include "ui/dashboard_layout.h"
 
 namespace {
 const TileConfig* tileAt(const AppConfig& config, TileAddress address) {
-    if (address.page == PageId::Dash &&
-        address.slot < config.dash_tiles.size()) {
-        return &config.dash_tiles[address.slot];
-    }
-    if (address.page == PageId::Track &&
-        address.slot < config.track_tiles.size()) {
-        return &config.track_tiles[address.slot];
-    }
-    return nullptr;
+    auto tiles = activeTiles(config, address.page);
+    return address.slot < tiles.size() ? &tiles[address.slot] : nullptr;
 }
 
 TileConfig* tileAt(AppConfig& config, TileAddress address) {
-    if (address.page == PageId::Dash &&
-        address.slot < config.dash_tiles.size()) {
-        return &config.dash_tiles[address.slot];
-    }
-    if (address.page == PageId::Track &&
-        address.slot < config.track_tiles.size()) {
-        return &config.track_tiles[address.slot];
-    }
-    return nullptr;
+    auto tiles = activeTiles(config, address.page);
+    return address.slot < tiles.size() ? &tiles[address.slot] : nullptr;
 }
 
 bool validDraft(const TileConfig& tile) {
