@@ -1,14 +1,6 @@
 #include <unity.h>
 #include <cstdint>
-#if __has_include("alarms/buzzer_model.h")
 #include "alarms/buzzer_model.h"
-#else
-// RED-only stand-in for the not-yet-implemented feature; never linked in firmware.
-struct BuzzerModel {
-    void begin(uint32_t) {}
-    bool update(uint32_t, bool, bool) { return false; }
-};
-#endif
 
 // Catches missed startup, continuous/late warning tone, failed silence/rearm,
 // accidental startup replay and millis rollover errors.

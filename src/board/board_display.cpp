@@ -8,6 +8,23 @@
 using esp_panel::board::Board;
 using esp_panel::drivers::TouchPoint;
 
+bool BoardDisplay::beginBuzzer() {
+    auto* adapter = board_ ? board_->getIO_Expander() : nullptr;
+    auto* expander = adapter ? adapter->getBase() : nullptr;
+    // CH422G OC0 maps to logical pin 8, not ESP32 GPIO8 (I2C SDA).
+    // The optocoupler LED is connected to 3V3: LOW energizes DO0.
+    buzzer_ready_ = expander && expander->digitalWrite(8, HIGH) &&
+                    expander->pinMode(8, OUTPUT);
+    buzzer_on_ = false;
+    return buzzer_ready_;
+}
+
+void BoardDisplay::setBuzzer(bool on) {
+    if (!buzzer_ready_ || on == buzzer_on_) return;
+    if (board_->getIO_Expander()->getBase()->digitalWrite(8, on ? LOW : HIGH))
+        buzzer_on_ = on; // failed writes are retried on the next loop
+}
+
 namespace {
 constexpr uint32_t kLvTickMs = 2;
 constexpr uint16_t kExpectedWidth = 800;

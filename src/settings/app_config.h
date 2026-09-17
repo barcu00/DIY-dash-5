@@ -103,7 +103,7 @@ struct ValidationResult {
 };
 
 struct AppConfig {
-    static constexpr uint32_t kSchemaVersion = 6U;
+    static constexpr uint32_t kSchemaVersion = 7U;
     static constexpr std::size_t kDashTileCount = 14U;
     static constexpr std::size_t kTrackTileCount = 12U;
     static constexpr std::size_t kLayoutTileCapacity = 14U;
@@ -123,6 +123,7 @@ struct AppConfig {
     // The default preset stays in its original bank; four alternatives/page.
     std::array<TileBank, 4> dash_alternate_tiles{};
     std::array<TileBank, 4> track_alternate_tiles{};
+    bool warning_sound_enabled = true;
 
     static AppConfig defaults();
     ValidationResult validate();

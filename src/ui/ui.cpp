@@ -70,6 +70,7 @@ enum SettingsAction : intptr_t {
     UnitsChanged,
     LayoutPresetChanged,
     RpmScaleChanged,
+    WarningSoundChanged,
 };
 
 lv_obj_t* makeSettingsCard(lv_obj_t* parent, const char* title,
@@ -144,6 +145,7 @@ void Ui::applyLayout(Page page, const AppConfig& config) {
 }
 void Ui::clearSettingsWidgets() {
     settings_status_ = nullptr;
+    warning_sound_ = nullptr;
     settings_message_ = nullptr;
     brightness_slider_ = nullptr;
     brightness_value_ = nullptr;
@@ -513,6 +515,15 @@ void Ui::createLayoutSettings(lv_obj_t* panel) {
 }
 
 void Ui::createSystemSettings(lv_obj_t* panel) {
+    warning_sound_ = lv_checkbox_create(panel);
+    lv_obj_set_pos(warning_sound_, 24, 174);
+    lv_checkbox_set_text(warning_sound_, "WARNING SOUND");
+    if (config_->warning_sound_enabled)
+        lv_obj_add_state(warning_sound_, LV_STATE_CHECKED);
+    lv_obj_add_event_cb(warning_sound_, settingsEvent, LV_EVENT_VALUE_CHANGED,
+                        reinterpret_cast<void*>(WarningSoundChanged));
+    makeLabel(panel, "DO0 active buzzer | Startup test always enabled", 24, 210,
+              &lv_font_montserrat_12, UiTheme::muted());
     makeLabel(panel, "Firmware and runtime information", 24, 26,
               &lv_font_montserrat_14, UiTheme::text());
     settings_status_ = makeLabel(panel, "", 24, 78,
@@ -1169,6 +1180,12 @@ void Ui::settingsEvent(lv_event_t* event) {
     if (action == ShiftFlashEnabledChanged) {
         candidate.shift.flash_enabled = lv_obj_has_state(
             instance_->shift_flash_enabled_, LV_STATE_CHECKED);
+        instance_->stageSettings(candidate, false);
+        return;
+    }
+    if (action == WarningSoundChanged) {
+        candidate.warning_sound_enabled = lv_obj_has_state(
+            instance_->warning_sound_, LV_STATE_CHECKED);
         instance_->stageSettings(candidate, false);
         return;
     }

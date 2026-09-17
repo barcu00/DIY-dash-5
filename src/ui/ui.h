@@ -90,6 +90,7 @@ private:
     lv_obj_t* track_ = nullptr;
     lv_obj_t* settings_ = nullptr;
     lv_obj_t* settings_status_ = nullptr;
+    lv_obj_t* warning_sound_ = nullptr;
     std::array<TileView, AppConfig::kDashTileCount> dash_tiles_{};
     std::array<TileView, AppConfig::kLayoutTileCapacity> track_tiles_{};
     RpmScaleView dash_rpm_{};

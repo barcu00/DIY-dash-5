@@ -31,6 +31,9 @@ bool App::begin() {
     ui_.updateShiftLight(telemetry_.state(), now, config_.shift);
     board_.unlock();
 
+    if (!board_.beginBuzzer())
+        Serial.println("[DIY Dash] WARNING: DO0 buzzer initialization failed");
+    buzzer_.begin(millis());
     ready_ = true;
     frame_scheduler_.reset(now);
     Serial.println("[DIY Dash] UI ready - DASH / TRACK / SETTINGS");
@@ -87,6 +90,11 @@ void App::loop() {
     }
 
     board_.service();
+    if (board_.lock(10)) {
+        board_.setBuzzer(buzzer_.update(millis(), config_.warning_sound_enabled,
+                                      warnings_.nextModal().has_value()));
+        board_.unlock();
+    }
     delay(2);
 }
 

@@ -12,6 +12,7 @@
 #include "settings/config_repository.h"
 #include "settings/nvs_config_backend.h"
 #include "alarms/tile_warning_engine.h"
+#include "alarms/buzzer_model.h"
 
 class App {
 public:
@@ -29,6 +30,7 @@ private:
     ConfigRepository config_repository_{config_backend_};
     AppConfig config_ = AppConfig::defaults();
     TileWarningEngine warnings_{};
+    BuzzerModel buzzer_{};
     Ui ui_;
     FrameScheduler frame_scheduler_{};
     bool ready_ = false;

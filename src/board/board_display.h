@@ -23,6 +23,8 @@ public:
     RuntimeDiagnostics diagnostics() const;
     void incrementUiUpdates();
     void setSoftwareBrightness(uint8_t percent);
+    bool beginBuzzer();
+    void setBuzzer(bool on);
 
 private:
     static void flushCallback(lv_disp_drv_t* drv, const lv_area_t* area, lv_color_t* color_map);
@@ -46,4 +48,6 @@ private:
     bool touch_ok_ = false;
     uint32_t ui_updates_ = 0;
     lv_obj_t* brightness_layer_ = nullptr;
+    bool buzzer_ready_ = false;
+    bool buzzer_on_ = false;
 };
