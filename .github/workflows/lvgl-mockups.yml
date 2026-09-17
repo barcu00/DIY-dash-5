@@ -17,7 +17,7 @@ jobs:
           tar -xzf /tmp/lvgl.tar.gz -C /tmp
       - name: Compile isolated desktop mockup
         run: |
-          gcc -O2 -DLV_CONF_INCLUDE_SIMPLE -Idesign/lvgl-mockups -I/tmp/lvgl-8.4.0 design/lvgl-mockups/mockup.c design/lvgl-mockups/fonts/*.c $(find /tmp/lvgl-8.4.0/src -name '*.c') -lm -o /tmp/dash-mockup
+          gcc -O2 -DLV_CONF_INCLUDE_SIMPLE -DLV_LVGL_H_INCLUDE_SIMPLE -Idesign/lvgl-mockups -I/tmp/lvgl-8.4.0 design/lvgl-mockups/mockup.c design/lvgl-mockups/fonts/*.c $(find /tmp/lvgl-8.4.0/src -name '*.c') -lm -o /tmp/dash-mockup
       - name: Render actual LVGL framebuffers
         run: |
           mkdir -p lvgl-mockups
