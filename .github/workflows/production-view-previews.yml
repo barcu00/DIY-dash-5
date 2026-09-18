@@ -36,7 +36,9 @@ jobs:
           /tmp/ui-transitions --editor editor-previews
       - name: Check unit-aware warning roundtrip
         if: success() || failure()
-        run: /tmp/ui-transitions --units
+        run: |
+          /tmp/ui-transitions --units
+          /tmp/ui-transitions --psi
       - name: Check tile save return
         if: success() || failure()
         run: /tmp/ui-transitions --save

@@ -53,9 +53,10 @@ int main(int argc,char** argv) {
     AppConfig config=AppConfig::defaults();BoardDisplay board;Ui ui;
     const bool center=argc>1 && !std::strcmp(argv[1],"--center");
     const bool track=argc>1 && !std::strcmp(argv[1],"--track");
-    const bool units=argc>1 && !std::strcmp(argv[1],"--units");
+    const bool psi=argc>1 && !std::strcmp(argv[1],"--psi");
+    const bool units=argc>1 && (!std::strcmp(argv[1],"--units") || psi);
     if(units) {
-        config.units.pressure=PressureUnit::Kpa;
+        config.units.pressure=psi ? PressureUnit::Psi:PressureUnit::Kpa;
         config.dash_tiles[0].parameter=ParameterId::OilPressure;
         config.dash_tiles[0].warning={true,WarningDirection::Below,900,200,0};
     }
@@ -63,13 +64,15 @@ int main(int argc,char** argv) {
     ui.setDataContext(DataSource::Demo,nullptr);ui.begin(config,board);
     VehicleState state;state.reset(DataSource::Demo);state.set(ParameterId::Rpm,6840,0);
     state.set(ParameterId::Speed,137,0);
+    state.set(ParameterId::OilTemperature,108,0);
     RuntimeDiagnostics diagnostics{};UiRuntimeStatus status{};TileWarningEngine warnings;
     ui.update(state,diagnostics,status,config,warnings);ui.updateShiftLight(state,0,config.shift);
     auto* dash=lv_scr_act();
     if(units) {
         lv_event_send(lv_obj_get_child(dash,2),LV_EVENT_LONG_PRESSED,nullptr);
         click("SAVE TILE");ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
-        assert(std::fabs(request.candidate.dash_tiles[0].warning.hysteresis_native-200)<.01f && "Converted reset range clamps a valid saved warning");
+        assert(std::fabs(request.candidate.dash_tiles[0].warning.hysteresis_native-200)<.00001f && "Converted reset range/rounding changes an untouched warning");
+        assert(std::fabs(request.candidate.dash_tiles[0].warning.threshold_native-900)<.00001f);
         std::puts("Unit-aware pressure warning roundtrip passed");
     } else if(argc>1 && !std::strcmp(argv[1],"--editor")) {
         lv_event_send(lv_obj_get_child(dash,2),LV_EVENT_LONG_PRESSED,nullptr);
@@ -100,11 +103,27 @@ int main(int argc,char** argv) {
         for(size_t i=0;i<options.count();i++)if(options.parameterAt(i)==ParameterId::OilTemperature)lv_dropdown_set_selected(parameter,i);
         lv_event_send(parameter,LV_EVENT_VALUE_CHANGED,nullptr);
         click("TEMPERATURE BAR");screenshot("temperature");
-        click("DATA");click("CANCEL");assert(lv_scr_act()==dash);
+        click("DATA");screenshot("data");click("WARNING");
+        auto* oil_threshold=find(lv_scr_act(),&lv_spinbox_class);
+        auto* oil_parent=lv_obj_get_parent(oil_threshold);
+        auto* oil_direction=find(oil_parent,&lv_dropdown_class);lv_dropdown_set_selected(oil_direction,0);lv_event_send(oil_direction,LV_EVENT_VALUE_CHANGED,nullptr);
+        lv_spinbox_set_value(oil_threshold,1200);
+        // RESET is the second spinbox in the warning panel.
+        unsigned count=0;
+        for(uint32_t i=0;i<lv_obj_get_child_cnt(oil_parent);i++) {
+            auto* child=lv_obj_get_child(oil_parent,i);
+            if(lv_obj_check_type(child,&lv_spinbox_class) && ++count==2)lv_spinbox_set_value(child,1150);
+        }
+        lv_obj_add_state(find(oil_parent,&lv_checkbox_class),LV_STATE_CHECKED);
+        click("DATA");click("WARNING");screenshot("warning");
+        click("CANCEL");assert(lv_scr_act()==dash);
         ConfigCommitRequest request;assert(!ui.takeConfigCommit(request));
         click("SETTINGS");click("RPM & SHIFT LIGHT");
         assert(find(lv_scr_act(),&lv_label_class,"RPM SCALE MAX"));
         screenshot("rpm");
+        click("10000 RPM");click("8");click("0");click("0");click("0");click("APPLY");
+        assert(config.rpm_scale_max==8000 && config.shift.flash_rpm==7500);
+        click("TRACK");assert(ui.takeConfigCommit(request));assert(request.candidate.rpm_scale_max==8000);
         std::puts("Tabbed editor cancel and unified RPM navigation passed");
     } else if(argc==1 || track) {
         if(track) { click("TRACK");dash=lv_scr_act(); }
