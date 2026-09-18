@@ -87,6 +87,11 @@ Returning from settings or a successful tile save prepares the destination
 layout and current values before displaying it, avoiding a stale first frame.
 See [UI transition and Analog validation](docs/ui/ui-transition-validation.md)
 for the successful build, full-image checksum and flashing precautions.
+The newer [RGB/NVS XIP test candidate](docs/ui/rgb-nvs-xip-validation.md)
+uses the official Arduino 3.1.1-h SDK libraries to support RGB bounce-buffer
+operation during flash saves. Its GitHub tests and target build passed; physical
+save-time stability still requires board testing. SDK selection is automatic
+through `platformio.ini`, with compile-time checks against incompatible libraries.
 The settings/editor/flag/modal illustrations below remain geometry previews,
 not full-production framebuffer captures.
 
