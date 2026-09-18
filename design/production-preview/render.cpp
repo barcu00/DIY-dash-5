@@ -1,5 +1,6 @@
 #include <array>
 #include <cassert>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <lvgl.h>
@@ -16,7 +17,9 @@ namespace {
 unsigned char framebuffer[480][800][3];
 lv_color_t draw_buffer[800*40];
 unsigned char incremental_frame[480][800][3];
+unsigned flushed_pixels=0;
 void flush(lv_disp_drv_t* driver,const lv_area_t* area,lv_color_t* pixels) {
+    flushed_pixels+=(area->x2-area->x1+1)*(area->y2-area->y1+1);
     for(int y=area->y1;y<=area->y2;++y)for(int x=area->x1;x<=area->x2;++x) {
         lv_color32_t pixel; pixel.full=lv_color_to32(*pixels++);
         if(x>=0 && x<800 && y>=0 && y<480) {
@@ -146,6 +149,19 @@ int main(int argc,char** argv) {
         if(scenario==8)assert(pixelMatches(410,50,UiTheme::red()));
         if(scenario==9)assert(pixelMatches(410,50,lv_color_hex(0x151D22)));
         save(argv[1],names[scenario]);
+        if(scenario==18) {
+            flushed_pixels=0;
+            rpm.update(state.get(ParameterId::Rpm),125,config.shift);
+            lv_refr_now(nullptr);
+            assert(flushed_pixels<=120000 && "Modern flash repaints too much of the screen");
+            for(int angle=185;angle<355;angle+=5) {
+                const float radians=angle*3.14159265358979323846f/180;
+                const int x=std::lround(228+203*std::cos(radians));
+                const int y=std::lround(280+203*std::sin(radians));
+                // Avoid the white progress cap at 8500 RPM.
+                if(angle<330 || angle>336)assert(pixelMatches(x,y,lv_color_hex(0x151D22)));
+            }
+        }
         if(scenario==2 || scenario==3 || scenario==4 || scenario==14) {
             if(scenario==2 || scenario==14)
                 for(int row=0;row<6;row++)assert(pixelMatches(472,32+68*row,UiTheme::blue()));

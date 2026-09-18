@@ -8,6 +8,25 @@ assert len(paths) == 25
 for path in paths:
     with Image.open(path) as image:
         assert image.size == (800, 480)
+        if path.stem == 'firmware-strip-style':
+            pixels=image.convert('RGB')
+            green={(x,y) for y in range(20,135) for x in range(8,790)
+                   if pixels.getpixel((x,y))[1]>180 and
+                   pixels.getpixel((x,y))[0]<80 and pixels.getpixel((x,y))[2]<120}
+            blocks=[]
+            while green:
+                pending=[green.pop()]; component=[]
+                while pending:
+                    x,y=pending.pop(); component.append((x,y))
+                    for neighbor in ((x-1,y),(x+1,y),(x,y-1),(x,y+1)):
+                        if neighbor in green:
+                            green.remove(neighbor); pending.append(neighbor)
+                if len(component)>100: blocks.append(component)
+            assert len(blocks)>=10, ('missing Strip blocks',len(blocks))
+            for block in blocks:
+                width=max(x for x,y in block)-min(x for x,y in block)+1
+                height=max(y for x,y in block)-min(y for x,y in block)+1
+                assert (width,height,len(block))==(18,28,504), ('uneven/slanted Strip block',width,height,len(block))
         if path.stem in {'firmware-analog-style','firmware-modern-motorsport'}:
             pixels=image.convert('RGB')
             for row in range(6):
