@@ -5,6 +5,7 @@
 #include <cstring>
 #include <lvgl.h>
 #include "ui/ui.h"
+#include "ui/dashboard_layout.h"
 #include "board/lvgl_memory.h"
 
 alignas(std::max_align_t) unsigned char pool[LV_MEM_SIZE];
