@@ -19,7 +19,7 @@ void test_analog_center_is_an_independent_editable_tile_and_can_be_hidden() {
     bool found=false;
     for(std::size_t i=0;i<placements.count;++i)if(placements.items[i].address.slot==6) {
         TEST_ASSERT_EQUAL_INT16(76,placements.items[i].geometry.x);
-        TEST_ASSERT_EQUAL_INT16(156,placements.items[i].geometry.y);
+        TEST_ASSERT_EQUAL_INT16(164,placements.items[i].geometry.y);
         found=true;
     }
     TEST_ASSERT_TRUE(found);

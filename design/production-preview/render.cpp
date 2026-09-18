@@ -168,6 +168,7 @@ int main(int argc,char** argv) {
             rpm.update(state.get(ParameterId::Rpm),0,config.shift);
             lv_refr_now(nullptr);
             for(int segment=0;segment<54;++segment) {
+                if(segment>=44 && segment<=47)continue; // permanent white index near 364 degrees
                 const float radians=(137+5*segment)*3.14159265358979323846f/180;
                 const int x=std::lround(228+197*std::cos(radians));
                 const int y=std::lround(220+197*std::sin(radians));
@@ -176,6 +177,7 @@ int main(int argc,char** argv) {
             save(argv[1],"analog-ring-flash-on");
             rpm.update(state.get(ParameterId::Rpm),125,config.shift);lv_refr_now(nullptr);
             for(int segment=0;segment<54;++segment) {
+                if(segment>=44 && segment<=47)continue;
                 const float radians=(137+5*segment)*3.14159265358979323846f/180;
                 assert(pixelMatches(std::lround(228+197*std::cos(radians)),std::lround(220+197*std::sin(radians)),lv_color_hex(0x151D22)));
             }
@@ -209,6 +211,6 @@ int main(int argc,char** argv) {
             compareIncremental(screen,names[scenario],10);
         }
     }
-    std::printf("Rendered %d production-view scenes; incremental redraws, flash, flags, font fit, cyan rails and unavailable assertions passed.\n",scene_count);
+    std::printf("Rendered %d layout scenes plus 2 Analog flash scenes; incremental redraws, flash, flags, font fit, grey rails and unavailable assertions passed.\n",scene_count);
     return 0;
 }
