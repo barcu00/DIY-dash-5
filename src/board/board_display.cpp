@@ -97,9 +97,17 @@ bool BoardDisplay::begin() {
     std::memset(draw_buf_1_,0,buffer_bytes);
     std::memset(draw_buf_2_,0,buffer_bytes);
     // LVGL must start drawing into the buffer not currently scanned by LCD.
-    if (!lcd_->switchFrameBufferTo(draw_buf_2_))return false;
     vsync_sem_=xSemaphoreCreateBinary();
-    if (!vsync_sem_ || !lcd_->attachRefreshFinishCallback(refreshCallback,this))return false;
+    if (!vsync_sem_ || !lcd_->attachRefreshFinishCallback(refreshCallback,this) ||
+        !lcd_->switchFrameBufferTo(draw_buf_2_)) {
+        Serial.println("[DIY Dash] ERROR: RGB VSYNC initialization failed");
+        return false;
+    }
+    xSemaphoreTake(vsync_sem_,0);
+    if(xSemaphoreTake(vsync_sem_,pdMS_TO_TICKS(100))!=pdTRUE) {
+        Serial.println("[DIY Dash] ERROR: initial VSYNC timeout");
+        return false;
+    }
 
     lv_disp_draw_buf_init(&draw_buf_desc_, draw_buf_1_, draw_buf_2_, buffer_pixels);
     lv_disp_drv_init(&disp_drv_);

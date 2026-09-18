@@ -20,7 +20,9 @@ lv_color_t direct_buffers[2][800*480];
 unsigned char incremental_frame[480][800][3];
 unsigned flushed_pixels=0;
 void flush(lv_disp_drv_t* driver,const lv_area_t* area,lv_color_t* pixels) {
-    flushed_pixels+=(area->x2-area->x1+1)*(area->y2-area->y1+1);
+    if(driver->direct_mode && !lv_disp_flush_is_last(driver)) {
+        lv_disp_flush_ready(driver);return;
+    }
     for(int y=area->y1;y<=area->y2;++y)for(int x=area->x1;x<=area->x2;++x) {
         lv_color32_t pixel;
         pixel.full=lv_color_to32(driver->direct_mode ? pixels[y*800+x]:*pixels++);
@@ -32,6 +34,7 @@ void flush(lv_disp_drv_t* driver,const lv_area_t* area,lv_color_t* pixels) {
     lv_disp_flush_ready(driver);
 }
 void emptyEvent(lv_event_t*) {}
+void monitor(lv_disp_drv_t*,uint32_t,uint32_t pixels) { flushed_pixels=pixels; }
 bool pixelMatches(int x,int y,lv_color_t expected) {
     lv_color32_t c; c.full=lv_color_to32(expected);
     return framebuffer[y][x][0]==c.ch.red && framebuffer[y][x][1]==c.ch.green && framebuffer[y][x][2]==c.ch.blue;
@@ -65,7 +68,7 @@ int main(int argc,char** argv) {
     lv_disp_draw_buf_init(&buffer,direct ? direct_buffers[0]:draw_buffer,
         direct ? direct_buffers[1]:nullptr,direct ? 800*480:800*40);
     lv_disp_drv_t driver; lv_disp_drv_init(&driver); driver.hor_res=800; driver.ver_res=480;
-    driver.draw_buf=&buffer; driver.flush_cb=flush; driver.direct_mode=direct;
+    driver.draw_buf=&buffer; driver.flush_cb=flush; driver.direct_mode=direct;driver.monitor_cb=monitor;
     lv_disp_drv_register(&driver);
     auto* screen=lv_scr_act(); lv_obj_remove_style_all(screen);
     lv_obj_set_style_bg_color(screen,UiTheme::background(),0); lv_obj_set_style_bg_opa(screen,LV_OPA_COVER,0);
