@@ -41,7 +41,7 @@ static void screenshot(const char* name) {
     lv_obj_invalidate(lv_scr_act());lv_refr_now(nullptr);
     char path[512];std::snprintf(path,sizeof(path),"%s/editor-%s.ppm",capture_folder,name);
     auto* f=std::fopen(path,"wb");assert(f);std::fprintf(f,"P6\n800 480\n255\n");
-    for(auto pixel:captured) {const auto p=lv_color_to32(pixel);const unsigned char rgb[]={p.ch.red,p.ch.green,p.ch.blue};std::fwrite(rgb,1,3,f);}
+    for(auto pixel:captured) {lv_color32_t p;p.full=lv_color_to32(pixel);const unsigned char rgb[]={p.ch.red,p.ch.green,p.ch.blue};std::fwrite(rgb,1,3,f);}
     std::fclose(f);
 }
 int main(int argc,char** argv) {

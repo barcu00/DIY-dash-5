@@ -67,13 +67,13 @@ class PreviewContractTest(unittest.TestCase):
         self.assertEqual(1, settings["alarm_decimals"])
 
     def test_shift_settings_uses_sliders_without_step_buttons(self):
-        source = SCRIPT_ROOT.parent / "src/ui/ui.cpp"
+        source = SCRIPT_ROOT.parent / "src/ui/ui_rpm_settings.cpp"
         text = source.read_text(encoding="utf-8")
 
         shift_section = text.split("void Ui::createShiftSettings", 1)[1]
         shift_section = shift_section.split("void Ui::createUnitSettings", 1)[0]
         self.assertIn("lv_slider_create", shift_section)
-        self.assertIn('"FLASH RPM"', shift_section)
+        self.assertIn('"FLASH FROM"', shift_section)
         self.assertIn('"FLASH ENABLED"', shift_section)
         self.assertNotIn("makeSpinbox", shift_section)
         self.assertNotIn("ShiftStartDecrease", shift_section)

@@ -91,8 +91,12 @@ void App::loop() {
 
     board_.service();
     if (board_.lock(10)) {
-        board_.setBuzzer(buzzer_.update(millis(), config_.warning_sound_enabled,
-                                      warnings_.nextModal().has_value()));
+        const uint32_t buzzer_now=millis();
+        if(ui_.takeWarningTest())buzzer_test_.request(buzzer_now);
+        const bool real_alarm=buzzer_.update(buzzer_now,config_.warning_sound_enabled,
+                                           warnings_.nextModal().has_value());
+        const bool test=buzzer_test_.update(buzzer_now,config_.warning_sound_enabled);
+        board_.setBuzzer(real_alarm || test);
         board_.unlock();
     }
     delay(2);

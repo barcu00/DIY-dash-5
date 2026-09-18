@@ -13,6 +13,7 @@
 #include "settings/nvs_config_backend.h"
 #include "alarms/tile_warning_engine.h"
 #include "alarms/buzzer_model.h"
+#include "alarms/buzzer_test_pulse.h"
 
 class App {
 public:
@@ -31,6 +32,7 @@ private:
     AppConfig config_ = AppConfig::defaults();
     TileWarningEngine warnings_{};
     BuzzerModel buzzer_{};
+    BuzzerTestPulse buzzer_test_{};
     Ui ui_;
     FrameScheduler frame_scheduler_{};
     bool ready_ = false;
