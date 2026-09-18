@@ -21,6 +21,8 @@ void Ui::createShiftSettings(lv_obj_t* parent) {
     for(int i=0;i<4;i++) {
         const int y=82+i*46;label(parent,labels[i],14,y+8,&lv_font_montserrat_12,UiTheme::muted());
         *sliders[i]=lv_slider_create(parent);lv_obj_set_pos(*sliders[i],184,y+16);lv_obj_set_size(*sliders[i],370,14);
+        lv_obj_set_style_bg_color(*sliders[i],UiTheme::blue(),LV_PART_INDICATOR);
+        lv_obj_set_style_bg_color(*sliders[i],UiTheme::blue(),LV_PART_KNOB);
         lv_slider_set_range(*sliders[i],i==0 ? 100:0,10000);lv_slider_set_value(*sliders[i],initial[i],LV_ANIM_OFF);
         lv_obj_add_event_cb(*sliders[i],settingsEvent,LV_EVENT_VALUE_CHANGED,reinterpret_cast<void*>(actions[i]));
         bindNumeric(*sliders[i],labels[i],i==0 ? 100:0,10000,0,"RPM",true);

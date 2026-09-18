@@ -74,6 +74,7 @@ void TileEditorModel::setParameter(ParameterId parameter) {
             parameterDescriptor(draft_.tile.parameter).kind;
         const ParameterKind next_kind = parameterDescriptor(parameter).kind;
         draft_.tile.parameter = parameter;
+        draft_.tile.decimals=parameterDescriptor(parameter).default_decimals;
         if (previous_kind == ParameterKind::Numeric &&
             next_kind == ParameterKind::Numeric) {
             draft_.tile.warning.enabled = false;

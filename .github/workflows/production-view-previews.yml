@@ -34,7 +34,7 @@ jobs:
         run: |
           mkdir -p editor-previews
           /tmp/ui-transitions --editor editor-previews
-      - name: Check first visible frame after tile save
+      - name: Check unit-aware warning roundtrip
         if: success() || failure()
         run: /tmp/ui-transitions --units
       - name: Check tile save return

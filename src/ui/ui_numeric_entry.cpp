@@ -49,6 +49,7 @@ void Ui::openNumericEntry(size_t index) {
     const char* keys[]={"1","2","3","4","5","6","7","8","9",".","0","<"};
     for(int i=0;i<12;i++) {
         auto* k=button(auxiliary_screen_,keys[i],20+(i%3)*258,142+(i/3)*65,244,56,numericKeyEvent,keys[i][0]);
+        lv_obj_set_style_text_font(lv_obj_get_child(k,0),&lv_font_montserrat_24,0);
         if(i==9 && !b.decimals)lv_obj_add_state(k,LV_STATE_DISABLED);
     }
     button(auxiliary_screen_,"CANCEL",20,420,180,48,numericKeyEvent,1001);
