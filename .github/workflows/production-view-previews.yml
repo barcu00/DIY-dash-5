@@ -25,13 +25,15 @@ jobs:
             gcc -O2 $memory_flag -DLV_CONF_INCLUDE_SIMPLE -DLV_LVGL_H_INCLUDE_SIMPLE -Idesign/production-preview -Isrc -I/tmp/lvgl-8.4.0 -c "$source" -o "/tmp/lvgl-objects/$(basename "$source").o"
           done
           g++ -std=c++17 -O2 -DLV_CONF_INCLUDE_SIMPLE -DLV_LVGL_H_INCLUDE_SIMPLE -Idesign/production-preview -Isrc -I/tmp/lvgl-8.4.0 design/production-preview/render.cpp src/settings/app_config.cpp $(find src/telemetry src/ecu src/alarms -name '*.cpp') $(find src/ui -maxdepth 1 -name '*.cpp' ! -name 'ui.cpp') /tmp/lvgl-objects/*.o -lm -o /tmp/production-preview
-          g++ -std=c++17 -O2 -DLV_CONF_INCLUDE_SIMPLE -DLV_LVGL_H_INCLUDE_SIMPLE -Idesign/production-preview/host -Idesign/production-preview -Isrc -I/tmp/lvgl-8.4.0 design/production-preview/transitions.cpp src/settings/app_config.cpp $(find src/telemetry src/ecu src/alarms src/ui -maxdepth 1 -name '*.cpp') /tmp/lvgl-objects/*.o -lm -o /tmp/ui-transitions
+          g++ -std=c++17 -O2 -DLV_CONF_INCLUDE_SIMPLE -DLV_LVGL_H_INCLUDE_SIMPLE -Idesign/production-preview/host -Idesign/production-preview -Isrc -I/tmp/lvgl-8.4.0 design/production-preview/transitions.cpp src/settings/app_config.cpp $(find src/telemetry src/ecu src/alarms -name '*.cpp') $(find src/ui -maxdepth 1 -name '*.cpp') /tmp/lvgl-objects/*.o -lm -o /tmp/ui-transitions
       - name: Check first visible frame after layout selection
+        if: success() || failure()
         run: /tmp/ui-transitions
       - name: Check first visible frame after tile save
         if: success() || failure()
         run: /tmp/ui-transitions --save
       - name: Render and check production framebuffers
+        if: success() || failure()
         run: |
           mkdir -p production-previews
           /tmp/production-preview production-previews
