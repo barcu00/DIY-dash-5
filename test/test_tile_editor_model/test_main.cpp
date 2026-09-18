@@ -206,6 +206,12 @@ void test_candidate_preview_keeps_editor_open_and_runtime_unchanged() {
                                 candidate.dash_tiles[0].parameter));
 }
 
+void test_parameter_change_assigns_descriptor_decimal_precision() {
+    AppConfig config=AppConfig::defaults();TileEditorModel editor;
+    editor.open({PageId::Dash,0},config);editor.setParameter(ParameterId::Rpm);
+    editor.setDecimals(0);editor.setParameter(ParameterId::Lambda);
+    TEST_ASSERT_EQUAL_UINT8(2,editor.draft().tile.decimals);
+}
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_open_rejects_settings_page_and_out_of_range_slots);
@@ -220,5 +226,6 @@ int main(int, char**) {
     RUN_TEST(test_flag_color_is_staged_saved_and_canceled_per_tile);
     RUN_TEST(test_switching_to_flag_preserves_dormant_numeric_settings);
     RUN_TEST(test_candidate_preview_keeps_editor_open_and_runtime_unchanged);
+    RUN_TEST(test_parameter_change_assigns_descriptor_decimal_precision);
     return UNITY_END();
 }

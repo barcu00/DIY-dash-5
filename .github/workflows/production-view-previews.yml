@@ -36,6 +36,9 @@ jobs:
           /tmp/ui-transitions --editor editor-previews
       - name: Check first visible frame after tile save
         if: success() || failure()
+        run: /tmp/ui-transitions --units
+      - name: Check tile save return
+        if: success() || failure()
         run: /tmp/ui-transitions --save
       - name: Check TRACK first visible frame after layout selection
         if: success() || failure()

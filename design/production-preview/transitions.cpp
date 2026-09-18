@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdio>
 #include <cstring>
+#include <cmath>
 #include <lvgl.h>
 #include "ui/ui.h"
 #include "ui/dashboard_layout.h"
@@ -52,6 +53,12 @@ int main(int argc,char** argv) {
     AppConfig config=AppConfig::defaults();BoardDisplay board;Ui ui;
     const bool center=argc>1 && !std::strcmp(argv[1],"--center");
     const bool track=argc>1 && !std::strcmp(argv[1],"--track");
+    const bool units=argc>1 && !std::strcmp(argv[1],"--units");
+    if(units) {
+        config.units.pressure=PressureUnit::Kpa;
+        config.dash_tiles[0].parameter=ParameterId::OilPressure;
+        config.dash_tiles[0].warning={true,WarningDirection::Below,900,200,0};
+    }
     if(center)config.dash_layout=DashboardLayout::AnalogStyle;
     ui.setDataContext(DataSource::Demo,nullptr);ui.begin(config,board);
     VehicleState state;state.reset(DataSource::Demo);state.set(ParameterId::Rpm,6840,0);
@@ -59,7 +66,12 @@ int main(int argc,char** argv) {
     RuntimeDiagnostics diagnostics{};UiRuntimeStatus status{};TileWarningEngine warnings;
     ui.update(state,diagnostics,status,config,warnings);ui.updateShiftLight(state,0,config.shift);
     auto* dash=lv_scr_act();
-    if(argc>1 && !std::strcmp(argv[1],"--editor")) {
+    if(units) {
+        lv_event_send(lv_obj_get_child(dash,2),LV_EVENT_LONG_PRESSED,nullptr);
+        click("SAVE TILE");ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
+        assert(std::fabs(request.candidate.dash_tiles[0].warning.hysteresis_native-200)<.01f && "Converted reset range clamps a valid saved warning");
+        std::puts("Unit-aware pressure warning roundtrip passed");
+    } else if(argc>1 && !std::strcmp(argv[1],"--editor")) {
         lv_event_send(lv_obj_get_child(dash,2),LV_EVENT_LONG_PRESSED,nullptr);
         assert(button(lv_scr_act(),"DATA") && "Missing full-screen editor tabs");
         screenshot("data");
@@ -76,6 +88,12 @@ int main(int argc,char** argv) {
         assert(lv_spinbox_get_value(threshold)==1200);
         lv_event_send(threshold,LV_EVENT_CLICKED,nullptr);click("9");click("CANCEL");
         assert(lv_spinbox_get_value(threshold)==1200 && "Keypad CANCEL leaked an edit");
+        auto* warning_parent=lv_obj_get_parent(threshold);
+        auto* enabled=find(warning_parent,&lv_checkbox_class);assert(enabled);
+        lv_obj_add_state(enabled,LV_STATE_CHECKED);
+        auto* direction=find(warning_parent,&lv_dropdown_class);assert(direction);
+        lv_dropdown_set_selected(direction,1);lv_event_send(direction,LV_EVENT_VALUE_CHANGED,nullptr);
+        assert(lv_obj_has_state(enabled,LV_STATE_CHECKED) && "Direction change discarded pending checkbox state");
         click("DATA");click("SELECT PARAMETER");click("TEMPERATURE");screenshot("picker");click("BACK");
         auto* parameter=find(lv_scr_act(),&lv_dropdown_class);assert(parameter);
         auto options=ParameterOptions::build(DataSource::Demo,nullptr,ParameterId::Rpm);
