@@ -1,6 +1,7 @@
 #include <array>
 #include <cassert>
 #include <cmath>
+#include <cstddef>
 #include <cstdio>
 #include <cstring>
 #include <lvgl.h>
@@ -12,6 +13,10 @@
 #include "ui/shift_light_view.h"
 #include "ui/navigation_view.h"
 #include "ui/ui_theme.h"
+#include "board/lvgl_memory.h"
+
+alignas(std::max_align_t) static unsigned char preview_pool[LV_MEM_SIZE];
+uintptr_t diy_lvgl_memory=reinterpret_cast<uintptr_t>(preview_pool);
 
 namespace {
 unsigned char framebuffer[480][800][3];

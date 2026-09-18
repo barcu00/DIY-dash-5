@@ -20,7 +20,9 @@ jobs:
         run: |
           mkdir -p /tmp/lvgl-objects
           for source in $(find /tmp/lvgl-8.4.0/src src/ui/fonts -name '*.c'); do
-            gcc -O2 -DLV_CONF_INCLUDE_SIMPLE -DLV_LVGL_H_INCLUDE_SIMPLE -Idesign/production-preview -Isrc -I/tmp/lvgl-8.4.0 -c "$source" -o "/tmp/lvgl-objects/$(basename "$source").o"
+            memory_flag=""
+            if [[ "$(basename "$source")" == "lv_mem.c" ]]; then memory_flag="-DARDUINO"; fi
+            gcc -O2 $memory_flag -DLV_CONF_INCLUDE_SIMPLE -DLV_LVGL_H_INCLUDE_SIMPLE -Idesign/production-preview -Isrc -I/tmp/lvgl-8.4.0 -c "$source" -o "/tmp/lvgl-objects/$(basename "$source").o"
           done
           g++ -std=c++17 -O2 -DLV_CONF_INCLUDE_SIMPLE -DLV_LVGL_H_INCLUDE_SIMPLE -Idesign/production-preview -Isrc -I/tmp/lvgl-8.4.0 design/production-preview/render.cpp src/settings/app_config.cpp $(find src/telemetry src/ecu src/alarms -name '*.cpp') $(find src/ui -maxdepth 1 -name '*.cpp' ! -name 'ui.cpp') /tmp/lvgl-objects/*.o -lm -o /tmp/production-preview
       - name: Render and check production framebuffers

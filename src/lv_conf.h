@@ -11,7 +11,7 @@
 #define LV_MEM_SIZE (512U * 1024U)
 #if defined(ARDUINO)
 #include "board/lvgl_memory.h"
-#define LV_MEM_ADR diy_lvgl_memory
+#define LV_MEM_POOL_ALLOC(size) ((void*)diy_lvgl_memory)
 #endif
 #define LV_TICK_CUSTOM 0
 #define LV_USE_LOG 1
