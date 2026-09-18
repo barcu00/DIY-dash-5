@@ -35,7 +35,8 @@ int main(int argc,char**) {
     lv_init();lv_disp_draw_buf_t buffer;lv_disp_draw_buf_init(&buffer,buffers[0],buffers[1],800*480);
     lv_disp_drv_t driver;lv_disp_drv_init(&driver);driver.hor_res=800;driver.ver_res=480;
     driver.draw_buf=&buffer;driver.direct_mode=1;driver.flush_cb=flush;lv_disp_drv_register(&driver);
-    AppConfig config=AppConfig::defaults();BoardDisplay board;Ui ui;ui.begin(config,board);
+    AppConfig config=AppConfig::defaults();BoardDisplay board;Ui ui;
+    ui.setDataContext(DataSource::Demo,nullptr);ui.begin(config,board);
     VehicleState state;state.reset(DataSource::Demo);state.set(ParameterId::Rpm,6840,0);
     RuntimeDiagnostics diagnostics{};UiRuntimeStatus status{};TileWarningEngine warnings;
     ui.update(state,diagnostics,status,config,warnings);ui.updateShiftLight(state,0,config.shift);
