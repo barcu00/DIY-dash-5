@@ -165,6 +165,11 @@ int main(int argc,char** argv) {
         save(argv[1],names[scenario]);
         if(scenario==2) {
             state.set(ParameterId::Rpm,8500,0);
+            rpm.apply(config.dash_layout,config.rpm_scale_max);
+            for(unsigned i=0;i<placements.count;++i)if(placements.items[i].address.slot==6) {
+                tiles[6].apply(bank[6],placements.items[i].geometry);
+                tiles[6].update(bank[6],config.units,state,true,false,0);
+            }
             rpm.update(state.get(ParameterId::Rpm),0,config.shift);
             lv_refr_now(nullptr);
             for(int segment=0;segment<54;++segment) {
@@ -182,7 +187,8 @@ int main(int argc,char** argv) {
                 assert(pixelMatches(std::lround(228+197*std::cos(radians)),std::lround(220+197*std::sin(radians)),lv_color_hex(0x151D22)));
             }
             save(argv[1],"analog-ring-flash-off");
-            state.set(ParameterId::Rpm,6840,0);rpm.update(state.get(ParameterId::Rpm),250,config.shift);
+            state.set(ParameterId::Rpm,6840,0);rpm.apply(config.dash_layout,config.rpm_scale_max);
+            rpm.update(state.get(ParameterId::Rpm),250,config.shift);
         }
         if(scenario==18) {
             flushed_pixels=0;

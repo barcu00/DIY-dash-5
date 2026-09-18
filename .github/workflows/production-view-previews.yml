@@ -32,6 +32,9 @@ jobs:
       - name: Check first visible frame after tile save
         if: success() || failure()
         run: /tmp/ui-transitions --save
+      - name: Check Analog center editor and parameter selection
+        if: success() || failure()
+        run: /tmp/ui-transitions --center
       - name: Render and check production framebuffers
         if: success() || failure()
         run: |

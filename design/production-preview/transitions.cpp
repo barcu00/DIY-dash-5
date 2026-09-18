@@ -31,13 +31,16 @@ static void click(const char* text) {
     lv_event_send(target,LV_EVENT_CLICKED,nullptr);
 }
 static void flush(lv_disp_drv_t* driver,const lv_area_t*,lv_color_t*) { lv_disp_flush_ready(driver); }
-int main(int argc,char**) {
+int main(int argc,char** argv) {
     lv_init();lv_disp_draw_buf_t buffer;lv_disp_draw_buf_init(&buffer,buffers[0],buffers[1],800*480);
     lv_disp_drv_t driver;lv_disp_drv_init(&driver);driver.hor_res=800;driver.ver_res=480;
     driver.draw_buf=&buffer;driver.direct_mode=1;driver.flush_cb=flush;lv_disp_drv_register(&driver);
     AppConfig config=AppConfig::defaults();BoardDisplay board;Ui ui;
+    const bool center=argc>1 && !std::strcmp(argv[1],"--center");
+    if(center)config.dash_layout=DashboardLayout::AnalogStyle;
     ui.setDataContext(DataSource::Demo,nullptr);ui.begin(config,board);
     VehicleState state;state.reset(DataSource::Demo);state.set(ParameterId::Rpm,6840,0);
+    state.set(ParameterId::Speed,137,0);
     RuntimeDiagnostics diagnostics{};UiRuntimeStatus status{};TileWarningEngine warnings;
     ui.update(state,diagnostics,status,config,warnings);ui.updateShiftLight(state,0,config.shift);
     auto* dash=lv_scr_act();
@@ -50,6 +53,18 @@ int main(int argc,char**) {
         assert(lv_obj_get_width(lv_obj_get_child(dash,1))==784 && "First visible frame still uses the old layout");
         assert(find(dash,&lv_label_class,"6840") && "RPM missing from first frame");
         std::puts("Layout return first-frame test passed");
+    } else if(center) {
+        auto* tile=lv_obj_get_child(dash,8); // configurable Analog slot 6
+        lv_event_send(tile,LV_EVENT_LONG_PRESSED,nullptr);
+        assert(find(lv_scr_act(),&lv_label_class,"TILE SETTINGS"));
+        auto* dropdown=find(lv_scr_act(),&lv_dropdown_class);assert(dropdown);
+        lv_dropdown_set_selected(dropdown,1); // SPEED, second Demo parameter
+        lv_event_send(dropdown,LV_EVENT_VALUE_CHANGED,nullptr);
+        click("SAVE TILE");ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
+        config=request.candidate;ui.completeConfigCommit(request.revision,true);
+        assert(activeTiles(config,PageId::Dash)[6].parameter==ParameterId::Speed);
+        assert(find(tile,&lv_label_class,"137") && "Analog center shows old RPM after saving SPEED");
+        std::puts("Analog center long-press, parameter choice and first-frame save test passed");
     } else {
         // Open the real first tile through its registered long-press event.
         auto* tile=lv_obj_get_child(dash,2);
