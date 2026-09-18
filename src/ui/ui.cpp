@@ -54,24 +54,7 @@ void makeStepper(lv_obj_t* parent, lv_obj_t* spinbox, int x, int y,
     makeButton(parent, "+", x + button_width + 6, y, button_width, 34,
                Ui::spinIncreaseEvent, spinbox);
 }
-enum SettingsAction : intptr_t {
-    BrightnessPreview = 1,
-    BrightnessCommit,
-    SourceChanged,
-    ProfileChanged,
-    BitrateChanged,
-    TimeoutDecrease,
-    TimeoutIncrease,
-    ShiftStartChanged,
-    ShiftRedChanged,
-    ShiftFlashChanged,
-    ShiftMaxChanged,
-    ShiftFlashEnabledChanged,
-    UnitsChanged,
-    LayoutPresetChanged,
-    RpmScaleChanged,
-    WarningSoundChanged,
-};
+#include "ui/settings_actions.h"
 
 lv_obj_t* makeSettingsCard(lv_obj_t* parent, const char* title,
                            int x, int y, int width, int height,
@@ -144,6 +127,8 @@ void Ui::applyLayout(Page page, const AppConfig& config) {
     }
 }
 void Ui::clearSettingsWidgets() {
+    numeric_binding_count_=0;
+    rpm_preview_blocks_.fill(nullptr);
     settings_status_ = nullptr;
     warning_sound_ = nullptr;
     settings_message_ = nullptr;
@@ -201,7 +186,7 @@ void Ui::showSettings(SettingsCategory category) {
         category == SettingsCategory::Home ? "SETTINGS" :
         category == SettingsCategory::Display ? "DISPLAY" :
         category == SettingsCategory::DataCan ? "DATA & CAN" :
-        category == SettingsCategory::ShiftLight ? "SHIFT LIGHT" :
+        category == SettingsCategory::ShiftLight ? "RPM & SHIFT LIGHT" :
         category == SettingsCategory::Units ? "UNITS" :
         category == SettingsCategory::Layouts ? "LAYOUTS" : "SYSTEM");
     if (category != SettingsCategory::Home) {
@@ -223,7 +208,7 @@ void Ui::showSettings(SettingsCategory category) {
 
 void Ui::createSettingsHome(lv_obj_t* panel) {
     constexpr const char* names[] = {
-        "DISPLAY", "DATA & CAN", "SHIFT LIGHT",
+        "DISPLAY", "DATA & CAN", "RPM & SHIFT LIGHT",
         "UNITS", "LAYOUTS", "SYSTEM"};
     constexpr SettingsCategory categories[] = {
         SettingsCategory::Display, SettingsCategory::DataCan,
@@ -350,70 +335,6 @@ void Ui::createDataCanSettings(lv_obj_t* panel) {
                                  &lv_font_montserrat_14, UiTheme::muted());
 }
 
-void Ui::createShiftSettings(lv_obj_t* panel) {
-    constexpr const char* labels[] = {
-        "START RPM", "RED RPM", "FLASH RPM", "MAX RPM"};
-    lv_obj_t** sliders[] = {
-        &shift_start_, &shift_red_, &shift_flash_, &shift_max_};
-    lv_obj_t** value_labels[] = {
-        &shift_start_value_, &shift_red_value_,
-        &shift_flash_value_, &shift_max_value_};
-    const int32_t values[] = {config_->shift.start_rpm,
-                              config_->shift.red_rpm,
-                              config_->shift.flash_rpm,
-                              config_->shift.max_rpm};
-    const intptr_t actions[] = {ShiftStartChanged, ShiftRedChanged,
-                                ShiftFlashChanged, ShiftMaxChanged};
-    for (int index = 0; index < 4; ++index) {
-        const int y = 12 + index * 64;
-        makeLabel(panel, labels[index], 24, y + 5, &lv_font_montserrat_14,
-                  UiTheme::muted());
-        *sliders[index] = lv_slider_create(panel);
-        lv_obj_set_pos(*sliders[index], 160, y + 10);
-        lv_obj_set_size(*sliders[index], 440, 18);
-        lv_slider_set_range(*sliders[index], 0, 10000);
-        lv_slider_set_value(*sliders[index], values[index], LV_ANIM_OFF);
-        lv_obj_add_event_cb(*sliders[index], settingsEvent,
-                            LV_EVENT_VALUE_CHANGED,
-                            reinterpret_cast<void*>(actions[index]));
-        *value_labels[index] = makeLabel(
-            panel, "", 624, y + 4, &lv_font_montserrat_14, UiTheme::text());
-    }
-    makeLabel(panel, "FLASH ENABLED", 24, 282, &lv_font_montserrat_14,
-              UiTheme::muted());
-    shift_flash_enabled_ = lv_switch_create(panel);
-    lv_obj_set_pos(shift_flash_enabled_, 174, 278);
-    if (config_->shift.flash_enabled)
-        lv_obj_add_state(shift_flash_enabled_, LV_STATE_CHECKED);
-    lv_obj_add_event_cb(shift_flash_enabled_, settingsEvent,
-                        LV_EVENT_VALUE_CHANGED,
-                        reinterpret_cast<void*>(ShiftFlashEnabledChanged));
-    makeLabel(panel, "Saved when leaving this screen", 420, 284,
-              &lv_font_montserrat_12, UiTheme::muted());
-    refreshShiftControls();
-}
-
-void Ui::refreshShiftControls() {
-    if (!config_) return;
-    lv_obj_t* sliders[] = {
-        shift_start_, shift_red_, shift_flash_, shift_max_};
-    lv_obj_t* labels[] = {
-        shift_start_value_, shift_red_value_,
-        shift_flash_value_, shift_max_value_};
-    const uint16_t values[] = {
-        config_->shift.start_rpm, config_->shift.red_rpm,
-        config_->shift.flash_rpm, config_->shift.max_rpm};
-    for (int index = 0; index < 4; ++index) {
-        if (sliders[index])
-            lv_slider_set_value(sliders[index], values[index], LV_ANIM_OFF);
-        if (labels[index]) {
-            char text[16];
-            std::snprintf(text, sizeof(text), "%u RPM",
-                          static_cast<unsigned>(values[index]));
-            lv_label_set_text(labels[index], text);
-        }
-    }
-}
 
 void Ui::createUnitSettings(lv_obj_t* panel) {
     constexpr const char* labels[] = {"TEMPERATURE", "PRESSURE",
@@ -464,16 +385,6 @@ void Ui::createLayoutSettings(lv_obj_t* panel) {
                reinterpret_cast<void*>(static_cast<intptr_t>(PageId::Dash)));
     makeButton(panel, "TRACK TILES", 140, 44, 128, 36, layoutSelectEvent,
                reinterpret_cast<void*>(static_cast<intptr_t>(PageId::Track)));
-    char scale[48];
-    std::snprintf(scale, sizeof(scale), "RPM SCALE MAX: %u", static_cast<unsigned>(config_->rpm_scale_max));
-    rpm_scale_value_ = makeLabel(panel, scale, 280, 54, &lv_font_montserrat_12, UiTheme::text());
-    rpm_scale_slider_ = lv_slider_create(panel);
-    lv_obj_set_pos(rpm_scale_slider_, 554, 55);
-    lv_obj_set_size(rpm_scale_slider_, 182, 16);
-    lv_slider_set_range(rpm_scale_slider_, 100, 10000);
-    lv_slider_set_value(rpm_scale_slider_, config_->rpm_scale_max, LV_ANIM_OFF);
-    lv_obj_add_event_cb(rpm_scale_slider_, settingsEvent, LV_EVENT_VALUE_CHANGED,
-        reinterpret_cast<void*>(RpmScaleChanged));
     const auto tiles = activeTiles(*config_, settings_flow_.layout());
     const std::size_t count = tiles.size();
     settings_flow_.setLayoutTileCount(count);
@@ -694,271 +605,6 @@ void Ui::completeConfigCommit(uint32_t revision, bool success) {
     lv_obj_invalidate(lv_scr_act());
 }
 
-void Ui::openEditor(TileAddress address) {
-    if (!config_) return;
-    if (editor_screen_) closeEditor();
-    editor_return_page_ = current_page_;
-    editor_return_category_ = settings_flow_.category();
-    if (!editor_.open(address, *config_)) return;
-    if (warning_panel_) {
-        lv_obj_del(warning_panel_);
-        warning_panel_ = nullptr;
-        warning_text_ = nullptr;
-    }
-    const TileConfig& tile = editor_.draft().tile;
-    editor_screen_ = lv_obj_create(nullptr);
-    styleScreen(editor_screen_);
-    makeLabel(editor_screen_, "TILE SETTINGS", 20, 10,
-              &lv_font_montserrat_24, UiTheme::text());
-
-    makeLabel(editor_screen_, "PARAMETER", 20, 48,
-              &lv_font_montserrat_12, UiTheme::muted());
-    editor_parameter_ = lv_dropdown_create(editor_screen_);
-    lv_obj_set_pos(editor_parameter_, 20, 66);
-    lv_obj_set_size(editor_parameter_, 360, 42);
-    editor_parameter_options_ = ParameterOptions::build(
-        active_source_, active_profile_, tile.parameter);
-    char parameter_options[2048]{};
-    if (!editor_parameter_options_.write(parameter_options,
-                                         sizeof(parameter_options))) {
-        std::strncpy(parameter_options, "RPM", sizeof(parameter_options) - 1U);
-    }
-    lv_dropdown_set_options(editor_parameter_, parameter_options);
-    uint16_t selected_parameter = 0U;
-    for (std::size_t index = 0U;
-         index < editor_parameter_options_.count(); ++index) {
-        if (editor_parameter_options_.parameterAt(index) == tile.parameter) {
-            selected_parameter = static_cast<uint16_t>(index);
-            break;
-        }
-    }
-    lv_dropdown_set_selected(editor_parameter_, selected_parameter);
-    lv_obj_add_event_cb(editor_parameter_, editorEvent, LV_EVENT_VALUE_CHANGED,
-                        reinterpret_cast<void*>(3));
-    editor_visible_ = lv_checkbox_create(editor_screen_);
-    lv_obj_set_pos(editor_visible_, 410, 74);
-    lv_checkbox_set_text(editor_visible_, "Visible");
-    if (tile.visible) lv_obj_add_state(editor_visible_, LV_STATE_CHECKED);
-    editor_decimals_label_ = makeLabel(
-        editor_screen_, "DECIMALS", 610, 48,
-        &lv_font_montserrat_12, UiTheme::muted());
-    editor_decimals_ = lv_dropdown_create(editor_screen_);
-    lv_obj_set_pos(editor_decimals_, 610, 66);
-    lv_obj_set_size(editor_decimals_, 150, 42);
-    lv_dropdown_set_options(editor_decimals_, "0\n1\n2\n3");
-    lv_dropdown_set_selected(editor_decimals_, tile.decimals);
-
-    editor_numeric_panel_ = lv_obj_create(editor_screen_);
-    lv_obj_set_pos(editor_numeric_panel_, 0, 112);
-    lv_obj_set_size(editor_numeric_panel_, 800, 298);
-    lv_obj_set_style_bg_opa(editor_numeric_panel_, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_width(editor_numeric_panel_, 0, 0);
-    lv_obj_set_style_pad_all(editor_numeric_panel_, 0, 0);
-    lv_obj_clear_flag(editor_numeric_panel_, LV_OBJ_FLAG_SCROLLABLE);
-
-    editor_temperature_bar_ = lv_checkbox_create(editor_numeric_panel_);
-    lv_obj_set_pos(editor_temperature_bar_, 20, 14);
-    lv_checkbox_set_text(editor_temperature_bar_, "Temperature bar");
-    makeLabel(editor_numeric_panel_, "MIN", 190, 8, &lv_font_montserrat_12, UiTheme::muted());
-    editor_temperature_minimum_ = makeSpinbox(
-        editor_numeric_panel_, 190, 26, 125, -9990, 9990, 0, 4, 3);
-    lv_spinbox_set_step(editor_temperature_minimum_, 1);
-    makeStepper(editor_numeric_panel_, editor_temperature_minimum_, 190, 68, 58);
-    makeLabel(editor_numeric_panel_, "READY", 335, 8, &lv_font_montserrat_12, UiTheme::muted());
-    editor_temperature_ready_ = makeSpinbox(
-        editor_numeric_panel_, 335, 26, 125, -9990, 9990, 0, 4, 3);
-    lv_spinbox_set_step(editor_temperature_ready_, 1);
-    makeStepper(editor_numeric_panel_, editor_temperature_ready_, 335, 68, 58);
-    makeLabel(editor_numeric_panel_, "RED", 480, 8, &lv_font_montserrat_12, UiTheme::muted());
-    editor_temperature_red_ = makeSpinbox(
-        editor_numeric_panel_, 480, 26, 125, -9990, 9990, 0, 4, 3);
-    lv_spinbox_set_step(editor_temperature_red_, 1);
-    makeStepper(editor_numeric_panel_, editor_temperature_red_, 480, 68, 58);
-    makeLabel(editor_numeric_panel_, "MAX", 625, 8, &lv_font_montserrat_12, UiTheme::muted());
-    editor_temperature_maximum_ = makeSpinbox(
-        editor_numeric_panel_, 625, 26, 125, -9990, 9990, 0, 4, 3);
-    lv_spinbox_set_step(editor_temperature_maximum_, 1);
-    makeStepper(editor_numeric_panel_, editor_temperature_maximum_, 625, 68, 58);
-    loadEditorTemperatureControls(tile.temperature_bar);
-
-    editor_warning_ = lv_checkbox_create(editor_numeric_panel_); lv_obj_set_pos(editor_warning_, 20, 140);
-    lv_checkbox_set_text(editor_warning_, "Enable WARNING");
-    if (tile.warning.enabled) lv_obj_add_state(editor_warning_, LV_STATE_CHECKED);
-    makeLabel(editor_numeric_panel_, "Direction", 190, 134, &lv_font_montserrat_12, UiTheme::muted());
-    editor_direction_ = lv_dropdown_create(editor_numeric_panel_); lv_obj_set_pos(editor_direction_, 190, 152);
-    lv_obj_set_size(editor_direction_, 120, 42); lv_dropdown_set_options(editor_direction_, "Above\nBelow");
-    lv_dropdown_set_selected(editor_direction_, static_cast<uint16_t>(tile.warning.direction));
-    makeLabel(editor_numeric_panel_, "Threshold", 330, 134, &lv_font_montserrat_12, UiTheme::muted());
-    editor_threshold_ = makeSpinbox(editor_numeric_panel_, 330, 152, 130, 0, 9990,
-        static_cast<int32_t>(tile.warning.threshold_native * 10.0f), 4, 3);
-    lv_spinbox_set_step(editor_threshold_, 1); makeStepper(editor_numeric_panel_, editor_threshold_, 330, 194, 60);
-    makeLabel(editor_numeric_panel_, "Hysteresis", 480, 134, &lv_font_montserrat_12, UiTheme::muted());
-    editor_hysteresis_ = makeSpinbox(editor_numeric_panel_, 480, 152, 130, 0, 9990,
-        static_cast<int32_t>(tile.warning.hysteresis_native * 10.0f), 4, 3);
-    lv_spinbox_set_step(editor_hysteresis_, 1); makeStepper(editor_numeric_panel_, editor_hysteresis_, 480, 194, 60);
-    makeLabel(editor_numeric_panel_, "Delay ms", 630, 134, &lv_font_montserrat_12, UiTheme::muted());
-    editor_delay_ = makeSpinbox(editor_numeric_panel_, 630, 152, 120, 0, 10000,
-        tile.warning.delay_ms, 5);
-    lv_spinbox_set_step(editor_delay_, 100); makeStepper(editor_numeric_panel_, editor_delay_, 630, 194, 55);
-    makeLabel(editor_numeric_panel_,
-              "Order: MIN < READY < RED <= MAX\nTemperature: -999.0 to 999.0 | Warning: 0.0 to 999.0",
-              20, 238, &lv_font_montserrat_12, UiTheme::muted());
-
-    editor_flag_panel_ = lv_obj_create(editor_screen_);
-    lv_obj_set_pos(editor_flag_panel_, 0, 112);
-    lv_obj_set_size(editor_flag_panel_, 800, 298);
-    lv_obj_set_style_bg_opa(editor_flag_panel_, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_width(editor_flag_panel_, 0, 0);
-    lv_obj_clear_flag(editor_flag_panel_, LV_OBJ_FLAG_SCROLLABLE);
-    makeLabel(editor_flag_panel_, "ACTIVE COLOR", 250, 60,
-              &lv_font_montserrat_14, UiTheme::muted());
-    editor_flag_color_ = lv_dropdown_create(editor_flag_panel_);
-    lv_obj_set_pos(editor_flag_color_, 250, 88);
-    lv_obj_set_size(editor_flag_color_, 300, 48);
-    lv_dropdown_set_options(editor_flag_color_, "YELLOW\nGREEN\nRED");
-    lv_dropdown_set_selected(editor_flag_color_,
-                             static_cast<uint16_t>(tile.flag_active_color));
-    makeLabel(editor_flag_panel_,
-              "OFF stays neutral. ON uses the selected accent color.",
-              190, 164, &lv_font_montserrat_14, UiTheme::text());
-
-    editor_cancel_ = makeButton(
-        editor_screen_, "CANCEL", 20, 420, 180, 48, editorEvent,
-        reinterpret_cast<void*>(1));
-    editor_save_ = makeButton(
-        editor_screen_, "SAVE TILE", 590, 420, 190, 48, editorEvent,
-        reinterpret_cast<void*>(2));
-    editor_message_ = makeLabel(editor_screen_, "", 235, 436,
-                                &lv_font_montserrat_14, UiTheme::red());
-    refreshEditorParameterControls(tile.parameter);
-    update_policy_.activate(UiActivity::TileEditor);
-    lv_scr_load(editor_screen_);
-}
-
-void Ui::refreshEditorParameterControls(ParameterId parameter) {
-    const bool is_flag = parameterDescriptor(parameter).kind ==
-                         ParameterKind::Flag;
-    if (is_flag) {
-        lv_obj_add_flag(editor_numeric_panel_, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_clear_flag(editor_flag_panel_, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(editor_decimals_label_, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(editor_decimals_, LV_OBJ_FLAG_HIDDEN);
-    } else {
-        lv_obj_clear_flag(editor_numeric_panel_, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(editor_flag_panel_, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_clear_flag(editor_decimals_label_, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_clear_flag(editor_decimals_, LV_OBJ_FLAG_HIDDEN);
-    }
-}
-
-void Ui::syncEditorDraftFromControls() {
-    if (!editor_.isOpen()) return;
-    editor_.setVisible(lv_obj_has_state(editor_visible_, LV_STATE_CHECKED));
-    editor_.setFlagActiveColor(static_cast<FlagActiveColor>(
-        lv_dropdown_get_selected(editor_flag_color_)));
-    if (parameterDescriptor(editor_.draft().tile.parameter).kind !=
-        ParameterKind::Numeric) {
-        return;
-    }
-
-    editor_.setDecimals(static_cast<uint8_t>(
-        lv_dropdown_get_selected(editor_decimals_)));
-    TileWarningConfig warning;
-    warning.enabled = lv_obj_has_state(editor_warning_, LV_STATE_CHECKED);
-    warning.direction = static_cast<WarningDirection>(
-        lv_dropdown_get_selected(editor_direction_));
-    warning.threshold_native = static_cast<float>(
-        lv_spinbox_get_value(editor_threshold_)) / 10.0f;
-    warning.hysteresis_native = static_cast<float>(
-        lv_spinbox_get_value(editor_hysteresis_)) / 10.0f;
-    warning.delay_ms = static_cast<uint16_t>(
-        lv_spinbox_get_value(editor_delay_));
-    editor_.setWarning(warning);
-    TemperatureBarConfig temperature_bar;
-    temperature_bar.enabled = lv_obj_has_state(
-        editor_temperature_bar_, LV_STATE_CHECKED);
-    temperature_bar.minimum_native = static_cast<float>(
-        lv_spinbox_get_value(editor_temperature_minimum_)) / 10.0f;
-    temperature_bar.ready_native = static_cast<float>(
-        lv_spinbox_get_value(editor_temperature_ready_)) / 10.0f;
-    temperature_bar.red_native = static_cast<float>(
-        lv_spinbox_get_value(editor_temperature_red_)) / 10.0f;
-    temperature_bar.maximum_native = static_cast<float>(
-        lv_spinbox_get_value(editor_temperature_maximum_)) / 10.0f;
-    editor_.setTemperatureBar(temperature_bar);
-}
-
-void Ui::loadEditorControlsFromDraft() {
-    if (!editor_.isOpen()) return;
-    const TileConfig& tile = editor_.draft().tile;
-    if (tile.visible) lv_obj_add_state(editor_visible_, LV_STATE_CHECKED);
-    else lv_obj_clear_state(editor_visible_, LV_STATE_CHECKED);
-    lv_dropdown_set_selected(editor_decimals_, tile.decimals);
-    if (tile.warning.enabled) lv_obj_add_state(editor_warning_, LV_STATE_CHECKED);
-    else lv_obj_clear_state(editor_warning_, LV_STATE_CHECKED);
-    lv_dropdown_set_selected(editor_direction_,
-                             static_cast<uint16_t>(tile.warning.direction));
-    lv_spinbox_set_value(editor_threshold_, static_cast<int32_t>(
-        tile.warning.threshold_native * 10.0f));
-    lv_spinbox_set_value(editor_hysteresis_, static_cast<int32_t>(
-        tile.warning.hysteresis_native * 10.0f));
-    lv_spinbox_set_value(editor_delay_, tile.warning.delay_ms);
-    loadEditorTemperatureControls(tile.temperature_bar);
-    lv_dropdown_set_selected(editor_flag_color_,
-                             static_cast<uint16_t>(tile.flag_active_color));
-    refreshEditorParameterControls(tile.parameter);
-}
-
-void Ui::loadEditorTemperatureControls(const TemperatureBarConfig& config) {
-    if (config.enabled) lv_obj_add_state(editor_temperature_bar_, LV_STATE_CHECKED);
-    else lv_obj_clear_state(editor_temperature_bar_, LV_STATE_CHECKED);
-    lv_spinbox_set_value(editor_temperature_minimum_,
-                         static_cast<int32_t>(config.minimum_native * 10.0f));
-    lv_spinbox_set_value(editor_temperature_ready_,
-                         static_cast<int32_t>(config.ready_native * 10.0f));
-    lv_spinbox_set_value(editor_temperature_red_,
-                         static_cast<int32_t>(config.red_native * 10.0f));
-    lv_spinbox_set_value(editor_temperature_maximum_,
-                         static_cast<int32_t>(config.maximum_native * 10.0f));
-}
-
-void Ui::closeEditor() {
-    if (!editor_screen_) {
-        editor_.cancel();
-        return;
-    }
-    lv_obj_t* previous = editor_screen_;
-    editor_screen_ = nullptr;
-    editor_cancel_ = nullptr;
-    editor_save_ = nullptr;
-    editor_.cancel();
-    if (editor_return_page_ == Page::Settings) {
-        current_page_ = Page::Settings;
-        update_policy_.activate(PageId::Settings);
-        showSettings(editor_return_category_);
-    } else {
-        load(editor_return_page_);
-    }
-    lv_obj_del_async(previous);
-}
-
-void Ui::saveEditor() {
-    if (!config_ || !editor_.isOpen() || editor_commit_pending_) return;
-    syncEditorDraftFromControls();
-    AppConfig candidate = *config_;
-    if (!editor_.writeCandidate(candidate)) {
-        lv_label_set_text(editor_message_, "SAVE FAILED"); return;
-    }
-    commit_model_.markDirty(false);
-    if (!commit_model_.queueOnExit(candidate)) {
-        lv_label_set_text(editor_message_, "SAVE FAILED"); return;
-    }
-    editor_commit_pending_ = true;
-    lv_label_set_text(editor_message_, "SAVING");
-    lv_obj_add_state(editor_cancel_, LV_STATE_DISABLED);
-    lv_obj_add_state(editor_save_, LV_STATE_DISABLED);
-}
-
 void Ui::showSettingsMessage(const char* message) {
     if (settings_message_) lv_label_set_text(settings_message_, message);
 }
@@ -1114,9 +760,7 @@ void Ui::settingsEvent(lv_event_t* event) {
         candidate.rpm_scale_max = normalizedRpmScale(static_cast<uint16_t>(
             lv_slider_get_value(instance_->rpm_scale_slider_)));
         if (instance_->stageSettings(candidate, false)) {
-            char text[48];
-            std::snprintf(text, sizeof(text), "RPM SCALE MAX: %u", static_cast<unsigned>(candidate.rpm_scale_max));
-            lv_label_set_text(instance_->rpm_scale_value_, text);
+            instance_->refreshShiftControls();
             instance_->update_policy_.markLayoutDirty();
         }
         return;

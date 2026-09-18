@@ -17,6 +17,7 @@
 #include "ui/tile_view.h"
 #include "ui/ui_update_policy.h"
 #include "ui/rpm_scale_view.h"
+#include "ui/numeric_entry_model.h"
 struct UiRuntimeStatus {
     CanStatus can_status = CanStatus::Waiting;
     bool demo_active = false;
@@ -37,6 +38,7 @@ public:
     void setDataContext(DataSource source, const CanProfile* profile);
     bool takeConfigCommit(ConfigCommitRequest& request);
     void completeConfigCommit(uint32_t revision, bool success);
+    bool takeWarningTest();
     static void spinDecreaseEvent(lv_event_t* event);
     static void spinIncreaseEvent(lv_event_t* event);
 private:
@@ -44,6 +46,11 @@ private:
     static void navEvent(lv_event_t* event);
     static void tileEvent(lv_event_t* event);
     static void editorEvent(lv_event_t* event);
+    static void editorTabEvent(lv_event_t* event);
+    static void numericOpenEvent(lv_event_t* event);
+    static void numericKeyEvent(lv_event_t* event);
+    static void pickerEvent(lv_event_t* event);
+    static void warningTestEvent(lv_event_t* event);
     static void settingsEvent(lv_event_t* event);
     static void settingsCategoryEvent(lv_event_t* event);
     static void settingsBackEvent(lv_event_t* event);
@@ -76,6 +83,16 @@ private:
     void loadEditorControlsFromDraft();
     void refreshEditorParameterControls(ParameterId parameter);
     void loadEditorTemperatureControls(const TemperatureBarConfig& config);
+    void showEditorTab(uint8_t tab);
+    void refreshEditorPreview();
+    void bindNumeric(lv_obj_t* widget,const char* title,float minimum,float maximum,
+                     uint8_t decimals,const char* unit,bool slider=false);
+    void openNumericEntry(std::size_t index);
+    void refreshNumericEntry();
+    void refreshNumericFields();
+    void closeAuxiliary();
+    void openParameterPicker();
+    void renderParameterPicker();
     bool stageSettings(AppConfig candidate, bool reconfigure_runtime);
     void queueSettingsOnExit();
     void showCommitFeedback(const char* message);
@@ -131,6 +148,7 @@ private:
     lv_obj_t* shift_flash_value_ = nullptr;
     lv_obj_t* shift_max_value_ = nullptr;
     lv_obj_t* shift_flash_enabled_ = nullptr;
+    std::array<lv_obj_t*,36> rpm_preview_blocks_{};
     lv_obj_t* temp_unit_ = nullptr;
     lv_obj_t* pressure_unit_ = nullptr;
     lv_obj_t* speed_unit_ = nullptr;
@@ -146,6 +164,33 @@ private:
     SettingsCategory editor_return_category_ = SettingsCategory::Home;
     ParameterOptionList editor_parameter_options_{};
     lv_obj_t* editor_screen_ = nullptr;
+    lv_obj_t* editor_data_panel_ = nullptr;
+    lv_obj_t* editor_temperature_panel_ = nullptr;
+    lv_obj_t* editor_summary_ = nullptr;
+    lv_obj_t* editor_preview_value_ = nullptr;
+    lv_obj_t* editor_preview_name_ = nullptr;
+    lv_obj_t* editor_preview_unit_ = nullptr;
+    lv_obj_t* editor_preview_bar_ = nullptr;
+    std::array<lv_obj_t*,3> editor_tabs_{};
+    uint8_t editor_tab_ = 0;
+    bool editor_controls_valid_ = true;
+    lv_obj_t* auxiliary_screen_ = nullptr;
+    lv_obj_t* auxiliary_return_ = nullptr;
+    lv_obj_t* numeric_text_ = nullptr;
+    lv_obj_t* numeric_apply_ = nullptr;
+    NumericEntryModel numeric_{};
+    struct NumericBinding {
+        lv_obj_t* widget=nullptr;const char* title="";float minimum=0,maximum=0;
+        uint8_t decimals=0;const char* unit="";bool slider=false;
+    };
+    std::array<NumericBinding,16> numeric_bindings_{};
+    std::size_t numeric_binding_count_=0;
+    NumericBinding active_numeric_{};
+    uint8_t picker_category_=0;
+    std::size_t picker_page_=0;
+    ParameterId picker_selected_=ParameterId::Rpm;
+    bool warning_test_requested_=false;
+    lv_obj_t* warning_test_screen_=nullptr;
     lv_obj_t* editor_parameter_ = nullptr;
     lv_obj_t* editor_visible_ = nullptr;
     lv_obj_t* editor_decimals_label_ = nullptr;
