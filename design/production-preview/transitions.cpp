@@ -54,11 +54,18 @@ int main(int argc,char** argv) {
     const bool center=argc>1 && !std::strcmp(argv[1],"--center");
     const bool track=argc>1 && !std::strcmp(argv[1],"--track");
     const bool psi=argc>1 && !std::strcmp(argv[1],"--psi");
-    const bool units=argc>1 && (!std::strcmp(argv[1],"--units") || psi);
+    const bool tempunits=argc>1 && !std::strcmp(argv[1],"--tempunits");
+    const bool units=argc>1 && (!std::strcmp(argv[1],"--units") || psi || tempunits);
     if(units) {
         config.units.pressure=psi ? PressureUnit::Psi:PressureUnit::Kpa;
         config.dash_tiles[0].parameter=ParameterId::OilPressure;
         config.dash_tiles[0].warning={true,WarningDirection::Below,900,200,0};
+        if(tempunits) {
+            config.units.temperature=TemperatureUnit::Fahrenheit;
+            config.dash_tiles[0].parameter=ParameterId::OilTemperature;
+            config.dash_tiles[0].warning={true,WarningDirection::Above,120.15f,5.15f,250};
+            config.dash_tiles[0].temperature_bar={true,40.1f,75.15f,115.12f,130.3f};
+        }
     }
     if(center)config.dash_layout=DashboardLayout::AnalogStyle;
     ui.setDataContext(DataSource::Demo,nullptr);ui.begin(config,board);
@@ -71,8 +78,14 @@ int main(int argc,char** argv) {
     if(units) {
         lv_event_send(lv_obj_get_child(dash,2),LV_EVENT_LONG_PRESSED,nullptr);
         click("SAVE TILE");ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
-        assert(std::fabs(request.candidate.dash_tiles[0].warning.hysteresis_native-200)<.00001f && "Converted reset range/rounding changes an untouched warning");
-        assert(std::fabs(request.candidate.dash_tiles[0].warning.threshold_native-900)<.00001f);
+        if(tempunits) {
+            assert(request.candidate.dash_tiles[0].warning.delay_ms==250 && "Unchanged delay rounded during save");
+            assert(std::fabs(request.candidate.dash_tiles[0].temperature_bar.ready_native-75.15f)<.00001f && "Unchanged temperature limit rounded during save");
+            assert(std::fabs(request.candidate.dash_tiles[0].warning.threshold_native-120.15f)<.00001f);
+        } else {
+            assert(std::fabs(request.candidate.dash_tiles[0].warning.hysteresis_native-200)<.00001f && "Converted reset range/rounding changes an untouched warning");
+            assert(std::fabs(request.candidate.dash_tiles[0].warning.threshold_native-900)<.00001f);
+        }
         std::puts("Unit-aware pressure warning roundtrip passed");
     } else if(argc>1 && !std::strcmp(argv[1],"--editor")) {
         lv_event_send(lv_obj_get_child(dash,2),LV_EVENT_LONG_PRESSED,nullptr);

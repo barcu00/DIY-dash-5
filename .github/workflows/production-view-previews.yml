@@ -39,6 +39,7 @@ jobs:
         run: |
           /tmp/ui-transitions --units
           /tmp/ui-transitions --psi
+          /tmp/ui-transitions --tempunits
       - name: Check tile save return
         if: success() || failure()
         run: /tmp/ui-transitions --save
