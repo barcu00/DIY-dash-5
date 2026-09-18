@@ -68,7 +68,7 @@ int main(int argc,char** argv) {
         lv_event_send(tile,LV_EVENT_LONG_PRESSED,nullptr);
         assert(find(lv_scr_act(),&lv_label_class,"TILE SETTINGS"));
         auto* dropdown=find(lv_scr_act(),&lv_dropdown_class);assert(dropdown);
-        lv_dropdown_set_selected(dropdown,1); // SPEED, second Demo parameter
+        lv_dropdown_set_selected(dropdown,9); // SPEED in the complete Demo parameter list
         lv_event_send(dropdown,LV_EVENT_VALUE_CHANGED,nullptr);
         click("SAVE TILE");ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
         config=request.candidate;ui.completeConfigCommit(request.revision,true);
