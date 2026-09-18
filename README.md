@@ -54,10 +54,14 @@ framebuffer captures**, rendered on GitHub with the firmware's TileView,
 RpmScaleView, ShiftLightView and navigation code. No UI reconstruction is used.
 Black panels, condensed white digits, fine blue-grey frames and cyan navigation
 follow the approved visual prototypes. Analog D uses a colored ring, a moving
-white rectangular index and centered RPM. Modern Motorsport E adds a continuous
+white rectangular index and a configurable center tile (RPM by default).
+Hold the center tile to choose a parameter, visibility and warning settings;
+the ring and index always remain RPM-driven. At the flash threshold, the entire
+segmented ring flashes red/dim at 4 Hz while the index remains white.
+Modern Motorsport E adds a continuous
 upper semicircle with dim future zones and a white progress cap. Side Gear
 shares one RPM/speed frame; Strip uses identical upright rectangular blocks without a logo.
-Tile rails are cyan, compact-row labels and values are optically centered, and
+Tile rails and frames are neutral grey, compact-row labels and values are optically centered, and
 scale labels always use whole thousands. Physical performance still needs board testing.
 
 | Analog Style | Side Gear | Strip Style |
@@ -79,7 +83,9 @@ Configuration schema v8 migrates v6/v7 settings while retaining the original
 layout banks and warning-sound preference; the new layout starts with its own defaults.
 The display now uses two complete RGB framebuffers with VSYNC-controlled swaps,
 a 512 KiB LVGL pool in PSRAM, and bounded Modern Motorsport flash redraws.
-See [display stability validation and test firmware](docs/ui/display-stability-validation.md)
+Returning from settings or a successful tile save prepares the destination
+layout and current values before displaying it, avoiding a stale first frame.
+See [UI transition and Analog validation](docs/ui/ui-transition-validation.md)
 for the successful build, full-image checksum and flashing precautions.
 The settings/editor/flag/modal illustrations below remain geometry previews,
 not full-production framebuffer captures.
