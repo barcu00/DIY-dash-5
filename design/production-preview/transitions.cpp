@@ -38,6 +38,7 @@ int main(int argc,char** argv) {
     driver.draw_buf=&buffer;driver.direct_mode=1;driver.flush_cb=flush;lv_disp_drv_register(&driver);
     AppConfig config=AppConfig::defaults();BoardDisplay board;Ui ui;
     const bool center=argc>1 && !std::strcmp(argv[1],"--center");
+    const bool track=argc>1 && !std::strcmp(argv[1],"--track");
     if(center)config.dash_layout=DashboardLayout::AnalogStyle;
     ui.setDataContext(DataSource::Demo,nullptr);ui.begin(config,board);
     VehicleState state;state.reset(DataSource::Demo);state.set(ParameterId::Rpm,6840,0);
@@ -45,11 +46,19 @@ int main(int argc,char** argv) {
     RuntimeDiagnostics diagnostics{};UiRuntimeStatus status{};TileWarningEngine warnings;
     ui.update(state,diagnostics,status,config,warnings);ui.updateShiftLight(state,0,config.shift);
     auto* dash=lv_scr_act();
-    if(argc==1) {
+    if(argc==1 || track) {
+        if(track) { click("TRACK");dash=lv_scr_act(); }
         click("SETTINGS");click("LAYOUTS");
         auto* dropdown=find(lv_scr_act(),&lv_dropdown_class);assert(dropdown);
+        if(track) {
+            auto* parent=lv_obj_get_parent(dropdown);
+            for(uint32_t i=0;i<lv_obj_get_child_cnt(parent);++i) {
+                auto* child=lv_obj_get_child(parent,i);
+                if(child!=dropdown && lv_obj_check_type(child,&lv_dropdown_class)) { dropdown=child;break; }
+            }
+        }
         lv_dropdown_set_selected(dropdown,4);lv_event_send(dropdown,LV_EVENT_VALUE_CHANGED,nullptr);
-        click("DASH");assert(lv_scr_act()==dash);
+        click(track ? "TRACK":"DASH");assert(lv_scr_act()==dash);
         // Assert before any scheduled Ui::update: the first visible screen must be Strip.
         assert(lv_obj_get_width(lv_obj_get_child(dash,1))==784 && "First visible frame still uses the old layout");
         assert(find(dash,&lv_label_class,"6840") && "RPM missing from first frame");

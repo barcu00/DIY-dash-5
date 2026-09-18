@@ -623,6 +623,11 @@ void test_all_preset_banks_and_shared_scale_round_trip_without_losing_flags() {
             tiles[0].visible = false;
             tiles[0].flag_active_color = FlagActiveColor::Red;
             tiles[1].warning = {true, WarningDirection::Above, 105.5f, 2.5f, 250};
+            if(i==2) {
+                tiles[6].parameter=page==PageId::Dash ? ParameterId::OilPressure:ParameterId::Clt;
+                tiles[6].visible=false;
+                tiles[6].warning={true,WarningDirection::Below,2.5f,.2f,0};
+            }
         }
     }
     AppConfig runtime = AppConfig::defaults();
@@ -642,6 +647,12 @@ void test_all_preset_banks_and_shared_scale_round_trip_without_losing_flags() {
             TEST_ASSERT_EQUAL_UINT8(2, static_cast<uint8_t>(tiles[0].flag_active_color));
             TEST_ASSERT_TRUE(tiles[1].warning.enabled);
             TEST_ASSERT_FLOAT_WITHIN(0.001f, 105.5f, tiles[1].warning.threshold_native);
+            if(i==2) {
+                TEST_ASSERT_FALSE(tiles[6].visible);
+                TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(page==PageId::Dash ? ParameterId::OilPressure:ParameterId::Clt),static_cast<uint8_t>(tiles[6].parameter));
+                TEST_ASSERT_TRUE(tiles[6].warning.enabled);
+                TEST_ASSERT_FLOAT_WITHIN(.001f,2.5f,tiles[6].warning.threshold_native);
+            }
         }
     }
 }

@@ -180,7 +180,10 @@ int main(int argc,char** argv) {
                 assert(pixelMatches(x,y,UiTheme::red()) && "Analog flash does not light the whole segmented ring");
             }
             save(argv[1],"analog-ring-flash-on");
-            rpm.update(state.get(ParameterId::Rpm),125,config.shift);lv_refr_now(nullptr);
+            assert(pixelMatches(417,235,UiTheme::text()) && "Analog index must remain white during flash-on");
+            flushed_pixels=0;rpm.update(state.get(ParameterId::Rpm),125,config.shift);lv_refr_now(nullptr);
+            assert(flushed_pixels<=130000 && "Analog flash dirties the center or whole screen");
+            assert(pixelMatches(417,235,UiTheme::text()) && "Analog index must remain white during flash-off");
             for(int segment=0;segment<54;++segment) {
                 if(segment>=44 && segment<=47)continue;
                 const float radians=(137+5*segment)*3.14159265358979323846f/180;
