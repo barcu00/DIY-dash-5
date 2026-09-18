@@ -13,7 +13,7 @@ for path in paths:
             green={(x,y) for y in range(20,135) for x in range(8,790)
                    if pixels.getpixel((x,y))[1]>180 and
                    pixels.getpixel((x,y))[0]<80 and pixels.getpixel((x,y))[2]<120}
-            blocks=[]
+            blocks=[]; ticks=[]
             while green:
                 pending=[green.pop()]; component=[]
                 while pending:
@@ -22,11 +22,16 @@ for path in paths:
                         if neighbor in green:
                             green.remove(neighbor); pending.append(neighbor)
                 if len(component)>100: blocks.append(component)
+                elif len(component)>=5: ticks.append(component)
             assert len(blocks)>=10, ('missing Strip blocks',len(blocks))
             for block in blocks:
                 width=max(x for x,y in block)-min(x for x,y in block)+1
                 height=max(y for x,y in block)-min(y for x,y in block)+1
                 assert (width,height,len(block))==(18,28,504), ('uneven/slanted Strip block',width,height,len(block))
+            assert len(ticks)>=10, ('missing Strip tick marks',len(ticks))
+            for tick in ticks:
+                width=max(x for x,y in tick)-min(x for x,y in tick)+1
+                assert width<=3, ('Strip tick is tilted instead of vertical',width,tick)
         if path.stem in {'firmware-analog-style','firmware-modern-motorsport'}:
             pixels=image.convert('RGB')
             for row in range(6):
