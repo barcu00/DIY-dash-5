@@ -80,6 +80,19 @@ void test_warning_at_startup_has_quiet_gap_after_test_chirp() {
     TEST_ASSERT_TRUE(b.update(650,true,true));
     TEST_ASSERT_FALSE(b.update(800,true,true));
 }
+#if __has_include("alarms/buzzer_test_pulse.h")
+#include "alarms/buzzer_test_pulse.h"
+void test_manual_pulse_stops_and_respects_disabled_sound() {
+    BuzzerTestPulse pulse;pulse.request(100);
+    TEST_ASSERT_TRUE(pulse.update(100,true));
+    TEST_ASSERT_TRUE(pulse.update(299,true));
+    TEST_ASSERT_FALSE(pulse.update(300,true));
+    pulse.request(400);TEST_ASSERT_FALSE(pulse.update(401,false));
+    TEST_ASSERT_FALSE(pulse.update(402,true));
+}
+#else
+void test_manual_pulse_stops_and_respects_disabled_sound() {TEST_FAIL_MESSAGE("Manual warning test pulse missing");}
+#endif
 int main(int,char**) {
     UNITY_BEGIN();
     RUN_TEST(test_startup_chirps_once_even_when_warning_sound_disabled);
@@ -89,5 +102,6 @@ int main(int,char**) {
     RUN_TEST(test_real_warning_delay_acknowledge_and_rebreach);
     RUN_TEST(test_delayed_first_update_still_produces_full_startup_chirp);
     RUN_TEST(test_warning_at_startup_has_quiet_gap_after_test_chirp);
+    RUN_TEST(test_manual_pulse_stops_and_respects_disabled_sound);
     return UNITY_END();
 }

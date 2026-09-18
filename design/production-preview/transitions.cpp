@@ -11,6 +11,8 @@
 alignas(std::max_align_t) unsigned char pool[LV_MEM_SIZE];
 uintptr_t diy_lvgl_memory=reinterpret_cast<uintptr_t>(pool);
 static lv_color_t buffers[2][800*480];
+static lv_color_t captured[800*480];
+static const char* capture_folder=nullptr;
 static lv_obj_t* find(lv_obj_t* root,const lv_obj_class_t* type,const char* text=nullptr) {
     if(lv_obj_check_type(root,type) && (!text || !std::strcmp(lv_label_get_text(root),text)))return root;
     for(uint32_t i=0;i<lv_obj_get_child_cnt(root);++i) {
@@ -31,8 +33,19 @@ static void click(const char* text) {
     auto* target=button(lv_scr_act(),text);assert(target);
     lv_event_send(target,LV_EVENT_CLICKED,nullptr);
 }
-static void flush(lv_disp_drv_t* driver,const lv_area_t*,lv_color_t*) { lv_disp_flush_ready(driver); }
+static void flush(lv_disp_drv_t* driver,const lv_area_t*,lv_color_t* pixels) {
+    std::memcpy(captured,pixels,sizeof(captured));lv_disp_flush_ready(driver);
+}
+static void screenshot(const char* name) {
+    if(!capture_folder)return;
+    lv_obj_invalidate(lv_scr_act());lv_refr_now(nullptr);
+    char path[512];std::snprintf(path,sizeof(path),"%s/editor-%s.ppm",capture_folder,name);
+    auto* f=std::fopen(path,"wb");assert(f);std::fprintf(f,"P6\n800 480\n255\n");
+    for(auto pixel:captured) {const auto p=lv_color_to32(pixel);const unsigned char rgb[]={p.ch.red,p.ch.green,p.ch.blue};std::fwrite(rgb,1,3,f);}
+    std::fclose(f);
+}
 int main(int argc,char** argv) {
+    if(argc>2)capture_folder=argv[2];
     lv_init();lv_disp_draw_buf_t buffer;lv_disp_draw_buf_init(&buffer,buffers[0],buffers[1],800*480);
     lv_disp_drv_t driver;lv_disp_drv_init(&driver);driver.hor_res=800;driver.ver_res=480;
     driver.draw_buf=&buffer;driver.direct_mode=1;driver.flush_cb=flush;lv_disp_drv_register(&driver);
@@ -49,12 +62,31 @@ int main(int argc,char** argv) {
     if(argc>1 && !std::strcmp(argv[1],"--editor")) {
         lv_event_send(lv_obj_get_child(dash,2),LV_EVENT_LONG_PRESSED,nullptr);
         assert(button(lv_scr_act(),"DATA") && "Missing full-screen editor tabs");
+        screenshot("data");
+        assert(lv_obj_has_flag(button(lv_scr_act(),"TEMPERATURE BAR"),LV_OBJ_FLAG_HIDDEN));
         click("WARNING");
         assert(button(lv_scr_act(),"TEST WARNING"));
+        screenshot("warning");
+        click("TEST WARNING");assert(ui.takeWarningTest());assert(!ui.takeWarningTest());
+        screenshot("warning-test");click("CLOSE TEST");
+        auto* threshold=find(lv_scr_act(),&lv_spinbox_class);assert(threshold);
+        lv_event_send(threshold,LV_EVENT_CLICKED,nullptr);
+        assert(find(lv_scr_act(),&lv_label_class,"WARNING THRESHOLD"));
+        click("1");click("2");click("0");click(".");click("0");screenshot("numeric");click("APPLY");
+        assert(lv_spinbox_get_value(threshold)==1200);
+        lv_event_send(threshold,LV_EVENT_CLICKED,nullptr);click("9");click("CANCEL");
+        assert(lv_spinbox_get_value(threshold)==1200 && "Keypad CANCEL leaked an edit");
+        click("DATA");click("SELECT PARAMETER");click("TEMPERATURE");screenshot("picker");click("BACK");
+        auto* parameter=find(lv_scr_act(),&lv_dropdown_class);assert(parameter);
+        auto options=ParameterOptions::build(DataSource::Demo,nullptr,ParameterId::Rpm);
+        for(size_t i=0;i<options.count();i++)if(options.parameterAt(i)==ParameterId::OilTemperature)lv_dropdown_set_selected(parameter,i);
+        lv_event_send(parameter,LV_EVENT_VALUE_CHANGED,nullptr);
+        click("TEMPERATURE BAR");screenshot("temperature");
         click("DATA");click("CANCEL");assert(lv_scr_act()==dash);
         ConfigCommitRequest request;assert(!ui.takeConfigCommit(request));
         click("SETTINGS");click("RPM & SHIFT LIGHT");
         assert(find(lv_scr_act(),&lv_label_class,"RPM SCALE MAX"));
+        screenshot("rpm");
         std::puts("Tabbed editor cancel and unified RPM navigation passed");
     } else if(argc==1 || track) {
         if(track) { click("TRACK");dash=lv_scr_act(); }

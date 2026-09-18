@@ -31,7 +31,9 @@ jobs:
         run: /tmp/ui-transitions
       - name: Check tabbed editor and unified RPM settings
         if: success() || failure()
-        run: /tmp/ui-transitions --editor
+        run: |
+          mkdir -p editor-previews
+          /tmp/ui-transitions --editor editor-previews
       - name: Check first visible frame after tile save
         if: success() || failure()
         run: /tmp/ui-transitions --save
@@ -58,4 +60,15 @@ jobs:
         with:
           name: Production-LVGL-previews
           path: production-previews/*.png
+          retention-days: 30
+      - name: Convert editor captures
+        if: success() || failure()
+        run: |
+          python -m pip install Pillow==11.3.0
+          python -c "from pathlib import Path; from PIL import Image; [Image.open(p).save(p.with_suffix('.png')) for p in Path('editor-previews').glob('*.ppm')]"
+      - uses: actions/upload-artifact@v4
+        if: success() || failure()
+        with:
+          name: Editor-LVGL-previews
+          path: editor-previews/*.png
           retention-days: 30
