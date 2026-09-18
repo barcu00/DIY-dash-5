@@ -37,6 +37,8 @@ constexpr uint16_t kExpectedHeight = 480;
 
 bool BoardDisplay::begin() {
     Serial.println("[DIY Dash] Initializing board");
+    Serial.printf("[DIY Dash] Arduino %s | SDK PSRAM XIP enabled | DCache line 64 B\n",
+                  ESP_ARDUINO_VERSION_STR);
     Serial.printf("[DIY Dash] PSRAM: %u bytes\n", static_cast<unsigned>(ESP.getPsramSize()));
     Serial.printf("[DIY Dash] Flash: %u bytes\n", static_cast<unsigned>(ESP.getFlashChipSize()));
     if (ESP.getPsramSize() == 0U) {
