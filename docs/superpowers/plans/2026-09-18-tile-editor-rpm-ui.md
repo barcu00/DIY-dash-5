@@ -91,6 +91,30 @@ TEST_ASSERT_FLOAT_WITHIN(0.01f, 120.0f,
 - [ ] Verify full-image packaging and SHA-256; download candidate BIN and request read-only review. Do not claim physical performance verified by host tests.
 - [ ] Update `docs/ui/dashboard-config-guide.md`, README screenshots and candidate validation notes. Hand off full BIN with offset `0x0` and NVS reset warning; ask hardware test of editor, repeated saves, RPM changes and shift-light flashing.
 
+## Execution handoff — 2026-09-19
+
+Tasks 1–5 are implemented inline on `dashboard-dev`. Verified source is
+`f176b7fc3816e53c25e250c832f7c307b58c5049`: GitHub firmware run
+`35399317213` and production LVGL run `35399317115` succeeded. Full BIN was
+downloaded, its 16-MiB size and SHA-256 checked, and all seven actual editor
+captures inspected. README, guide and candidate validation notes are updated.
+The line-item checklist above remains the original test-first sequence, not a
+claim that every proposed scenario has a dedicated automated test.
+
+Implementation refinements: category/unit validation is in `editor_value_model`,
+manual warning-test pulse in `buzzer_test_pulse`, and settings actions in a shared
+header. Configuration schema and historical LED fill semantics are unchanged.
+Read-only review fixes include descriptor precision defaults, retaining pending
+controls on direction changes, sufficient converted reset bounds, and preserving
+untouched native values despite display rounding.
+
+Host coverage exercises picker navigation/back and parameter transitions;
+physical acceptance must additionally exercise picker SELECT, empty CAN categories,
+touch behavior, restart persistence and repeated real flash saves. No new public
+release or main merge has been performed. Hardware smoothness is not established
+by host screenshots. See `docs/ui/tile-editor-rpm-validation.md` for evidence and
+the complete physical checklist.
+
 ## Plan self-review
 
 All six accepted screens map to Tasks 2–4; unit editing and reset semantics to Task 1; test-warning interaction to Task 5. Existing storage fields suffice. SDK/display changes, CAN profile expansion, SD, new alarm bounds and new LED color algorithms are deliberately excluded. Completion requires GitHub evidence and visual inspection, followed by separately reported user hardware verification.

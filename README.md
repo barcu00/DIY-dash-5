@@ -75,7 +75,7 @@ scale labels always use whole thousands. Physical performance still needs board 
 | ![DIY Dash dashboard](docs/ui/screenshots/firmware-classic-dash.png) | ![DIY Dash track screen](docs/ui/screenshots/firmware-classic-track.png) |
 
 The [production preview workflow](.github/workflows/production-view-previews.yml)
-checks 25 scenes, including flags, warning borders, 6000/7500/10000 RPM, red flash
+checks 27 scenes, including flags, warning borders, 6000/7500/10000 RPM, red flash
 phases and unavailable captions. It compares incremental redraws against full
 framebuffers for Analog, Side Gear, Strip and Modern Motorsport, including small
 RPM changes and validity transitions. Its artifacts provide all captured scenes.
@@ -92,8 +92,30 @@ uses the official Arduino 3.1.1-h SDK libraries to support RGB bounce-buffer
 operation during flash saves. Its GitHub tests and target build passed; physical
 save-time stability still requires board testing. SDK selection is automatic
 through `platformio.ini`, with compile-time checks against incompatible libraries.
-The settings/editor/flag/modal illustrations below remain geometry previews,
-not full-production framebuffer captures.
+### Development: tabbed editor and shared RPM settings
+
+The new full-screen editor offers DATA, WARNING and temperature-only TEMPERATURE
+BAR tabs, a large numeric keypad, and a categorized capability-filtered parameter
+picker. Warning settings use an explicit RESET BELOW/ABOVE boundary. Untouched
+fields retain native precision when saving in PSI, kPa or Fahrenheit.
+TEST WARNING previews the modal and optionally pulses the buzzer without changing
+actual alarms. RPM & SHIFT LIGHT combines the shared scale, color/flash thresholds
+and a separately retained advanced 12-LED fill maximum. Settings still save on exit;
+tile drafts commit only after successful storage. SDK XIP and VSYNC buffering remain unchanged.
+
+These are **actual production LVGL captures**, validated in direct and partial
+render modes. See [candidate tests, checksum and hardware checklist](docs/ui/tile-editor-rpm-validation.md).
+
+| DATA | WARNING | TEMPERATURE BAR |
+| --- | --- | --- |
+| ![DATA](docs/ui/screenshots/editor-data.png) | ![WARNING](docs/ui/screenshots/editor-warning.png) | ![Temperature bar](docs/ui/screenshots/editor-temperature.png) |
+
+| NUMERIC ENTRY | PARAMETER PICKER | RPM & SHIFT LIGHT |
+| --- | --- | --- |
+| ![Keypad](docs/ui/screenshots/editor-numeric.png) | ![Picker](docs/ui/screenshots/editor-picker.png) | ![RPM settings](docs/ui/screenshots/editor-rpm.png) |
+
+The settings/flag/modal illustrations below remain older geometry previews,
+not current production editor captures.
 
 | SETTINGS | TILE SETTINGS |
 | --- | --- |
@@ -143,8 +165,8 @@ Each numeric tile can independently configure:
 
 - enabled or disabled;
 - activation above or below the threshold;
-- threshold from `000.0` to `999.0`;
-- hysteresis from `000.0` to `999.0`;
+- native threshold from `0.0` to `999.0`;
+- native hysteresis from `0.0` to `999.0` (development UI edits its reset boundary);
 - delay from 0 to 10000 ms.
 
 When a limit is exceeded for the configured delay, the UI opens a large red
@@ -161,7 +183,7 @@ tile when testing this function.
 ### Temperature bars
 
 Temperature tiles can display a thin continuous colored bar. Each tile has four
-native temperature controls:
+temperature controls (development UI edits them in the selected display unit):
 
 | Control | Meaning |
 | --- | --- |
@@ -170,8 +192,8 @@ native temperature controls:
 | `RED` | Independent red over-temperature threshold |
 | `MAX` | Full end of the fill scale |
 
-The required order is `MIN < READY < RED <= MAX`. Temperatures use an explicit
-signed `+000.0` / `-000.0` format and support `-999.0` to `+999.0`.
+The required order is `MIN < READY < RED <= MAX`. Native temperature limits
+support `-999.0` to `999.0`; the development keypad uses normal decimal notation.
 
 - blue: below READY;
 - green: normal range;
@@ -204,7 +226,7 @@ performance predictable:
 | --- | --- |
 | DISPLAY | Software brightness from 20% to 100% |
 | DATA & CAN | Explicit DEMO/CAN source, ECU profile, bitrate, and timeout |
-| SHIFT LIGHT | Four RPM sliders and flash enable control |
+| RPM & SHIFT LIGHT (development) | Shared scale, color/flash sliders, keypad and advanced LED fill maximum |
 | UNITS | Temperature, pressure, speed, lambda/AFR, and stoichiometric AFR |
 | LAYOUTS | Paged DASH/TRACK slot list and hidden-tile restoration |
 | SYSTEM | Runtime information, layout reset, and factory reset |

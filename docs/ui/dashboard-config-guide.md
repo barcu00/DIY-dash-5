@@ -5,9 +5,9 @@ The bottom navigation contains DASH, TRACK, and SETTINGS; DIAG is not present.
 
 ## Tiles and layout
 
-The development firmware offers five presets: Classic DASH (14 slots),
-Classic TRACK (12), Analog Style (6), Side Gear (8), and Strip Style (8).
-Both selectors in `SETTINGS > LAYOUTS` offer all five presets. DASH and TRACK
+The development firmware offers six presets: Classic DASH (14 slots),
+Classic TRACK (12), Analog Style (7), Side Gear (8), Strip Style (8), and
+Modern Motorsport (6). Both selectors in `SETTINGS > LAYOUTS` offer all six. DASH and TRACK
 can use the same preset and retain separate configuration banks when switching.
 Use DASH TILES / TRACK TILES to edit the selected page's visible and hidden slots.
 
@@ -17,11 +17,12 @@ remain independent. Analog dials and strips always show RPM, while numeric tiles
 remain assignable to any available parameter. These features are not in the
 published v0.2.1 release. Settings save when leaving the category.
 
-The approved development appearance uses black panels, thin blue-grey outlines,
-condensed Rajdhani digits, parameter-colored rails, and cyan navigation. Side
+The approved development appearance uses black panels, thin neutral-grey outlines,
+condensed Rajdhani digits, grey rails, and cyan navigation. Side
 Gear shares one RPM/speed frame; Strip Style has no center-card outlines or logo.
-Analog uses a colored dial ring. Its configured shift flash accents the needle
-and RPM digits, not the whole static dial, to avoid full-gauge repainting.
+Analog uses a colored segmented dial ring. Its configured shift flash alternates
+the entire ring red/dim; the moving rectangular index stays white. Its center
+tile is independently configurable while the ring always shows RPM.
 Side/Strip flash their entire segmented RPM bar; the Classic presets keep the
 12-segment 4+4+4 shift strip. All use the existing 4-Hz configured flash behavior.
 Production-view PNGs are captured by the standalone LVGL harness documented in
@@ -41,6 +42,15 @@ profile's compiled frame definitions. If a saved tile is not supported by the
 new profile, its assignment and position remain intact and the tile displays
 `---` / `UNAVAILABLE`; the editor keeps that value as its first labelled option.
 Filtered dropdown indexes are mapped explicitly to stable parameter IDs.
+SELECT PARAMETER opens a full-screen, paged ENGINE / TEMPERATURE / PRESSURE /
+FLAGS picker using the same capability filtering. BACK discards the picker
+selection; SELECT updates only the editor draft.
+
+The editor has DATA, WARNING, and (for temperature parameters only) TEMPERATURE
+BAR tabs. DATA offers visibility, decimal precision and a cached-data preview.
+Tap a numeric field to open the large keypad; APPLY changes only its draft
+control and CANCEL restores the original value. Numbers use ordinary decimal
+notation such as `120.0`, not padded `000.0` fields.
 
 Boolean flag tiles replace numeric controls with an ACTIVE COLOR selector.
 OFF is neutral with a grey pill. ON uses a yellow, green, or red rail, subtle
@@ -49,7 +59,9 @@ stale flags clear the active styling and show `UNAVAILABLE`. Flag states do not
 open the numeric WARNING modal.
 
 For a temperature parameter, the same editor can enable a continuous bar and
-set its native MIN, READY, RED, and MAX values. MIN and MAX define the fill
+set MIN, READY, RED, and MAX in the selected display unit. Storage remains in
+native Celsius. A zone preview marks the cached current temperature.
+MIN and MAX define the fill
 scale, while RED independently defines when the bar becomes red. The bar is
 empty when data is invalid, blue below READY, green in the normal range,
 yellow in the final quarter before RED, and red at or above RED. The required
@@ -65,11 +77,16 @@ on TRACK. Wide tile labels and values are centered.
 
 ## Warnings
 
-Each tile independently supports above/below direction, native threshold,
-hysteresis, and delay. Temperature limits are displayed with an explicit sign,
-three integer digits, and one decimal place (`+000.0` / `-000.0`); warning
-values use `000.0`. Threshold and hysteresis are configured from 0.0 to 999.0
-with a 0.1 step. A breached warning produces a large red WARNING modal
+Each tile independently supports above/below direction, threshold, reset boundary,
+and delay. WARNING presents THRESHOLD plus RESET BELOW (Above trigger) or RESET
+ABOVE (Below trigger), in the selected unit. Native threshold and derived
+hysteresis remain bounded from 0.0 to 999.0; temperature bar limits support
+-999.0 through 999.0 Celsius. Both absolute warning values are converted before
+deriving hysteresis, avoiding Fahrenheit offsets. Saving untouched fields preserves
+their original native precision and millisecond delay despite display rounding.
+TEST WARNING opens a labeled preview and requests one 200-ms buzzer pulse if
+WARNING SOUND is enabled. It does not trigger, acknowledge or clear actual alarms.
+A breached warning produces a large red WARNING modal
 with the current value and configured limit. Acknowledging removes the modal,
 but the related visible tile stays red until the value returns through the safe
 hysteresis boundary. A hidden tile can still raise its warning. Invalid data
@@ -77,7 +94,7 @@ does not raise a warning.
 
 ## Settings categories
 
-SETTINGS opens a fixed six-button home screen. DISPLAY, DATA & CAN, SHIFT
+SETTINGS opens a fixed six-button home screen. DISPLAY, DATA & CAN, RPM & SHIFT
 LIGHT, UNITS, LAYOUTS, and SYSTEM each open as a separate 800x480 screen. The
 firmware creates only the active settings screen, so there is no long scrolling
 list to lay out or redraw.
@@ -101,11 +118,14 @@ by leaving again.
   MS43 uses only stock receive-only CAN; OLM/custom `0x33C` is absent. Selecting `none`
   is the safe no-decoder state. A parameter not supplied by the active profile
   displays `---`.
-- START, RED, FLASH, and MAX RPM use four sliders shared by DASH and TRACK and
-  must satisfy `start < red < flash <= maximum`. Values snap to 100 RPM steps,
-  span 0-10000 RPM, and changing one threshold automatically moves dependent
-  thresholds. Existing stored values above 10000 RPM are normalized without
-  discarding unrelated settings.
+- RPM & SHIFT LIGHT contains RPM SCALE MAX, YELLOW FROM, RED FROM, and FLASH
+  FROM sliders shared by DASH and TRACK. Tap their values for keypad entry.
+  The scale spans 100-10000 RPM, starts at zero, and uses 100-RPM steps.
+  A threshold outside the visible scale produces a status message rather than
+  silently changing the stored thresholds. ADVANCED: 12-LED FILL MAX retains
+  the historical independent strip maximum and existing 4/4/4 semantics.
+  Shift thresholds still satisfy `start < red < flash <= maximum`; editing a
+  shift threshold normalizes dependent thresholds. This is not an ECU limiter.
 - FLASH ENABLED controls whether the complete strip alternates red/off at about
   4 Hz once valid RPM reaches FLASH RPM. Disabling it keeps normal progressive
   behavior through MAX RPM. The 12 physical segments always use four green,
@@ -125,6 +145,25 @@ touch, CAN-bus, thermal, or long-duration behavior. Complete the physical
 acceptance checklist in the README after flashing a test board.
 
 ## Screen gallery
+
+These editor images are actual production LVGL framebuffer captures from the
+[validated development candidate](tile-editor-rpm-validation.md), not mockups.
+
+| DATA | WARNING |
+| --- | --- |
+| ![DATA](screenshots/editor-data.png) | ![WARNING](screenshots/editor-warning.png) |
+
+| TEMPERATURE BAR | NUMERIC ENTRY |
+| --- | --- |
+| ![Temperature bar](screenshots/editor-temperature.png) | ![Numeric entry](screenshots/editor-numeric.png) |
+
+| PARAMETER PICKER | RPM & SHIFT LIGHT |
+| --- | --- |
+| ![Parameter picker](screenshots/editor-picker.png) | ![RPM settings](screenshots/editor-rpm.png) |
+
+![Warning test](screenshots/editor-warning-test.png)
+
+The illustrations below are older geometry previews, not current editor captures.
 
 | DISPLAY | DATA & CAN | UNITS |
 | --- | --- | --- |
