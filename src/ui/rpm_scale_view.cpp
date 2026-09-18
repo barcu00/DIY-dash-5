@@ -72,13 +72,13 @@ void RpmScaleView::apply(DashboardLayout layout,uint16_t maximum) {
         lv_obj_set_style_text_color(value_,UiTheme::text(),0);
     } else { lv_obj_add_flag(value_,LV_OBJ_FLAG_HIDDEN);lv_obj_add_flag(caption_,LV_OBJ_FLAG_HIDDEN); }
     if(layout==DashboardLayout::StripStyle) {
-        const float span=stripSpan(),start=270-span/2,step=span/36;
-        // Congruent radial sectors, no slant. Chord sag is below 0.05px;
-        // cache once instead of the prototype's per-pixel rasterisation.
+        // Identical axis-aligned 18x28 rectangles: only their height on the
+        // shallow curve changes. Pixel-exact edges, no rotated polygon masks.
         for(int i=0;i<36;i++) {
-            const float a=start+(i+.1f)*step,b=start+(i+.9f)*step;
-            strip_blocks_[i]={polar(point(392,1226),kStripRadius,a),polar(point(392,1226),kStripRadius,b),
-                polar(point(392,1226),kStripRadius-28,b),polar(point(392,1226),kStripRadius-28,a)};
+            const int x=14+21*i;
+            const float dx=x+8.5f-392;
+            const int y=std::lround(1226-std::sqrt(kStripRadius*kStripRadius-dx*dx));
+            strip_blocks_[i]={point(x,y),point(x+17,y),point(x+17,y+27),point(x,y+27)};
         }
     }
     lv_obj_invalidate(root_);
@@ -102,6 +102,13 @@ void RpmScaleView::invalidateArc(uint16_t previous,uint16_t current) {
         y1=std::min(y1,static_cast<int>(p.y));y2=std::max(y2,static_cast<int>(p.y));
     }
     lv_area_t dirty{static_cast<lv_coord_t>(x1-5),static_cast<lv_coord_t>(y1-5),static_cast<lv_coord_t>(x2+5),static_cast<lv_coord_t>(y2+5)};
+    lv_obj_invalidate_area(indicator_,&dirty);
+}
+void RpmScaleView::invalidateModernBand() {
+    lv_area_t a;lv_obj_get_coords(indicator_,&a);
+    // Include the white cap, but not the entire 448x414 transparent object.
+    lv_area_t dirty{static_cast<lv_coord_t>(a.x1+3),static_cast<lv_coord_t>(a.y1+55),
+                    static_cast<lv_coord_t>(a.x1+437),static_cast<lv_coord_t>(a.y1+277)};
     lv_obj_invalidate_area(indicator_,&dirty);
 }
 void RpmScaleView::invalidateBlocks(uint16_t previous,uint16_t current) {
@@ -134,10 +141,14 @@ void RpmScaleView::update(const SignalValue& raw,uint32_t now_ms,const ShiftLigh
     const auto rpm=filter_.sample(raw,now_ms,50U);const auto fill=rpmScaleFill(rpm.value,rpm.valid,maximum_);
     if(!initialized_ || rpm.valid!=valid_ || fill!=fill_ || flashing!=flashing_ || red!=red_phase_) {
         if(layout_==DashboardLayout::AnalogStyle) { invalidateNeedle(fill_);invalidateNeedle(fill); }
-        else if(!initialized_ || rpm.valid!=valid_ || flashing!=flashing_ || red!=red_phase_)lv_obj_invalidate(indicator_);
+        else if(!initialized_ || rpm.valid!=valid_ || flashing!=flashing_ || red!=red_phase_) {
+            if(layout_==DashboardLayout::ModernMotorsport)invalidateModernBand();
+            else lv_obj_invalidate(indicator_);
+        }
         else if(layout_==DashboardLayout::ModernMotorsport)invalidateArc(fill_,fill);
         else invalidateBlocks(fill_,fill);
-        if(dial(layout_))lv_obj_set_style_text_color(value_,red ? UiTheme::red():UiTheme::text(),0);
+        // Flash the tachometer band only; avoid repainting the large RPM text
+        // at each phase transition or every moving-cap sample.
         fill_=fill;valid_=rpm.valid;flashing_=flashing;red_phase_=red;
     }
     if(dial(layout_) && due) {
@@ -196,6 +207,11 @@ void RpmScaleView::drawIndicator(lv_event_t* event) {
         lv_draw_polygon(ctx,&d,p,4);return;
     }
     if(self->layout_==DashboardLayout::ModernMotorsport) {
+        if(self->flashing_) {
+            const auto center=point(a.x1+220,a.y1+272);
+            arc(ctx,center,210,180,360,self->red_phase_ ? UiTheme::red():dim,14);
+            return;
+        }
         const auto center=point(a.x1+220,a.y1+272);arc(ctx,center,210,180,360,dim,14);
         const float thresholds[]={0.f,static_cast<float>(self->yellow_from_),static_cast<float>(self->red_from_),static_cast<float>(self->maximum_)};
         const lv_color_t colors[]={UiTheme::green(),UiTheme::yellow(),UiTheme::red()};const uint32_t ghosts[]={0x122322,0x34321A,0x361D23};
@@ -205,7 +221,6 @@ void RpmScaleView::drawIndicator(lv_event_t* event) {
             const float hi=std::min(self->valid_ ? self->fill_/1000.f:0.f,end);
             if(hi>lo)arc(ctx,center,210,std::lround(180+180*lo),std::lround(180+180*hi),colors[i],14);
         }
-        if(self->flashing_)arc(ctx,center,210,180,360,self->red_phase_ ? UiTheme::red():dim,14);
         if(self->valid_) { const float angle=180+180*self->fill_/1000.f;line(ctx,polar(center,213,angle),polar(center,191,angle),UiTheme::text(),4); }
         return;
     }
@@ -219,6 +234,7 @@ void RpmScaleView::drawIndicator(lv_event_t* event) {
         }
         const float lit=self->flashing_ ? (self->red_phase_ ? 1.f:0.f):self->valid_ ? std::clamp(self->fill_*36/1000.f-i,0.f,1.f):0.f;
         const auto color=self->flashing_ ? UiTheme::red():zone(self->maximum_*(i+.5f)/36,self->yellow_from_,self->red_from_);
-        lv_draw_rect_dsc_t d;lv_draw_rect_dsc_init(&d);d.bg_color=lv_color_mix(color,dim,static_cast<lv_opa_t>(std::lround(lit*255)));lv_draw_polygon(ctx,&d,p,4);
+        lv_draw_rect_dsc_t d;lv_draw_rect_dsc_init(&d);d.bg_color=lv_color_mix(color,dim,static_cast<lv_opa_t>(std::lround(lit*255)));
+        const lv_area_t block{p[0].x,p[0].y,p[2].x,p[2].y};lv_draw_rect(ctx,&d,&block);
     }
 }

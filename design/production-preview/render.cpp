@@ -16,12 +16,14 @@
 namespace {
 unsigned char framebuffer[480][800][3];
 lv_color_t draw_buffer[800*40];
+lv_color_t direct_buffers[2][800*480];
 unsigned char incremental_frame[480][800][3];
 unsigned flushed_pixels=0;
 void flush(lv_disp_drv_t* driver,const lv_area_t* area,lv_color_t* pixels) {
     flushed_pixels+=(area->x2-area->x1+1)*(area->y2-area->y1+1);
     for(int y=area->y1;y<=area->y2;++y)for(int x=area->x1;x<=area->x2;++x) {
-        lv_color32_t pixel; pixel.full=lv_color_to32(*pixels++);
+        lv_color32_t pixel;
+        pixel.full=lv_color_to32(driver->direct_mode ? pixels[y*800+x]:*pixels++);
         if(x>=0 && x<800 && y>=0 && y<480) {
             framebuffer[y][x][0]=pixel.ch.red; framebuffer[y][x][1]=pixel.ch.green;
             framebuffer[y][x][2]=pixel.ch.blue;
@@ -57,10 +59,14 @@ void compareIncremental(lv_obj_t* screen,const char* scene,unsigned step) {
 }
 
 int main(int argc,char** argv) {
-    if(argc!=2)return 2;
-    lv_init(); lv_disp_draw_buf_t buffer; lv_disp_draw_buf_init(&buffer,draw_buffer,nullptr,800*40);
+    if(argc!=2 && argc!=3)return 2;
+    const bool direct=argc==3 && std::strcmp(argv[2],"--direct")==0;
+    lv_init(); lv_disp_draw_buf_t buffer;
+    lv_disp_draw_buf_init(&buffer,direct ? direct_buffers[0]:draw_buffer,
+        direct ? direct_buffers[1]:nullptr,direct ? 800*480:800*40);
     lv_disp_drv_t driver; lv_disp_drv_init(&driver); driver.hor_res=800; driver.ver_res=480;
-    driver.draw_buf=&buffer; driver.flush_cb=flush; lv_disp_drv_register(&driver);
+    driver.draw_buf=&buffer; driver.flush_cb=flush; driver.direct_mode=direct;
+    lv_disp_drv_register(&driver);
     auto* screen=lv_scr_act(); lv_obj_remove_style_all(screen);
     lv_obj_set_style_bg_color(screen,UiTheme::background(),0); lv_obj_set_style_bg_opa(screen,LV_OPA_COVER,0);
     lv_obj_clear_flag(screen,LV_OBJ_FLAG_SCROLLABLE);

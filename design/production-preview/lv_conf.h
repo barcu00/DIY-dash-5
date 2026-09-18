@@ -1,4 +1,3 @@
 #include "../../src/lv_conf.h"
-// Desktop-only allocator capacity; other rendering options match firmware.
-#undef LV_MEM_SIZE
-#define LV_MEM_SIZE (2U * 1024U * 1024U)
+// Same allocator capacity and rendering options as firmware. On the ESP32
+// the pool lives in PSRAM; desktop uses LVGL's static pool of the same size.

@@ -571,7 +571,7 @@ void Ui::update(const VehicleState& state, const RuntimeDiagnostics& diagnostics
         char buffer[256];
         if (settings_flow_.category() == SettingsCategory::Display) {
             std::snprintf(buffer, sizeof(buffer),
-                "Free heap: %u KiB\nPSRAM total: %u KiB\nDisplay: 800 x 480 RGB565\nLVGL buffers: 250 KiB PSRAM",
+                "Free heap: %u KiB\nPSRAM total: %u KiB\nDisplay: 800 x 480 RGB565\nRGB buffers: 1500 KiB | LVGL: 512 KiB PSRAM",
                 static_cast<unsigned>(diagnostics.free_heap / 1024U),
                 static_cast<unsigned>(diagnostics.psram_total / 1024U));
         } else if (settings_flow_.category() == SettingsCategory::DataCan) {

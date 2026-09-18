@@ -2,11 +2,14 @@
 
 #include <esp_heap_caps.h>
 #include <esp_timer.h>
+#include <algorithm>
+#include <cstring>
 
 #include "board/display_tuning.h"
 
 using esp_panel::board::Board;
 using esp_panel::drivers::TouchPoint;
+uintptr_t diy_lvgl_memory = 0;
 
 bool BoardDisplay::beginBuzzer() {
     auto* adapter = board_ ? board_->getIO_Expander() : nullptr;
@@ -44,6 +47,13 @@ bool BoardDisplay::begin() {
         Serial.println("[DIY Dash] ERROR: board init failed");
         return false;
     }
+    lcd_ = board_->getLCD();
+    // Configure before Board::begin initializes the panel. Use the actual
+    // two LCD framebuffers, not two small scratch buffers copied into GRAM.
+    if (!lcd_ || !lcd_->configFrameBufferNumber(2)) {
+        Serial.println("[DIY Dash] ERROR: RGB double-buffer configuration failed");
+        return false;
+    }
     if (!board_->begin()) {
         Serial.println("[DIY Dash] ERROR: board begin failed");
         return false;
@@ -65,23 +75,31 @@ bool BoardDisplay::begin() {
         return false;
     }
 
+    diy_lvgl_memory = reinterpret_cast<uintptr_t>(heap_caps_malloc(
+        LV_MEM_SIZE, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+    if (!diy_lvgl_memory) {
+        Serial.println("[DIY Dash] ERROR: LVGL PSRAM pool allocation failed");
+        return false;
+    }
     lv_init();
+    lv_log_register_print_cb(logCallback);
 
     const size_t buffer_pixels =
         DisplayTuning::bufferPixels(lcd_->getFrameWidth());
     const size_t buffer_bytes = buffer_pixels * sizeof(lv_color_t);
 
-    draw_buf_1_ = static_cast<lv_color_t*>(heap_caps_malloc(buffer_bytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
-    draw_buf_2_ = static_cast<lv_color_t*>(heap_caps_malloc(buffer_bytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
-
-    if (draw_buf_1_ == nullptr) {
-        Serial.println("[DIY Dash] PSRAM buffer allocation failed, trying internal RAM");
-        draw_buf_1_ = static_cast<lv_color_t*>(heap_caps_malloc(buffer_bytes, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
-    }
-    if (draw_buf_1_ == nullptr) {
+    draw_buf_1_ = static_cast<lv_color_t*>(lcd_->getFrameBufferByIndex(0));
+    draw_buf_2_ = static_cast<lv_color_t*>(lcd_->getFrameBufferByIndex(1));
+    if (!draw_buf_1_ || !draw_buf_2_) {
         Serial.println("[DIY Dash] ERROR: LVGL buffer allocation failed");
         return false;
     }
+    std::memset(draw_buf_1_,0,buffer_bytes);
+    std::memset(draw_buf_2_,0,buffer_bytes);
+    // LVGL must start drawing into the buffer not currently scanned by LCD.
+    if (!lcd_->switchFrameBufferTo(draw_buf_2_))return false;
+    vsync_sem_=xSemaphoreCreateBinary();
+    if (!vsync_sem_ || !lcd_->attachRefreshFinishCallback(refreshCallback,this))return false;
 
     lv_disp_draw_buf_init(&draw_buf_desc_, draw_buf_1_, draw_buf_2_, buffer_pixels);
     lv_disp_drv_init(&disp_drv_);
@@ -90,6 +108,9 @@ bool BoardDisplay::begin() {
     disp_drv_.flush_cb = flushCallback;
     disp_drv_.draw_buf = &draw_buf_desc_;
     disp_drv_.user_data = this;
+    // LVGL 8.4 copies prior dirty regions between these full buffers itself.
+    disp_drv_.direct_mode = 1;
+    disp_drv_.monitor_cb = monitorCallback;
     if (lv_disp_drv_register(&disp_drv_) == nullptr) {
         Serial.println("[DIY Dash] ERROR: LVGL display registration failed");
         return false;
@@ -137,7 +158,19 @@ void BoardDisplay::service() {
         return;
     }
     if (lock(20)) {
+        const int64_t start=esp_timer_get_time();
         lv_timer_handler();
+        max_service_us_=std::max(max_service_us_,static_cast<uint32_t>(esp_timer_get_time()-start));
+        if (millis()-last_diagnostics_ms_>=5000U) {
+            lv_mem_monitor_t memory;lv_mem_monitor(&memory);
+            Serial.printf("[UI] frames=%u avg=%u ms max=%u ms handler_max=%u us LVGL_free=%u largest=%u frag=%u%% heap=%u psram_free=%u stack_free=%u\n",
+                static_cast<unsigned>(frame_count_),static_cast<unsigned>(frame_count_ ? frame_total_ms_/frame_count_:0),
+                static_cast<unsigned>(frame_max_ms_),static_cast<unsigned>(max_service_us_),
+                static_cast<unsigned>(memory.free_size),static_cast<unsigned>(memory.free_biggest_size),
+                static_cast<unsigned>(memory.frag_pct),static_cast<unsigned>(ESP.getFreeHeap()),
+                static_cast<unsigned>(ESP.getFreePsram()),static_cast<unsigned>(uxTaskGetStackHighWaterMark(nullptr)));
+            last_diagnostics_ms_=millis();frame_count_=frame_total_ms_=frame_max_ms_=max_service_us_=0;
+        }
         unlock();
     }
 }
@@ -172,6 +205,8 @@ void BoardDisplay::incrementUiUpdates() {
 
 void BoardDisplay::setSoftwareBrightness(uint8_t percent) {
     percent = constrain(percent, 20U, 100U);
+    if (brightness_layer_ && percent==brightness_percent_)return;
+    brightness_percent_=percent;
     if (brightness_layer_ == nullptr) {
         brightness_layer_ = lv_obj_create(lv_layer_top());
         lv_obj_set_pos(brightness_layer_, 0, 0);
@@ -195,10 +230,35 @@ void BoardDisplay::flushCallback(lv_disp_drv_t* drv, const lv_area_t* area, lv_c
         return;
     }
 
-    const int width = area->x2 - area->x1 + 1;
-    const int height = area->y2 - area->y1 + 1;
-    self->lcd_->drawBitmap(area->x1, area->y1, width, height, reinterpret_cast<const uint8_t*>(color_map));
+    if (lv_disp_flush_is_last(drv)) {
+        if (!self->lcd_->switchFrameBufferTo(color_map)) {
+            Serial.println("[UI] ERROR: RGB framebuffer switch failed");
+            abort();
+        }
+        // Clear AFTER scheduling the swap, then wait for the next refresh.
+        // Never reuse a buffer still scanned by RGB, or wait indefinitely.
+        xSemaphoreTake(self->vsync_sem_,0);
+        if (xSemaphoreTake(self->vsync_sem_,pdMS_TO_TICKS(100))!=pdTRUE) {
+            Serial.println("[UI] ERROR: VSYNC timeout; aborting unsafe buffer reuse");
+            abort();
+        }
+    }
     lv_disp_flush_ready(drv);
+}
+
+bool IRAM_ATTR BoardDisplay::refreshCallback(void* arg) {
+    auto* self=static_cast<BoardDisplay*>(arg);
+    BaseType_t wake=pdFALSE;
+    if(self && self->vsync_sem_)xSemaphoreGiveFromISR(self->vsync_sem_,&wake);
+    return wake==pdTRUE;
+}
+void BoardDisplay::monitorCallback(lv_disp_drv_t* drv,uint32_t time_ms,uint32_t) {
+    auto* self=static_cast<BoardDisplay*>(drv->user_data);
+    ++self->frame_count_;self->frame_total_ms_+=time_ms;
+    self->frame_max_ms_=std::max(self->frame_max_ms_,time_ms);
+}
+void BoardDisplay::logCallback(const char* text) {
+    Serial.print("[LVGL] ");Serial.print(text);
 }
 
 void BoardDisplay::touchCallback(lv_indev_drv_t* drv, lv_indev_data_t* data) {
