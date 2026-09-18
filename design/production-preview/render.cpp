@@ -163,6 +163,25 @@ int main(int argc,char** argv) {
         if(scenario==8)assert(pixelMatches(410,50,UiTheme::red()));
         if(scenario==9)assert(pixelMatches(410,50,lv_color_hex(0x151D22)));
         save(argv[1],names[scenario]);
+        if(scenario==2) {
+            state.set(ParameterId::Rpm,8500,0);
+            rpm.update(state.get(ParameterId::Rpm),0,config.shift);
+            lv_refr_now(nullptr);
+            for(int segment=0;segment<54;++segment) {
+                const float radians=(137+5*segment)*3.14159265358979323846f/180;
+                const int x=std::lround(228+197*std::cos(radians));
+                const int y=std::lround(220+197*std::sin(radians));
+                assert(pixelMatches(x,y,UiTheme::red()) && "Analog flash does not light the whole segmented ring");
+            }
+            save(argv[1],"analog-ring-flash-on");
+            rpm.update(state.get(ParameterId::Rpm),125,config.shift);lv_refr_now(nullptr);
+            for(int segment=0;segment<54;++segment) {
+                const float radians=(137+5*segment)*3.14159265358979323846f/180;
+                assert(pixelMatches(std::lround(228+197*std::cos(radians)),std::lround(220+197*std::sin(radians)),lv_color_hex(0x151D22)));
+            }
+            save(argv[1],"analog-ring-flash-off");
+            state.set(ParameterId::Rpm,6840,0);rpm.update(state.get(ParameterId::Rpm),250,config.shift);
+        }
         if(scenario==18) {
             flushed_pixels=0;
             rpm.update(state.get(ParameterId::Rpm),125,config.shift);

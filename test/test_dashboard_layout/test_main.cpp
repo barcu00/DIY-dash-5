@@ -5,6 +5,31 @@
 #include "ui/tile_editor_model.h"
 #include "alarms/tile_warning_engine.h"
 
+void test_analog_center_is_an_independent_editable_tile_and_can_be_hidden() {
+    AppConfig config=AppConfig::defaults();
+    config.dash_layout=config.track_layout=DashboardLayout::AnalogStyle;
+    TileEditorModel editor;
+    TEST_ASSERT_TRUE(editor.open({PageId::Dash,6},config));
+    editor.setParameter(ParameterId::OilPressure);
+    editor.setWarning({true,WarningDirection::Below,2.5f,.2f,0});
+    TEST_ASSERT_TRUE(editor.applyTo(config));
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(ParameterId::Rpm),static_cast<uint8_t>(activeTiles(config,PageId::Track)[6].parameter));
+    auto placements=TileEngine::placements(PageId::Dash,config);
+    TEST_ASSERT_EQUAL_UINT32(7,placements.count);
+    bool found=false;
+    for(std::size_t i=0;i<placements.count;++i)if(placements.items[i].address.slot==6) {
+        TEST_ASSERT_EQUAL_INT16(76,placements.items[i].geometry.x);
+        TEST_ASSERT_EQUAL_INT16(156,placements.items[i].geometry.y);
+        found=true;
+    }
+    TEST_ASSERT_TRUE(found);
+    VehicleState state;state.set(ParameterId::OilPressure,1.f,100);
+    TileWarningEngine warnings;warnings.evaluate(config,state,100);
+    TEST_ASSERT_TRUE(warnings.isHighlighted({PageId::Dash,6}));
+    activeTiles(config,PageId::Dash)[6].visible=false;
+    TEST_ASSERT_EQUAL_UINT32(6,TileEngine::placements(PageId::Dash,config).count);
+}
+
 // Catches page selections sharing storage, presets losing saved tile state,
 // geometry overflowing the screen, scale coupling to shift thresholds, and
 // dormant presets incorrectly raising warnings.
@@ -188,6 +213,7 @@ void test_sixth_layout_has_independent_editable_rows_and_packs_hidden_tiles_down
 
 int main(int, char**) {
     UNITY_BEGIN();
+    RUN_TEST(test_analog_center_is_an_independent_editable_tile_and_can_be_hidden);
     RUN_TEST(test_sixth_layout_has_independent_editable_rows_and_packs_hidden_tiles_down);
     RUN_TEST(test_each_page_can_assign_any_preset_and_keep_its_tile_bank);
     RUN_TEST(test_all_five_presets_fit_both_pages_without_overlapping_navigation);
