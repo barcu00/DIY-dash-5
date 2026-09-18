@@ -48,7 +48,7 @@ void TileView::create(lv_obj_t* parent, TileAddress address, lv_event_cb_t callb
     stripe_ = lv_obj_create(root_);
     lv_obj_set_pos(stripe_, 0, 0);
     lv_obj_set_size(stripe_, 4, 88);
-    lv_obj_set_style_bg_color(stripe_, UiTheme::blue(), 0);
+    lv_obj_set_style_bg_color(stripe_, UiTheme::border(), 0);
     lv_obj_set_style_border_width(stripe_, 0, 0);
     lv_obj_clear_flag(stripe_, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
     title_ = lv_label_create(root_);
@@ -96,7 +96,7 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
     lv_obj_set_pos(stripe_, row ? 6 : 4, row ? 7 : 5);
     lv_obj_set_size(stripe_, 4, geometry.height - (row ? 14 : 10));
     lv_obj_set_style_radius(stripe_, 2, 0);
-    lv_obj_set_style_bg_color(stripe_, UiTheme::blue(), 0);
+    lv_obj_set_style_bg_color(stripe_, UiTheme::border(), 0);
     if (hero) lv_obj_add_flag(stripe_, LV_OBJ_FLAG_HIDDEN);
     else lv_obj_clear_flag(stripe_, LV_OBJ_FLAG_HIDDEN);
     const lv_font_t* value_font = &race_digits_48;
@@ -322,7 +322,7 @@ void TileView::update(const TileConfig& config, const UnitSettings& units,
         lv_obj_set_style_bg_color(
             root_, lv_color_hex(presentation.background_rgb), 0);
         lv_obj_set_style_bg_color(
-            stripe_, UiTheme::blue(), 0);
+            stripe_, UiTheme::border(), 0);
         if (presentation.state == FlagTileState::Unavailable) {
             lv_obj_set_style_bg_opa(value_, LV_OPA_TRANSP, 0);
             lv_obj_set_style_pad_all(value_,0,0);

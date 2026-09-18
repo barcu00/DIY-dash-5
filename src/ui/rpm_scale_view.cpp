@@ -169,9 +169,9 @@ void RpmScaleView::drawScale(lv_event_t* event) {
     } else if(e) {
         arc(ctx,center,219,180,360,UiTheme::border(),1);arc(ctx,center,214,180,360,lv_color_hex(0x183A4B),1);
         line(ctx,point(root.x1+72,root.y1+318),point(root.x1+368,root.y1+318),lv_color_hex(0x183A4B),1);
-        line(ctx,point(root.x1+196,root.y1+318),point(root.x1+244,root.y1+318),UiTheme::blue(),2);
+        line(ctx,point(root.x1+196,root.y1+318),point(root.x1+244,root.y1+318),UiTheme::border(),2);
     } else if(curved) {
-        arc(ctx,strip_center,1214,251,289,UiTheme::blue(),1);
+        arc(ctx,strip_center,1214,251,289,UiTheme::border(),1);
         line(ctx,point(root.x1+392,root.y1+210),point(root.x1+392,root.y1+396),UiTheme::border(),1);
     }
     for(int rpm=0;rpm<=self->maximum_;rpm+=200) {
@@ -183,7 +183,8 @@ void RpmScaleView::drawScale(lv_event_t* event) {
             if(major) { auto p=polar(center,e ? 159:153,angle);if(analog)p.x+=rpm==0 ? -24:rpm==self->maximum_ ? 24:0;label(ctx,p.x,p.y-12,text,&lv_font_montserrat_24); }
         } else if(curved) {
             const float angle=start+span*f;
-            line(ctx,polar(strip_center,kStripRadius+4,angle),polar(strip_center,kStripRadius+(major ? 14:9),angle),zone(rpm,self->yellow_from_,self->red_from_),major ? 2:1);
+            const auto p=polar(strip_center,kStripRadius+4,angle);
+            line(ctx,p,point(p.x,p.y-(major ? 10:5)),zone(rpm,self->yellow_from_,self->red_from_),major ? 2:1);
             if(major) { const auto p=polar(strip_center,kStripRadius-49,angle);label(ctx,p.x,p.y-8,text); }
         } else {
             const int x=a.x1+4+static_cast<int>((lv_obj_get_width(self->indicator_)-8)*f);

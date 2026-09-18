@@ -68,6 +68,7 @@ private:
     void createNavigation(lv_obj_t* parent, Page active);
     void applyLayout(Page page, const AppConfig& config);
     void load(Page page);
+    void prepareDataPage(Page page);
     void openEditor(TileAddress address);
     void closeEditor();
     void saveEditor();
@@ -98,6 +99,10 @@ private:
     ShiftLightView dash_shift_{};
     ShiftLightView track_shift_{};
     UiUpdatePolicy update_policy_{};
+    VehicleState latest_state_{};
+    uint32_t latest_state_ms_ = 0U;
+    std::array<bool, AppConfig::kDashTileCount> dash_highlights_{};
+    std::array<bool, AppConfig::kLayoutTileCapacity> track_highlights_{};
     ParameterCapabilities capabilities_{};
     DataSource active_source_ = DataSource::Demo;
     const CanProfile* active_profile_ = nullptr;

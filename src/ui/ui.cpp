@@ -543,6 +543,12 @@ void Ui::createSystemSettings(lv_obj_t* panel) {
 void Ui::update(const VehicleState& state, const RuntimeDiagnostics& diagnostics,
                 const UiRuntimeStatus& status, const AppConfig& config,
                 TileWarningEngine& warnings) {
+    latest_state_ = state;
+    latest_state_ms_ = diagnostics.uptime_ms;
+    for (std::size_t i=0; i<dash_highlights_.size(); ++i)
+        dash_highlights_[i] = warnings.isHighlighted({PageId::Dash, static_cast<uint8_t>(i)});
+    for (std::size_t i=0; i<track_highlights_.size(); ++i)
+        track_highlights_[i] = warnings.isHighlighted({PageId::Track, static_cast<uint8_t>(i)});
     if ((update_policy_.shouldUpdateData(PageId::Dash) ||
          update_policy_.shouldUpdateData(PageId::Track)) &&
         update_policy_.allowLayoutUpdates() &&
@@ -602,6 +608,8 @@ void Ui::update(const VehicleState& state, const RuntimeDiagnostics& diagnostics
 
 void Ui::updateShiftLight(const VehicleState& state, uint32_t now_ms,
                           const ShiftLightConfig& config) {
+    latest_state_ = state;
+    latest_state_ms_ = now_ms;
     if (!update_policy_.allowShiftLightUpdates()) return;
     const SignalValue& rpm = state.get(ParameterId::Rpm);
     const uint16_t rpm_value = rpm.valid && rpm.value > 0.0f
@@ -630,7 +638,30 @@ void Ui::tileEvent(lv_event_t* event) {
     auto* tile = static_cast<TileView*>(lv_event_get_user_data(event));
     if (tile) instance_->openEditor(tile->address());
 }
+void Ui::prepareDataPage(Page page) {
+    if (!config_) return;
+    if (update_policy_.takeLayoutDirty()) {
+        // Mutate both retained pages while the settings/editor screen is still visible.
+        applyLayout(Page::Dash, *config_);
+        applyLayout(Page::Track, *config_);
+    }
+    const PageId id = page == Page::Dash ? PageId::Dash : PageId::Track;
+    const auto configs = activeTiles(*config_, id);
+    auto refresh = [&](auto& views, const auto& highlights) {
+        for (std::size_t i=0; i<configs.size(); ++i)
+            views[i].update(configs[i], config_->units, latest_state_,
+                capabilities_.supports(configs[i].parameter), highlights[i], latest_state_ms_);
+    };
+    if (page == Page::Dash) refresh(dash_tiles_, dash_highlights_);
+    else refresh(track_tiles_, track_highlights_);
+    const auto& rpm = latest_state_.get(ParameterId::Rpm);
+    const uint16_t rpm_value = rpm.valid && rpm.value > 0 ? static_cast<uint16_t>(rpm.value) : 0;
+    (page == Page::Dash ? dash_rpm_ : track_rpm_).update(rpm, latest_state_ms_, config_->shift);
+    (page == Page::Dash ? dash_shift_ : track_shift_).update(rpm_value, rpm.valid, latest_state_ms_, config_->shift);
+    lv_obj_update_layout(page == Page::Dash ? dash_ : track_);
+}
 void Ui::load(Page page) {
+    if (page != Page::Settings) prepareDataPage(page);
     current_page_ = page;
     update_policy_.activate(page == Page::Dash ? PageId::Dash :
                             (page == Page::Track ? PageId::Track : PageId::Settings));

@@ -3,7 +3,7 @@
 namespace UiTheme {
 inline lv_color_t background() { return lv_color_hex(0x000203); }
 inline lv_color_t panel() { return background(); }
-inline lv_color_t border() { return lv_color_hex(0x45677C); }
+inline lv_color_t border() { return lv_color_hex(0x707780); }
 inline lv_color_t text() { return lv_color_hex(0xF8FBFF); }
 inline lv_color_t muted() { return lv_color_hex(0xA7BED4); }
 inline lv_color_t blue() { return lv_color_hex(0x00D5F4); }
