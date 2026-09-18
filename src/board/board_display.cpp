@@ -6,6 +6,7 @@
 #include <cstring>
 
 #include "board/display_tuning.h"
+#include "board/rgb_sdk_requirements.h"
 
 using esp_panel::board::Board;
 using esp_panel::drivers::TouchPoint;
