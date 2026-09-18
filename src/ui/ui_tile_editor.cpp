@@ -182,18 +182,35 @@ void Ui::syncEditorDraftFromControls() {
     const auto id=editor_.draft().tile.parameter;
     if(parameterDescriptor(id).kind==ParameterKind::Flag)return;
     editor_.setDecimals(lv_dropdown_get_selected(editor_decimals_));
-    TileWarningConfig warning;
-    if(!warningFromPresented(id,config_->units,lv_obj_has_state(editor_warning_,LV_STATE_CHECKED),
+    const auto old_warning=editor_.draft().tile.warning;
+    const auto presented=[&](float v){return UnitPresenter::present(id,v,config_->units).value;};
+    const bool threshold_changed=lv_spinbox_get_value(editor_threshold_)!=std::lround(presented(old_warning.threshold_native)*10);
+    const float old_reset=old_warning.threshold_native+(old_warning.direction==WarningDirection::Above ? -old_warning.hysteresis_native:old_warning.hysteresis_native);
+    const bool reset_changed=lv_spinbox_get_value(editor_hysteresis_)!=std::lround(presented(old_reset)*10);
+    const uint16_t delay=lv_spinbox_get_value(editor_delay_)==std::lround(old_warning.delay_ms/100.f)
+        ? old_warning.delay_ms:static_cast<uint16_t>(std::lround(fieldValue(editor_delay_)*1000));
+    TileWarningConfig warning=old_warning;
+    bool warning_valid=true;
+    if(!threshold_changed && !reset_changed) {
+        warning.enabled=lv_obj_has_state(editor_warning_,LV_STATE_CHECKED);
+        warning.delay_ms=delay;
+    } else warning_valid=warningFromPresented(id,config_->units,lv_obj_has_state(editor_warning_,LV_STATE_CHECKED),
         static_cast<WarningDirection>(lv_dropdown_get_selected(editor_direction_)),fieldValue(editor_threshold_),fieldValue(editor_hysteresis_),
-        static_cast<uint16_t>(std::lround(fieldValue(editor_delay_)*1000)),warning)) {
+        delay,warning);
+    if(!warning_valid) {
         editor_controls_valid_=false;lv_label_set_text(editor_message_,"Check threshold / reset value");
     } else editor_.setWarning(warning);
     if(parameterDescriptor(id).native_unit==NativeUnit::Celsius) {
+        const auto old_bar=editor_.draft().tile.temperature_bar;
+        const auto native=[&](lv_obj_t* field,float original) {
+            return lv_spinbox_get_value(field)==std::lround(presented(original)*10)
+                ? original:UnitPresenter::toNative(id,fieldValue(field),config_->units);
+        };
         TemperatureBarConfig bar;bar.enabled=lv_obj_has_state(editor_temperature_bar_,LV_STATE_CHECKED);
-        bar.minimum_native=UnitPresenter::toNative(id,fieldValue(editor_temperature_minimum_),config_->units);
-        bar.ready_native=UnitPresenter::toNative(id,fieldValue(editor_temperature_ready_),config_->units);
-        bar.red_native=UnitPresenter::toNative(id,fieldValue(editor_temperature_red_),config_->units);
-        bar.maximum_native=UnitPresenter::toNative(id,fieldValue(editor_temperature_maximum_),config_->units);
+        bar.minimum_native=native(editor_temperature_minimum_,old_bar.minimum_native);
+        bar.ready_native=native(editor_temperature_ready_,old_bar.ready_native);
+        bar.red_native=native(editor_temperature_red_,old_bar.red_native);
+        bar.maximum_native=native(editor_temperature_maximum_,old_bar.maximum_native);
         editor_.setTemperatureBar(bar);
         if(!(bar.minimum_native<bar.ready_native && bar.ready_native<bar.red_native && bar.red_native<=bar.maximum_native)) {
             editor_controls_valid_=false;lv_label_set_text(editor_message_,"Require MIN < READY < RED <= MAX");

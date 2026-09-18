@@ -43,7 +43,7 @@ void Ui::openNumericEntry(size_t index) {
     label(auxiliary_screen_,b.title,20,14,&lv_font_montserrat_24);
     char range[90];std::snprintf(range,sizeof(range),"Range: %.*f to %.*f %s",b.decimals,static_cast<double>(b.minimum),b.decimals,static_cast<double>(b.maximum),b.unit);
     label(auxiliary_screen_,range,20,53,&lv_font_montserrat_14,UiTheme::muted());
-    numeric_text_=label(auxiliary_screen_,numeric_.text(),20,84,&lv_font_montserrat_24);
+    numeric_text_=label(auxiliary_screen_,numeric_.text(),20,80,&lv_font_montserrat_32);
     lv_obj_set_width(numeric_text_,650);lv_obj_set_style_text_align(numeric_text_,LV_TEXT_ALIGN_CENTER,0);
     if(b.minimum<0)button(auxiliary_screen_,"+ / -",686,74,94,52,numericKeyEvent,'-');
     const char* keys[]={"1","2","3","4","5","6","7","8","9",".","0","<"};
