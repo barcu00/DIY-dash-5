@@ -17,9 +17,18 @@ static lv_obj_t* find(lv_obj_t* root,const lv_obj_class_t* type,const char* text
     }
     return nullptr;
 }
+static lv_obj_t* button(lv_obj_t* root,const char* text) {
+    if(lv_obj_check_type(root,&lv_btn_class)) {
+        auto* label=find(root,&lv_label_class,text);if(label)return root;
+    }
+    for(uint32_t i=0;i<lv_obj_get_child_cnt(root);++i) {
+        auto* found=button(lv_obj_get_child(root,i),text);if(found)return found;
+    }
+    return nullptr;
+}
 static void click(const char* text) {
-    auto* label=find(lv_scr_act(),&lv_label_class,text);assert(label);
-    lv_event_send(lv_obj_get_parent(label),LV_EVENT_CLICKED,nullptr);
+    auto* target=button(lv_scr_act(),text);assert(target);
+    lv_event_send(target,LV_EVENT_CLICKED,nullptr);
 }
 static void flush(lv_disp_drv_t* driver,const lv_area_t*,lv_color_t*) { lv_disp_flush_ready(driver); }
 int main(int argc,char**) {
@@ -47,7 +56,7 @@ int main(int argc,char**) {
         assert(find(lv_scr_act(),&lv_label_class,"TILE SETTINGS"));
         auto* visible=find(lv_scr_act(),&lv_checkbox_class);assert(visible);
         lv_obj_clear_state(visible,LV_STATE_CHECKED);
-        click("SAVE");ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
+        click("SAVE TILE");ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
         config=request.candidate;ui.completeConfigCommit(request.revision,true);
         assert(lv_scr_act()==dash);
         assert(lv_obj_has_flag(tile,LV_OBJ_FLAG_HIDDEN) && "Saved tile visibility applied after screen return");
