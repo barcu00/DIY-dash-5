@@ -34,8 +34,10 @@ static void click(const char* text) {
     auto* target=button(lv_scr_act(),text);assert(target);
     lv_event_send(target,LV_EVENT_CLICKED,nullptr);
 }
-static void flush(lv_disp_drv_t* driver,const lv_area_t*,lv_color_t* pixels) {
-    std::memcpy(captured,pixels,sizeof(captured));lv_disp_flush_ready(driver);
+static void flush(lv_disp_drv_t* driver,const lv_area_t* area,lv_color_t* pixels) {
+    if(driver->direct_mode)std::memcpy(captured,pixels,sizeof(captured));
+    else for(int y=area->y1;y<=area->y2;y++)for(int x=area->x1;x<=area->x2;x++)captured[y*800+x]=*pixels++;
+    lv_disp_flush_ready(driver);
 }
 static void screenshot(const char* name) {
     if(!capture_folder)return;
@@ -49,7 +51,7 @@ int main(int argc,char** argv) {
     if(argc>2)capture_folder=argv[2];
     lv_init();lv_disp_draw_buf_t buffer;lv_disp_draw_buf_init(&buffer,buffers[0],buffers[1],800*480);
     lv_disp_drv_t driver;lv_disp_drv_init(&driver);driver.hor_res=800;driver.ver_res=480;
-    driver.draw_buf=&buffer;driver.direct_mode=1;driver.flush_cb=flush;lv_disp_drv_register(&driver);
+    driver.draw_buf=&buffer;driver.direct_mode=argc>3 && !std::strcmp(argv[3],"--partial") ? 0:1;driver.flush_cb=flush;lv_disp_drv_register(&driver);
     AppConfig config=AppConfig::defaults();BoardDisplay board;Ui ui;
     const bool center=argc>1 && !std::strcmp(argv[1],"--center");
     const bool track=argc>1 && !std::strcmp(argv[1],"--track");
@@ -155,6 +157,16 @@ int main(int argc,char** argv) {
         assert(lv_obj_get_width(lv_obj_get_child(dash,1))==784 && "First visible frame still uses the old layout");
         assert(find(dash,&lv_label_class,"6840") && "RPM missing from first frame");
         std::puts("Layout return first-frame test passed");
+    } else if(argc>1 && !std::strcmp(argv[1],"--retry")) {
+        auto* tile=lv_obj_get_child(dash,2);lv_event_send(tile,LV_EVENT_LONG_PRESSED,nullptr);
+        auto* editor=lv_scr_act();auto* visible=find(editor,&lv_checkbox_class);lv_obj_clear_state(visible,LV_STATE_CHECKED);
+        click("SAVE TILE");ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
+        ui.completeConfigCommit(request.revision,false);
+        assert(lv_scr_act()==editor && config.dash_tiles[0].visible);
+        assert(!lv_obj_has_state(button(editor,"SAVE TILE"),LV_STATE_DISABLED));
+        click("SAVE TILE");assert(ui.takeConfigCommit(request));config=request.candidate;ui.completeConfigCommit(request.revision,true);
+        assert(lv_scr_act()==dash && !config.dash_tiles[0].visible);
+        std::puts("Failed tile save stays editable and retries transactionally");
     } else if(center) {
         auto* tile=lv_obj_get_child(dash,8); // configurable Analog slot 6
         lv_event_send(tile,LV_EVENT_LONG_PRESSED,nullptr);
