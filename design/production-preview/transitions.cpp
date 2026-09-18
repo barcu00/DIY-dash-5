@@ -46,7 +46,17 @@ int main(int argc,char** argv) {
     RuntimeDiagnostics diagnostics{};UiRuntimeStatus status{};TileWarningEngine warnings;
     ui.update(state,diagnostics,status,config,warnings);ui.updateShiftLight(state,0,config.shift);
     auto* dash=lv_scr_act();
-    if(argc==1 || track) {
+    if(argc>1 && !std::strcmp(argv[1],"--editor")) {
+        lv_event_send(lv_obj_get_child(dash,2),LV_EVENT_LONG_PRESSED,nullptr);
+        assert(button(lv_scr_act(),"DATA") && "Missing full-screen editor tabs");
+        click("WARNING");
+        assert(button(lv_scr_act(),"TEST WARNING"));
+        click("DATA");click("CANCEL");assert(lv_scr_act()==dash);
+        ConfigCommitRequest request;assert(!ui.takeConfigCommit(request));
+        click("SETTINGS");click("RPM & SHIFT LIGHT");
+        assert(find(lv_scr_act(),&lv_label_class,"RPM SCALE MAX"));
+        std::puts("Tabbed editor cancel and unified RPM navigation passed");
+    } else if(argc==1 || track) {
         if(track) { click("TRACK");dash=lv_scr_act(); }
         click("SETTINGS");click("LAYOUTS");
         auto* dropdown=find(lv_scr_act(),&lv_dropdown_class);assert(dropdown);

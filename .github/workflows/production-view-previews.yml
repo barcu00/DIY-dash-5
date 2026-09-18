@@ -29,6 +29,9 @@ jobs:
       - name: Check first visible frame after layout selection
         if: success() || failure()
         run: /tmp/ui-transitions
+      - name: Check tabbed editor and unified RPM settings
+        if: success() || failure()
+        run: /tmp/ui-transitions --editor
       - name: Check first visible frame after tile save
         if: success() || failure()
         run: /tmp/ui-transitions --save
