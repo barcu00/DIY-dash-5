@@ -65,7 +65,7 @@ void RpmScaleView::apply(DashboardLayout layout,uint16_t maximum) {
     lv_obj_set_pos(root_,side ? 152:8,side ? 16:8);lv_obj_set_size(root_,dial(layout) ? 448:side ? 640:784,side ? 292:414);
     lv_obj_set_style_border_width(root_,side ? 1:0,0);lv_obj_set_style_border_color(root_,UiTheme::border(),0);lv_obj_set_style_radius(root_,7,0);
     lv_obj_set_pos(indicator_,side ? 16:0,side ? 50:0);lv_obj_set_size(indicator_,dial(layout) ? 448:side ? 608:784,dial(layout) ? 414:side ? 30:150);
-    if(dial(layout)) {
+    if(layout==DashboardLayout::ModernMotorsport) {
         lv_obj_clear_flag(value_,LV_OBJ_FLAG_HIDDEN);lv_obj_clear_flag(caption_,LV_OBJ_FLAG_HIDDEN);
         lv_obj_set_width(value_,280);lv_label_set_text(value_,"---");const bool e=layout==DashboardLayout::ModernMotorsport;
         lv_obj_align(value_,LV_ALIGN_TOP_MID,-4,e ? 174:166);lv_obj_align(caption_,LV_ALIGN_TOP_MID,-4,e ? 274:263);
@@ -111,6 +111,16 @@ void RpmScaleView::invalidateModernBand() {
                     static_cast<lv_coord_t>(a.x1+437),static_cast<lv_coord_t>(a.y1+277)};
     lv_obj_invalidate_area(indicator_,&dirty);
 }
+void RpmScaleView::invalidateAnalogBand() {
+    lv_area_t a;lv_obj_get_coords(indicator_,&a);
+    // Three clipped bands cover the 270-degree ring without dirtying center digits.
+    const int bands[][4]={{8,4,432,124},{8,125,124,365},{316,125,432,365}};
+    for(const auto& b:bands) {
+        lv_area_t dirty{static_cast<lv_coord_t>(a.x1+b[0]),static_cast<lv_coord_t>(a.y1+b[1]),
+                        static_cast<lv_coord_t>(a.x1+b[2]),static_cast<lv_coord_t>(a.y1+b[3])};
+        lv_obj_invalidate_area(indicator_,&dirty);
+    }
+}
 void RpmScaleView::invalidateBlocks(uint16_t previous,uint16_t current) {
     lv_area_t a;lv_obj_get_coords(indicator_,&a);
     if(layout_!=DashboardLayout::StripStyle) {
@@ -140,7 +150,10 @@ void RpmScaleView::update(const SignalValue& raw,uint32_t now_ms,const ShiftLigh
     if(!due && flashing==flashing_ && red==red_phase_)return;
     const auto rpm=filter_.sample(raw,now_ms,50U);const auto fill=rpmScaleFill(rpm.value,rpm.valid,maximum_);
     if(!initialized_ || rpm.valid!=valid_ || fill!=fill_ || flashing!=flashing_ || red!=red_phase_) {
-        if(layout_==DashboardLayout::AnalogStyle) { invalidateNeedle(fill_);invalidateNeedle(fill); }
+        if(layout_==DashboardLayout::AnalogStyle) {
+            if(!initialized_ || rpm.valid!=valid_ || flashing!=flashing_ || red!=red_phase_)invalidateAnalogBand();
+            invalidateNeedle(fill_);invalidateNeedle(fill);
+        }
         else if(!initialized_ || rpm.valid!=valid_ || flashing!=flashing_ || red!=red_phase_) {
             if(layout_==DashboardLayout::ModernMotorsport)invalidateModernBand();
             else lv_obj_invalidate(indicator_);
@@ -151,7 +164,7 @@ void RpmScaleView::update(const SignalValue& raw,uint32_t now_ms,const ShiftLigh
         // at each phase transition or every moving-cap sample.
         fill_=fill;valid_=rpm.valid;flashing_=flashing;red_phase_=red;
     }
-    if(dial(layout_) && due) {
+    if(layout_==DashboardLayout::ModernMotorsport && due) {
         char text[16]="---";if(rpm.valid)std::snprintf(text,sizeof(text),"%.0f",static_cast<double>(rpm.value));
         if(std::strcmp(text,last_text_.data())) { lv_label_set_text(value_,text);std::snprintf(last_text_.data(),last_text_.size(),"%s",text); }
     }
@@ -165,7 +178,6 @@ void RpmScaleView::drawScale(lv_event_t* event) {
     const float span=stripSpan(),start=270-span/2;
     if(analog) {
         arc(ctx,center,207,135,405,UiTheme::border(),1);
-        for(int i=0;i<54;i++)arc(ctx,center,202,135+i*5,139+i*5,zone(self->maximum_*(i+.5f)/54,self->yellow_from_,self->red_from_),10);
     } else if(e) {
         arc(ctx,center,219,180,360,UiTheme::border(),1);arc(ctx,center,214,180,360,lv_color_hex(0x183A4B),1);
         line(ctx,point(root.x1+72,root.y1+318),point(root.x1+368,root.y1+318),lv_color_hex(0x183A4B),1);
@@ -199,12 +211,18 @@ void RpmScaleView::drawIndicator(lv_event_t* event) {
     auto* self=static_cast<RpmScaleView*>(lv_event_get_user_data(event));auto* ctx=lv_event_get_draw_ctx(event);
     lv_area_t a;lv_obj_get_coords(self->indicator_,&a);const auto dim=lv_color_hex(0x151D22);
     if(self->layout_==DashboardLayout::AnalogStyle) {
+        const auto center=point(a.x1+220,a.y1+212);
+        for(int i=0;i<54;i++) {
+            const auto color=self->flashing_ ? (self->red_phase_ ? UiTheme::red():dim)
+                :zone(self->maximum_*(i+.5f)/54,self->yellow_from_,self->red_from_);
+            arc(ctx,center,202,135+i*5,139+i*5,color,10);
+        }
         if(!self->valid_)return;
-        const auto center=point(a.x1+220,a.y1+212);const float angle=135+270*self->fill_/1000.f,radians=angle*kPi/180.f;
+        const float angle=135+270*self->fill_/1000.f,radians=angle*kPi/180.f;
         const auto out=polar(center,205,angle),in=polar(center,175,angle);const float tx=-std::sin(radians)*5,ty=std::cos(radians)*5;
         const lv_point_t p[]={point(std::lround(out.x+tx),std::lround(out.y+ty)),point(std::lround(out.x-tx),std::lround(out.y-ty)),
             point(std::lround(in.x-tx),std::lround(in.y-ty)),point(std::lround(in.x+tx),std::lround(in.y+ty))};
-        lv_draw_rect_dsc_t d;lv_draw_rect_dsc_init(&d);d.bg_color=self->flashing_ ? (self->red_phase_ ? UiTheme::red():dim):UiTheme::text();
+        lv_draw_rect_dsc_t d;lv_draw_rect_dsc_init(&d);d.bg_color=UiTheme::text();
         lv_draw_polygon(ctx,&d,p,4);return;
     }
     if(self->layout_==DashboardLayout::ModernMotorsport) {

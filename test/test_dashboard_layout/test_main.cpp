@@ -35,7 +35,7 @@ void test_analog_center_is_an_independent_editable_tile_and_can_be_hidden() {
 // dormant presets incorrectly raising warnings.
 void test_each_page_can_assign_any_preset_and_keep_its_tile_bank() {
     AppConfig config = AppConfig::defaults();
-    const std::size_t counts[] = {14, 12, 6, 8, 8};
+    const std::size_t counts[] = {14, 12, 7, 8, 8};
     for (std::size_t i = 0; i < 5; ++i) {
         auto layout = static_cast<DashboardLayout>(i);
         config.dash_layout = layout;
@@ -122,7 +122,7 @@ void test_editor_and_warnings_use_only_the_selected_bank() {
     TEST_ASSERT_TRUE(editor.applyTo(config));
     TEST_ASSERT_TRUE(activeTiles(config, PageId::Dash)[1].warning.enabled);
     TEST_ASSERT_FALSE(config.dash_tiles[1].warning.enabled);
-    TEST_ASSERT_FALSE(editor.open({PageId::Dash, 6}, config));
+    TEST_ASSERT_FALSE(editor.open({PageId::Dash, 7}, config));
     VehicleState state;
     state.set(ParameterId::OilPressure, 1.0f, 100);
     TileWarningEngine warnings;

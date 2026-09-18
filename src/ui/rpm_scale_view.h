@@ -20,6 +20,7 @@ private:
     void invalidateNeedle(uint16_t fill);
     void invalidateArc(uint16_t previous, uint16_t current);
     void invalidateModernBand();
+    void invalidateAnalogBand();
     void invalidateBlocks(uint16_t previous, uint16_t current);
     std::array<std::array<lv_point_t, 4>, 36> strip_blocks_{};
     lv_obj_t* root_ = nullptr;

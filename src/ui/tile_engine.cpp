@@ -87,6 +87,10 @@ TilePlacementList TileEngine::placements(PageId page,
         for (int i = 0; i < 6; ++i)
             rows[i] = {464, static_cast<int16_t>(16 + 68 * i), 328, 62, TileSize::CompactRow};
         appendGroup(output, page, tiles, 0U, TileGroup::DashRight, rows);
+        if (layout == DashboardLayout::AnalogStyle) {
+            const std::array<TileGeometry,1> center{{{76,156,304,156,TileSize::Hero}}};
+            appendGroup(output,page,tiles,6U,TileGroup::DashWide,center);
+        }
     } else if (layout == DashboardLayout::SideGear) {
         const std::array<TileGeometry, 1> gear{{{8, 16, 136, 292, TileSize::GearHero}}};
         const std::array<TileGeometry, 2> main{{

@@ -51,7 +51,7 @@ const char* dashboardLayoutName(DashboardLayout layout) {
 }
 
 std::size_t dashboardLayoutSlotCount(DashboardLayout layout) {
-    constexpr std::size_t counts[] = {14U, 12U, 6U, 8U, 8U, 6U};
+    constexpr std::size_t counts[] = {14U, 12U, 7U, 8U, 8U, 6U};
     return validDashboardLayout(layout) ? counts[static_cast<std::size_t>(layout)] : 0U;
 }
 
@@ -88,7 +88,7 @@ void initializeAlternateLayouts(AppConfig& config) {
             } else {
                 constexpr ParameterId analog[] = {ParameterId::Speed,
                     ParameterId::OilPressure, ParameterId::OilTemperature,
-                    ParameterId::Clt, ParameterId::Map, ParameterId::Lambda};
+                    ParameterId::Clt, ParameterId::Map, ParameterId::Lambda, ParameterId::Rpm};
                 constexpr ParameterId side[] = {ParameterId::Gear, ParameterId::Rpm,
                     ParameterId::Speed, ParameterId::OilPressure,
                     ParameterId::OilTemperature, ParameterId::Clt,
