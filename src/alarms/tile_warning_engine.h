@@ -6,7 +6,7 @@
 #include <optional>
 
 #include "settings/app_config.h"
-#include "telemetry/vehicle_state.h"
+#include "telemetry/composite_telemetry_view.h"
 
 enum class TileAlarmPhase : uint8_t {
     Safe,
@@ -25,6 +25,8 @@ struct WarningModalData {
 
 class TileWarningEngine {
 public:
+    void evaluate(const AppConfig& config, const CompositeTelemetryView& state,
+                  uint32_t now_ms);
     void evaluate(const AppConfig& config, const VehicleState& state,
                   uint32_t now_ms);
     std::optional<WarningModalData> nextModal() const;

@@ -227,7 +227,8 @@ void Ui::refreshEditorPreview() {
         lv_obj_set_style_bg_color(editor_decimal_buttons_[i],i==t.decimals ? UiTheme::blue():UiTheme::background(),0);
         lv_obj_set_style_text_color(lv_obj_get_child(editor_decimal_buttons_[i],0),i==t.decimals ? UiTheme::background():UiTheme::text(),0);
     }
-    const auto& signal=latest_state_.get(t.parameter);const auto value=UnitPresenter::present(t.parameter,signal.value,config_->units);
+    const CompositeTelemetryView state(latest_state_,latest_racechrono_);
+    const auto& signal=state.get(t.parameter);const auto value=UnitPresenter::present(t.parameter,signal.value,config_->units);
     char text[64]="---";
     if(signal.valid && (capabilities_.supports(t.parameter) ||
                         isRaceChronoParameter(t.parameter))) {

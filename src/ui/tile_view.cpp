@@ -257,7 +257,7 @@ void TileView::arrangeUnit(const char* text, bool is_flag) {
     }
 }
 void TileView::update(const TileConfig& config, const UnitSettings& units,
-                      const VehicleState& state, bool supported,
+                      const CompositeTelemetryView& state, bool supported,
                       bool warning_active,
                       uint32_t now_ms) {
     if (!root_ || lv_obj_has_flag(root_, LV_OBJ_FLAG_HIDDEN)) return;

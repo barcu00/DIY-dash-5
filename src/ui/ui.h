@@ -9,6 +9,7 @@
 #include "ecu/parameter_capabilities.h"
 #include "settings/app_config.h"
 #include "telemetry/vehicle_state.h"
+#include "telemetry/composite_telemetry_view.h"
 #include "ui/settings_commit_model.h"
 #include "ui/parameter_options.h"
 #include "ui/tile_editor_model.h"
@@ -30,7 +31,8 @@ struct UiRuntimeStatus {
 class Ui {
 public:
     void begin(AppConfig& config, BoardDisplay& board);
-    void update(const VehicleState& state, const RuntimeDiagnostics& diagnostics,
+    void update(const CompositeTelemetryView& state,
+                const RuntimeDiagnostics& diagnostics,
                 const UiRuntimeStatus& status, const AppConfig& config,
                 TileWarningEngine& warnings);
     void updateShiftLight(const VehicleState& state, uint32_t now_ms,
@@ -117,6 +119,7 @@ private:
     ShiftLightView track_shift_{};
     UiUpdatePolicy update_policy_{};
     VehicleState latest_state_{};
+    RaceChronoTelemetry latest_racechrono_{};
     uint32_t latest_state_ms_ = 0U;
     std::array<bool, AppConfig::kDashTileCount> dash_highlights_{};
     std::array<bool, AppConfig::kLayoutTileCapacity> track_highlights_{};

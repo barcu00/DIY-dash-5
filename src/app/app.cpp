@@ -26,8 +26,9 @@ bool App::begin() {
         config_.can.bitrate, config_.can.timeout_ms,
         telemetry_.mappingCount(),
         can_.receivedFrames(), can_.rejectedFrames()};
-    warnings_.evaluate(config_, telemetry_.state(), now);
-    ui_.update(telemetry_.state(), board_.diagnostics(), status, config_, warnings_);
+    const CompositeTelemetryView combined(telemetry_.state(), racechrono_);
+    warnings_.evaluate(config_, combined, now);
+    ui_.update(combined, board_.diagnostics(), status, config_, warnings_);
     ui_.updateShiftLight(telemetry_.state(), now, config_.shift);
     board_.unlock();
 
@@ -68,7 +69,8 @@ void App::loop() {
     telemetry_.update(now);
 
     if (frame_scheduler_.takeShift(now)) {
-        warnings_.evaluate(config_, telemetry_.state(), now);
+        const CompositeTelemetryView combined(telemetry_.state(), racechrono_);
+        warnings_.evaluate(config_, combined, now);
         if (board_.lock()) {
             ui_.updateShiftLight(telemetry_.state(), now, config_.shift);
             board_.unlock();
@@ -83,8 +85,8 @@ void App::loop() {
                 config_.can.bitrate, config_.can.timeout_ms,
                 telemetry_.mappingCount(),
                 can_.receivedFrames(), can_.rejectedFrames()};
-            ui_.update(telemetry_.state(), board_.diagnostics(), status,
-                       config_, warnings_);
+            const CompositeTelemetryView combined(telemetry_.state(), racechrono_);
+            ui_.update(combined, board_.diagnostics(), status, config_, warnings_);
             board_.unlock();
         }
     }

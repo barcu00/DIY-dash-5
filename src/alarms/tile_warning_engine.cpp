@@ -78,7 +78,7 @@ float TileWarningEngine::priority(const RuntimeWarning& runtime) {
 }
 
 void TileWarningEngine::evaluate(const AppConfig& config,
-                                 const VehicleState& state,
+                                 const CompositeTelemetryView& state,
                                  uint32_t now_ms) {
     for (std::size_t page = 0; page < 2U; ++page) {
         const auto layout = selectedLayout(config, page == 0U ? PageId::Dash : PageId::Track);
@@ -138,6 +138,13 @@ void TileWarningEngine::evaluate(const AppConfig& config,
             runtime.pending_since_ms = 0U;
         }
     }
+}
+
+void TileWarningEngine::evaluate(const AppConfig& config,
+                                 const VehicleState& state,
+                                 uint32_t now_ms) {
+    static const RaceChronoTelemetry empty_supplement;
+    evaluate(config, CompositeTelemetryView(state, empty_supplement), now_ms);
 }
 
 std::optional<WarningModalData> TileWarningEngine::nextModal() const {

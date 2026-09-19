@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <lvgl.h>
 #include "settings/app_config.h"
-#include "telemetry/vehicle_state.h"
+#include "telemetry/composite_telemetry_view.h"
 #include "ui/display_signal_filter.h"
 #include "ui/tile_layout.h"
 #include "ui/temperature_bar_model.h"
@@ -13,7 +13,7 @@ public:
     void apply(const TileConfig& config, const TileGeometry& geometry);
     void hide();
     void update(const TileConfig& config, const UnitSettings& units,
-                const VehicleState& state, bool supported,
+                const CompositeTelemetryView& state, bool supported,
                 bool warning_active,
                 uint32_t now_ms);
     TileAddress address() const;

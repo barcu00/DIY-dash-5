@@ -451,10 +451,12 @@ void Ui::createSystemSettings(lv_obj_t* panel) {
                    SettingsResetTarget::Factory)));
 }
 
-void Ui::update(const VehicleState& state, const RuntimeDiagnostics& diagnostics,
+void Ui::update(const CompositeTelemetryView& state,
+                const RuntimeDiagnostics& diagnostics,
                 const UiRuntimeStatus& status, const AppConfig& config,
                 TileWarningEngine& warnings) {
-    latest_state_ = state;
+    latest_state_ = state.engineState();
+    latest_racechrono_ = state.raceChronoState();
     latest_state_ms_ = diagnostics.uptime_ms;
     for (std::size_t i=0; i<dash_highlights_.size(); ++i)
         dash_highlights_[i] = warnings.isHighlighted({PageId::Dash, static_cast<uint8_t>(i)});
@@ -471,7 +473,8 @@ void Ui::update(const VehicleState& state, const RuntimeDiagnostics& diagnostics
         const auto tiles = activeTiles(config, PageId::Dash);
         for (std::size_t i = 0U; i < tiles.size(); ++i)
             dash_tiles_[i].update(tiles[i], config.units, state,
-                capabilities_.supports(tiles[i].parameter),
+                isRaceChronoParameter(tiles[i].parameter) ||
+                    capabilities_.supports(tiles[i].parameter),
                 warnings.isHighlighted({PageId::Dash, static_cast<uint8_t>(i)}),
                 diagnostics.uptime_ms);
     }
@@ -479,7 +482,8 @@ void Ui::update(const VehicleState& state, const RuntimeDiagnostics& diagnostics
         const auto tiles = activeTiles(config, PageId::Track);
         for (std::size_t i = 0U; i < tiles.size(); ++i)
             track_tiles_[i].update(tiles[i], config.units, state,
-                capabilities_.supports(tiles[i].parameter),
+                isRaceChronoParameter(tiles[i].parameter) ||
+                    capabilities_.supports(tiles[i].parameter),
                 warnings.isHighlighted({PageId::Track, static_cast<uint8_t>(i)}),
                 diagnostics.uptime_ms);
     }
@@ -558,10 +562,13 @@ void Ui::prepareDataPage(Page page) {
     }
     const PageId id = page == Page::Dash ? PageId::Dash : PageId::Track;
     const auto configs = activeTiles(*config_, id);
+    const CompositeTelemetryView state(latest_state_, latest_racechrono_);
     auto refresh = [&](auto& views, const auto& highlights) {
         for (std::size_t i=0; i<configs.size(); ++i)
-            views[i].update(configs[i], config_->units, latest_state_,
-                capabilities_.supports(configs[i].parameter), highlights[i], latest_state_ms_);
+            views[i].update(configs[i], config_->units, state,
+                isRaceChronoParameter(configs[i].parameter) ||
+                    capabilities_.supports(configs[i].parameter),
+                highlights[i], latest_state_ms_);
     };
     if (page == Page::Dash) refresh(dash_tiles_, dash_highlights_);
     else refresh(track_tiles_, track_highlights_);
