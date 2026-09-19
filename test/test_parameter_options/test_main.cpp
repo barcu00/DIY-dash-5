@@ -7,7 +7,7 @@
 #include "ecu/can_profile_registry.h"
 
 void test_tile_parameter_options_include_every_registered_parameter() {
-    char options[2048]{};
+    char options[8192]{};
 
     TEST_ASSERT_TRUE(ParameterOptions::write(options, sizeof(options)));
     TEST_ASSERT_EQUAL_STRING("RPM", std::strtok(options, "\n"));
@@ -19,7 +19,7 @@ void test_tile_parameter_options_include_every_registered_parameter() {
         ++count;
     }
     TEST_ASSERT_EQUAL_UINT32(parameterCount(), count);
-    TEST_ASSERT_EQUAL_STRING("CRUISE", last);
+    TEST_ASSERT_EQUAL_STRING("LEAN ANGLE", last);
 }
 
 void test_tile_parameter_options_report_truncation() {
@@ -31,24 +31,26 @@ void test_filtered_options_map_indexes_to_stable_parameter_ids() {
     const ParameterOptionList options = ParameterOptions::build(
         DataSource::Can, CanProfileRegistry::find("bmw_ms43_stock"),
         ParameterId::Rpm);
-    char text[2048]{};
+    char text[8192]{};
 
     TEST_ASSERT_TRUE(options.write(text, sizeof(text)));
-    TEST_ASSERT_EQUAL_UINT32(22U, options.count());
+    TEST_ASSERT_EQUAL_UINT32(55U, options.count());
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(ParameterId::Rpm),
                             static_cast<uint8_t>(options.parameterAt(0U)));
     TEST_ASSERT_TRUE(std::strstr(text, "CHECK ENGINE") != nullptr);
     TEST_ASSERT_TRUE(std::strstr(text, "LAMBDA") == nullptr);
+    TEST_ASSERT_TRUE(std::strstr(text, "LAP TIME") != nullptr);
+    TEST_ASSERT_TRUE(std::strstr(text, "SATELLITES") != nullptr);
 }
 
 void test_unsupported_saved_parameter_is_retained_and_labeled_in_english() {
     const ParameterOptionList options = ParameterOptions::build(
         DataSource::Can, CanProfileRegistry::find("bmw_ms43_stock"),
         ParameterId::Lambda);
-    char text[2048]{};
+    char text[8192]{};
 
     TEST_ASSERT_TRUE(options.write(text, sizeof(text)));
-    TEST_ASSERT_EQUAL_UINT32(23U, options.count());
+    TEST_ASSERT_EQUAL_UINT32(56U, options.count());
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(ParameterId::Lambda),
                             static_cast<uint8_t>(options.parameterAt(0U)));
     TEST_ASSERT_EQUAL_STRING("LAMBDA (UNAVAILABLE)", std::strtok(text, "\n"));

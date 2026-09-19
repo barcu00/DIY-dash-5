@@ -128,6 +128,27 @@ void test_extended_parameters_reuse_their_unit_family_settings() {
         UnitPresenter::present(ParameterId::Lambda2, 1.0f, settings).value);
 }
 
+void test_racechrono_units_have_clear_labels_and_speed_conversion() {
+    UnitSettings settings;
+    settings.speed = SpeedUnit::Mph;
+
+    TEST_ASSERT_EQUAL_STRING(
+        "s", UnitPresenter::present(ParameterId::RcLapTime, 82.345f, settings).unit);
+    TEST_ASSERT_EQUAL_STRING(
+        "m", UnitPresenter::present(ParameterId::RcLapDistance, 1200.0f, settings).unit);
+    TEST_ASSERT_EQUAL_STRING(
+        "Hz", UnitPresenter::present(ParameterId::RcDeviceUpdateRate, 10.0f, settings).unit);
+    TEST_ASSERT_EQUAL_STRING(
+        "g", UnitPresenter::present(ParameterId::RcLateralAcceleration, 1.2f, settings).unit);
+    TEST_ASSERT_EQUAL_STRING(
+        "deg", UnitPresenter::present(ParameterId::RcLatitude, 52.2297f, settings).unit);
+
+    const PresentedValue speed =
+        UnitPresenter::present(ParameterId::RcGpsSpeed, 100.0f, settings);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 62.1371192f, speed.value);
+    TEST_ASSERT_EQUAL_STRING("mph", speed.unit);
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_temperature_presents_fahrenheit_and_round_trips_to_celsius);
@@ -138,5 +159,6 @@ int main(int, char**) {
     RUN_TEST(test_unselected_unit_family_keeps_native_value_and_unit);
     RUN_TEST(test_extended_native_units_have_unambiguous_labels);
     RUN_TEST(test_extended_parameters_reuse_their_unit_family_settings);
+    RUN_TEST(test_racechrono_units_have_clear_labels_and_speed_conversion);
     return UNITY_END();
 }

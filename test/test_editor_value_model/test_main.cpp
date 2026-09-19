@@ -22,6 +22,7 @@ void test_category_mapping() {
     TEST_ASSERT_EQUAL(2,static_cast<int>(parameterCategory(ParameterId::OilPressure)));
     TEST_ASSERT_EQUAL(3,static_cast<int>(parameterCategory(ParameterId::CheckEngine)));
     TEST_ASSERT_EQUAL(0,static_cast<int>(parameterCategory(ParameterId::Rpm)));
+    TEST_ASSERT_EQUAL(4,static_cast<int>(parameterCategory(ParameterId::RcLapTime)));
 }
 #else
 void test_reset_temperature_uses_absolute_conversion() {TEST_FAIL_MESSAGE("Reset-value editing missing");}

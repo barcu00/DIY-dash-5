@@ -89,6 +89,24 @@ void test_registry_preserves_core_names_units_and_decimals() {
         "EGT 8", parameterDescriptor(ParameterId::Egt8).short_name);
 }
 
+void test_registry_describes_racechrono_units_and_precision() {
+    const auto& time = parameterDescriptor(ParameterId::RcLapTime);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(NativeUnit::Seconds),
+                            static_cast<uint8_t>(time.native_unit));
+    TEST_ASSERT_EQUAL_UINT8(3U, time.default_decimals);
+
+    const auto& latitude = parameterDescriptor(ParameterId::RcLatitude);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(NativeUnit::CoordinateDegrees),
+                            static_cast<uint8_t>(latitude.native_unit));
+    TEST_ASSERT_EQUAL_UINT8(5U, latitude.default_decimals);
+
+    const auto& acceleration =
+        parameterDescriptor(ParameterId::RcLateralAcceleration);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(NativeUnit::GForce),
+                            static_cast<uint8_t>(acceleration.native_unit));
+    TEST_ASSERT_EQUAL_UINT8(2U, acceleration.default_decimals);
+}
+
 void test_registry_returns_unknown_descriptor_for_invalid_id() {
     const ParameterDescriptor& descriptor =
         parameterDescriptor(static_cast<ParameterId>(255U));
@@ -104,6 +122,7 @@ int main(int, char**) {
     RUN_TEST(test_registry_describes_every_stable_parameter);
     RUN_TEST(test_numeric_ordinals_are_stable_and_flags_are_appended);
     RUN_TEST(test_registry_preserves_core_names_units_and_decimals);
+    RUN_TEST(test_registry_describes_racechrono_units_and_precision);
     RUN_TEST(test_registry_returns_unknown_descriptor_for_invalid_id);
     return UNITY_END();
 }
