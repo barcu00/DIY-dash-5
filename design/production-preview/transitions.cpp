@@ -135,6 +135,10 @@ int main(int argc,char** argv) {
         ConfigCommitRequest request;assert(!ui.takeConfigCommit(request));
         click("SETTINGS");click("RPM & SHIFT LIGHT");
         assert(find(lv_scr_act(),&lv_label_class,"RPM SCALE MAX"));
+        ui.update(state,diagnostics,status,config,warnings);
+        assert(!find(lv_scr_act(),&lv_label_class,"FLASH ENABLED") && "Duplicate flash toggle remains");
+        assert(!find(lv_scr_act(),&lv_label_class,"UI updates: 0") && "Runtime diagnostics overwrite RPM status");
+        assert(find(lv_scr_act(),&lv_label_class,"Colors follow YELLOW / RED thresholds; 12 LEDs retain 4/4/4 zones"));
         screenshot("rpm");
         click("10000 RPM");click("8");click("0");click("0");click("0");click("APPLY");
         assert(config.rpm_scale_max==8000 && config.shift.flash_rpm==7500);

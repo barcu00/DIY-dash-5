@@ -133,6 +133,17 @@ void test_zero_rpm_start_is_valid_and_lights_first_segment() {
         1U, litCount(ShiftLightModel::segments(0U, true, 0U, config)));
 }
 
+void test_flash_threshold_always_controls_flashing() {
+    const ShiftLightConfig legacy_disabled{5500U, 7000U, 7500U, 8000U, false};
+    const ShiftSegmentStates red =
+        ShiftLightModel::segments(8000U, true, 0U, legacy_disabled);
+    const ShiftSegmentStates dim =
+        ShiftLightModel::segments(8000U, true, 125U, legacy_disabled);
+
+    TEST_ASSERT_EQUAL_UINT32(12U, litCount(red));
+    TEST_ASSERT_EQUAL_UINT32(0U, litCount(dim));
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_rpm_below_start_keeps_every_segment_off);
@@ -144,5 +155,6 @@ int main(int, char**) {
     RUN_TEST(test_invalid_rpm_never_activates_flash);
     RUN_TEST(test_progressive_segments_use_four_fixed_positions_per_color);
     RUN_TEST(test_zero_rpm_start_is_valid_and_lights_first_segment);
+    RUN_TEST(test_flash_threshold_always_controls_flashing);
     return UNITY_END();
 }
