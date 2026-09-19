@@ -99,9 +99,10 @@ BAR tabs, a large numeric keypad, and a categorized capability-filtered paramete
 picker. Warning settings use an explicit RESET BELOW/ABOVE boundary. Untouched
 fields retain native precision when saving in PSI, kPa or Fahrenheit.
 TEST WARNING previews the modal and optionally pulses the buzzer without changing
-actual alarms. RPM & SHIFT LIGHT combines the shared scale, color/flash thresholds
-and one FLASH ENABLED switch. The redundant lower-right LED maximum field is not
-shown. Settings still save on exit;
+actual alarms. RPM & SHIFT LIGHT combines the shared scale, color/flash thresholds,
+a clearly labelled `12-LED FILL MAX` slider and one FLASH ENABLED switch. Fill max
+sets the RPM at which all 12 segments are lit; it is no longer an isolated lower-right
+field. Settings still save on exit;
 tile drafts commit only after successful storage. SDK XIP and VSYNC buffering remain unchanged.
 
 These are **actual production LVGL captures**, validated in direct and partial

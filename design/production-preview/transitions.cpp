@@ -155,9 +155,11 @@ int main(int argc,char** argv) {
         assert(!findContaining(lv_scr_act(),"UI updates:") && "Runtime diagnostics overwrite RPM status");
         assert(find(lv_scr_act(),&lv_label_class,"Colors follow YELLOW / RED thresholds; 12 LEDs retain 4/4/4 zones"));
         screenshot("rpm");
+        click("8000 RPM");click("9");click("0");click("0");click("0");click("APPLY");
+        assert(config.shift.max_rpm==9000);
         click("10000 RPM");click("8");click("0");click("0");click("0");click("APPLY");
         assert(config.rpm_scale_max==8000 && config.shift.flash_rpm==7500);
-        click("TRACK");assert(ui.takeConfigCommit(request));assert(request.candidate.rpm_scale_max==8000);
+        click("TRACK");assert(ui.takeConfigCommit(request));assert(request.candidate.rpm_scale_max==8000 && request.candidate.shift.max_rpm==9000);
         std::puts("Tabbed editor cancel and unified RPM navigation passed");
     } else if(argc==1 || track) {
         if(track) { click("TRACK");dash=lv_scr_act(); }

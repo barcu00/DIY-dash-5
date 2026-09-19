@@ -118,12 +118,13 @@ by leaving again.
   MS43 uses only stock receive-only CAN; OLM/custom `0x33C` is absent. Selecting `none`
   is the safe no-decoder state. A parameter not supplied by the active profile
   displays `---`.
-- RPM & SHIFT LIGHT contains RPM SCALE MAX, YELLOW FROM, RED FROM, and FLASH
-  FROM sliders shared by DASH and TRACK. Tap their values for keypad entry.
+- RPM & SHIFT LIGHT contains RPM SCALE MAX, YELLOW FROM, RED FROM, FLASH
+  FROM, and 12-LED FILL MAX sliders shared by DASH and TRACK. Tap their values
+  for keypad entry. 12-LED FILL MAX sets the RPM where every segment is lit.
   The scale spans 100-10000 RPM, starts at zero, and uses 100-RPM steps.
   A threshold outside the visible scale produces a status message rather than
-  silently changing the stored thresholds. The redundant lower-right 12-LED
-  maximum field is not displayed; existing 4/4/4 strip semantics remain.
+  silently changing the stored thresholds. Fill max is a normal fifth slider,
+  not a separate lower-right field; existing 4/4/4 strip semantics remain.
   Shift thresholds still satisfy `start < red < flash <= maximum`; editing a
   shift threshold normalizes dependent thresholds. This is not an ECU limiter.
 - FLASH ENABLED controls whether the complete strip alternates red/off at about

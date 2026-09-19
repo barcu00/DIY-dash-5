@@ -25,7 +25,7 @@
     "scrollable": false,
     "category_count": 6,
     "layout_slots_per_page": 6,
-    "shift_slider_count": 4,
+    "shift_slider_count": 5,
     "shift_flash_switch": true,
     "shift_step_rpm": 100,
     "temperature_bar_style": "continuous",

@@ -289,12 +289,13 @@ def settings_can_page():
 
 def settings_shift_page():
     image, draw = settings_shell("SHIFT LIGHT")
-    values = (("START RPM", "5500 RPM", 0.32),
-              ("RED RPM", "7000 RPM", 0.43),
-              ("FLASH RPM", "7500 RPM", 0.46),
-              ("MAX RPM", "8000 RPM", 0.50))
+    values = (("RPM SCALE MAX", "10000 RPM", 1.00),
+              ("YELLOW FROM", "5500 RPM", 0.55),
+              ("RED FROM", "7000 RPM", 0.70),
+              ("FLASH FROM", "7500 RPM", 0.75),
+              ("12-LED FILL MAX", "8000 RPM", 0.80))
     for index, (label, value, progress) in enumerate(values):
-        y = 82 + index * 64
+        y = 78 + index * 49
         draw.text((40, y), label, fill=C["muted"], font=F14, anchor="lm")
         draw.rounded_rectangle((176, y - 7, 616, y + 7), 7,
                                fill=C["border"])
@@ -304,11 +305,11 @@ def settings_shift_page():
         draw.ellipse((knob_x - 10, y - 10, knob_x + 10, y + 10),
                      fill=C["text"])
         draw.text((642, y), value, fill=C["text"], font=F14, anchor="lm")
-    draw.text((40, 338), "FLASH ENABLED", fill=C["muted"], font=F14,
+    draw.text((40, 330), "FLASH ENABLED", fill=C["muted"], font=F14,
               anchor="lm")
-    draw.rounded_rectangle((176, 323, 232, 353), 15, fill=C["blue"])
-    draw.ellipse((204, 325, 230, 351), fill=C["text"])
-    draw.text((430, 338), "Saved when leaving this screen", fill=C["muted"],
+    draw.rounded_rectangle((176, 315, 232, 345), 15, fill=C["blue"])
+    draw.ellipse((204, 317, 230, 343), fill=C["text"])
+    draw.text((430, 330), "4 Hz full-strip blink", fill=C["muted"],
               font=F12, anchor="lm")
     return image
 

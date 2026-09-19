@@ -142,10 +142,12 @@ void Ui::clearSettingsWidgets() {
     shift_start_ = nullptr;
     shift_red_ = nullptr;
     shift_flash_ = nullptr;
+    shift_max_ = nullptr;
     shift_flash_enabled_ = nullptr;
     shift_start_value_ = nullptr;
     shift_red_value_ = nullptr;
     shift_flash_value_ = nullptr;
+    shift_max_value_ = nullptr;
     temp_unit_ = nullptr;
     pressure_unit_ = nullptr;
     speed_unit_ = nullptr;
@@ -839,6 +841,8 @@ void Ui::settingsEvent(lv_event_t* event) {
         field = ShiftField::Red; slider = instance_->shift_red_;
     } else if (action == ShiftFlashChanged) {
         field = ShiftField::Flash; slider = instance_->shift_flash_;
+    } else if (action == ShiftMaxChanged) {
+        field = ShiftField::Maximum; slider = instance_->shift_max_;
     }
     if (slider) {
         candidate.shift = SettingsFlowModel::correctedShift(
