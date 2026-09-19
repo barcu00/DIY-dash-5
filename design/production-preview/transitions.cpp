@@ -143,7 +143,8 @@ int main(int argc,char** argv) {
         click("SETTINGS");click("RPM & SHIFT LIGHT");
         assert(find(lv_scr_act(),&lv_label_class,"RPM SCALE MAX"));
         ui.update(state,diagnostics,status,config,warnings);
-        assert(!find(lv_scr_act(),&lv_label_class,"FLASH ENABLED") && "Duplicate flash toggle remains");
+        assert(find(lv_scr_act(),&lv_label_class,"FLASH ENABLED") && "Flash enable switch is missing");
+        assert(!find(lv_scr_act(),&lv_label_class,"ADVANCED: 12-LED FILL MAX") && "Duplicate lower-right RPM field remains");
         assert(!findContaining(lv_scr_act(),"UI updates:") && "Runtime diagnostics overwrite RPM status");
         assert(find(lv_scr_act(),&lv_label_class,"Colors follow YELLOW / RED thresholds; 12 LEDs retain 4/4/4 zones"));
         screenshot("rpm");

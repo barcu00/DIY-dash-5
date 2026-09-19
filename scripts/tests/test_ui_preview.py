@@ -57,7 +57,7 @@ class PreviewContractTest(unittest.TestCase):
         self.assertEqual(6, settings["category_count"])
         self.assertEqual(6, settings["layout_slots_per_page"])
         self.assertEqual(4, settings["shift_slider_count"])
-        self.assertFalse(settings["shift_flash_switch"])
+        self.assertTrue(settings["shift_flash_switch"])
         self.assertEqual(100, settings["shift_step_rpm"])
         self.assertEqual("continuous", settings["temperature_bar_style"])
         self.assertEqual([40.0, 75.0, 115.0, 130.0],
@@ -74,7 +74,8 @@ class PreviewContractTest(unittest.TestCase):
         shift_section = shift_section.split("void Ui::createUnitSettings", 1)[0]
         self.assertIn("lv_slider_create", shift_section)
         self.assertIn('"FLASH FROM"', shift_section)
-        self.assertNotIn('"FLASH ENABLED"', shift_section)
+        self.assertIn('"FLASH ENABLED"', shift_section)
+        self.assertNotIn('"ADVANCED: 12-LED FILL MAX"', shift_section)
         self.assertNotIn("makeSpinbox", shift_section)
         self.assertNotIn("ShiftStartDecrease", shift_section)
 
