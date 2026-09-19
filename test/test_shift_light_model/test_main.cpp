@@ -115,15 +115,17 @@ void test_invalid_rpm_never_activates_flash() {
 void test_progressive_segments_use_four_fixed_positions_per_color() {
     const ShiftLightConfig config{0U, 6000U, 9000U, 10000U, false};
     const ShiftSegmentStates states =
-        ShiftLightModel::segments(10000U, true, 0U, config);
+        ShiftLightModel::segments(8999U, true, 0U, config);
 
     for (std::size_t i = 0U; i < states.size(); ++i) {
         const ShiftColor expected = i < 4U ? ShiftColor::Green
                                   : i < 8U ? ShiftColor::Yellow
                                            : ShiftColor::Red;
-        TEST_ASSERT_TRUE(states[i].lit);
-        TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(expected),
-                                static_cast<uint8_t>(states[i].color));
+        TEST_ASSERT_EQUAL(i < 11U, states[i].lit);
+        if (states[i].lit) {
+            TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(expected),
+                                    static_cast<uint8_t>(states[i].color));
+        }
     }
 }
 
