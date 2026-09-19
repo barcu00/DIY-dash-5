@@ -142,11 +142,10 @@ private:
     lv_obj_t* shift_start_ = nullptr;
     lv_obj_t* shift_red_ = nullptr;
     lv_obj_t* shift_flash_ = nullptr;
-    lv_obj_t* shift_max_ = nullptr;
+    lv_obj_t* shift_flash_enabled_ = nullptr;
     lv_obj_t* shift_start_value_ = nullptr;
     lv_obj_t* shift_red_value_ = nullptr;
     lv_obj_t* shift_flash_value_ = nullptr;
-    lv_obj_t* shift_max_value_ = nullptr;
     std::array<lv_obj_t*,36> rpm_preview_blocks_{};
     lv_obj_t* temp_unit_ = nullptr;
     lv_obj_t* pressure_unit_ = nullptr;

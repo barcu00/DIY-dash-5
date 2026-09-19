@@ -145,7 +145,7 @@ void RpmScaleView::update(const SignalValue& raw,uint32_t now_ms,const ShiftLigh
     if(yellow_from_!=shift.start_rpm || red_from_!=shift.red_rpm) {
         yellow_from_=shift.start_rpm;red_from_=shift.red_rpm;lv_obj_invalidate(root_);
     }
-    const bool flashing=raw.valid && raw.value>=shift.flash_rpm,red=flashing && now_ms%250U<125U;
+    const bool flashing=raw.valid && shift.flash_enabled && raw.value>=shift.flash_rpm,red=flashing && now_ms%250U<125U;
     const bool due=!initialized_ || now_ms-last_update_ms_>=25U || raw.valid!=valid_;
     if(!due && flashing==flashing_ && red==red_phase_)return;
     const auto rpm=filter_.sample(raw,now_ms,50U);const auto fill=rpmScaleFill(rpm.value,rpm.valid,maximum_);

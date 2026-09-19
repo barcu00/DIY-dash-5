@@ -100,7 +100,8 @@ picker. Warning settings use an explicit RESET BELOW/ABOVE boundary. Untouched
 fields retain native precision when saving in PSI, kPa or Fahrenheit.
 TEST WARNING previews the modal and optionally pulses the buzzer without changing
 actual alarms. RPM & SHIFT LIGHT combines the shared scale, color/flash thresholds
-and a separately retained advanced 12-LED fill maximum. Settings still save on exit;
+and one FLASH ENABLED switch. The redundant lower-right LED maximum field is not
+shown. Settings still save on exit;
 tile drafts commit only after successful storage. SDK XIP and VSYNC buffering remain unchanged.
 
 These are **actual production LVGL captures**, validated in direct and partial
@@ -226,7 +227,7 @@ performance predictable:
 | --- | --- |
 | DISPLAY | Software brightness from 20% to 100% |
 | DATA & CAN | Explicit DEMO/CAN source, ECU profile, bitrate, and timeout |
-| RPM & SHIFT LIGHT (development) | Shared scale, color/flash sliders, keypad and advanced LED fill maximum |
+| RPM & SHIFT LIGHT (development) | Shared scale, color/flash sliders, keypad and flash enable switch |
 | UNITS | Temperature, pressure, speed, lambda/AFR, and stoichiometric AFR |
 | LAYOUTS | Paged DASH/TRACK slot list and hidden-tile restoration |
 | SYSTEM | Runtime information, layout reset, and factory reset |

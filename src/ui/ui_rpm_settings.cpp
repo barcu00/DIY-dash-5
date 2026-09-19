@@ -29,13 +29,11 @@ void Ui::createShiftSettings(lv_obj_t* parent) {
         auto* value=button(parent,"",590,y-1,160,38,numericOpenEvent,i);
         *values[i]=lv_obj_get_child(value,0);
     }
-    label(parent,"FLASH: AUTOMATIC ABOVE FLASH FROM | 4 Hz",14,290,&lv_font_montserrat_12,UiTheme::muted());
-    label(parent,"ADVANCED: 12-LED FILL MAX",340,270,&lv_font_montserrat_12,UiTheme::muted());
-    shift_max_=lv_slider_create(parent);lv_obj_add_flag(shift_max_,LV_OBJ_FLAG_HIDDEN);lv_slider_set_range(shift_max_,200,10000);
-    lv_slider_set_value(shift_max_,config_->shift.max_rpm,LV_ANIM_OFF);
-    lv_obj_add_event_cb(shift_max_,settingsEvent,LV_EVENT_VALUE_CHANGED,reinterpret_cast<void*>(ShiftMaxChanged));
-    bindNumeric(shift_max_,"12-LED FILL MAX (4/4/4)",200,10000,0,"RPM",true);
-    auto* value=button(parent,"",590,282,160,42,numericOpenEvent,4);shift_max_value_=lv_obj_get_child(value,0);
+    label(parent,"FLASH ENABLED",14,290,&lv_font_montserrat_12,UiTheme::muted());
+    shift_flash_enabled_=lv_switch_create(parent);lv_obj_set_pos(shift_flash_enabled_,146,282);
+    if(config_->shift.flash_enabled)lv_obj_add_state(shift_flash_enabled_,LV_STATE_CHECKED);
+    lv_obj_add_event_cb(shift_flash_enabled_,settingsEvent,LV_EVENT_VALUE_CHANGED,reinterpret_cast<void*>(ShiftFlashEnabledChanged));
+    label(parent,"4 Hz",220,288);
     refreshShiftControls();
 }
 void Ui::refreshShiftControls() {
@@ -44,10 +42,10 @@ void Ui::refreshShiftControls() {
         const unsigned rpm=config_->rpm_scale_max*(2*i+1)/72;
         lv_obj_set_style_bg_color(rpm_preview_blocks_[i],rpm>=config_->shift.red_rpm ? UiTheme::red():rpm>=config_->shift.start_rpm ? UiTheme::yellow():UiTheme::green(),0);
     }
-    lv_obj_t* sliders[]={rpm_scale_slider_,shift_start_,shift_red_,shift_flash_,shift_max_};
-    lv_obj_t* labels[]={rpm_scale_value_,shift_start_value_,shift_red_value_,shift_flash_value_,shift_max_value_};
-    const uint16_t values[]={config_->rpm_scale_max,config_->shift.start_rpm,config_->shift.red_rpm,config_->shift.flash_rpm,config_->shift.max_rpm};
-    for(int i=0;i<5;i++) {
+    lv_obj_t* sliders[]={rpm_scale_slider_,shift_start_,shift_red_,shift_flash_};
+    lv_obj_t* labels[]={rpm_scale_value_,shift_start_value_,shift_red_value_,shift_flash_value_};
+    const uint16_t values[]={config_->rpm_scale_max,config_->shift.start_rpm,config_->shift.red_rpm,config_->shift.flash_rpm};
+    for(int i=0;i<4;i++) {
         if(sliders[i])lv_slider_set_value(sliders[i],values[i],LV_ANIM_OFF);
         if(labels[i]) {char text[24];std::snprintf(text,sizeof(text),"%u RPM",values[i]);lv_label_set_text(labels[i],text);}
     }

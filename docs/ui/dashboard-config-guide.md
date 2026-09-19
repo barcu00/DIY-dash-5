@@ -122,8 +122,8 @@ by leaving again.
   FROM sliders shared by DASH and TRACK. Tap their values for keypad entry.
   The scale spans 100-10000 RPM, starts at zero, and uses 100-RPM steps.
   A threshold outside the visible scale produces a status message rather than
-  silently changing the stored thresholds. ADVANCED: 12-LED FILL MAX retains
-  the historical independent strip maximum and existing 4/4/4 semantics.
+  silently changing the stored thresholds. The redundant lower-right 12-LED
+  maximum field is not displayed; existing 4/4/4 strip semantics remain.
   Shift thresholds still satisfy `start < red < flash <= maximum`; editing a
   shift threshold normalizes dependent thresholds. This is not an ECU limiter.
 - FLASH ENABLED controls whether the complete strip alternates red/off at about

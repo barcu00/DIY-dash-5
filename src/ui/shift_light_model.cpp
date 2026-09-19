@@ -14,7 +14,7 @@ ShiftSegmentStates ShiftLightModel::segments(
     }
 
     constexpr std::size_t kSegmentCount = 12U;
-    if (rpm >= config.flash_rpm) {
+    if (config.flash_enabled && rpm >= config.flash_rpm) {
         constexpr uint32_t kFlashPeriodMs = 250U;
         constexpr uint32_t kRedPhaseMs = 125U;
         const bool red_phase = (now_ms % kFlashPeriodMs) < kRedPhaseMs;
