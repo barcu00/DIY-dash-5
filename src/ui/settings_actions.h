@@ -12,7 +12,6 @@ enum SettingsAction : intptr_t {
     ShiftRedChanged,
     ShiftFlashChanged,
     ShiftMaxChanged,
-    ShiftFlashEnabledChanged,
     UnitsChanged,
     LayoutPresetChanged,
     RpmScaleChanged,

@@ -304,10 +304,8 @@ def settings_shift_page():
         draw.ellipse((knob_x - 10, y - 10, knob_x + 10, y + 10),
                      fill=C["text"])
         draw.text((642, y), value, fill=C["text"], font=F14, anchor="lm")
-    draw.text((40, 338), "FLASH ENABLED", fill=C["muted"], font=F14,
-              anchor="lm")
-    draw.rounded_rectangle((176, 323, 232, 353), 15, fill=C["blue"])
-    draw.ellipse((204, 325, 230, 351), fill=C["text"])
+    draw.text((40, 338), "FLASH: AUTOMATIC ABOVE FLASH FROM | 4 Hz",
+              fill=C["muted"], font=F14, anchor="lm")
     draw.text((430, 338), "Saved when leaving this screen", fill=C["muted"],
               font=F12, anchor="lm")
     return image

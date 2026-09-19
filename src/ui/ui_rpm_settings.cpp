@@ -29,11 +29,7 @@ void Ui::createShiftSettings(lv_obj_t* parent) {
         auto* value=button(parent,"",590,y-1,160,38,numericOpenEvent,i);
         *values[i]=lv_obj_get_child(value,0);
     }
-    label(parent,"FLASH ENABLED",14,290,&lv_font_montserrat_12,UiTheme::muted());
-    shift_flash_enabled_=lv_switch_create(parent);lv_obj_set_pos(shift_flash_enabled_,146,282);
-    if(config_->shift.flash_enabled)lv_obj_add_state(shift_flash_enabled_,LV_STATE_CHECKED);
-    lv_obj_add_event_cb(shift_flash_enabled_,settingsEvent,LV_EVENT_VALUE_CHANGED,reinterpret_cast<void*>(ShiftFlashEnabledChanged));
-    label(parent,"4 Hz",220,288);
+    label(parent,"FLASH: AUTOMATIC ABOVE FLASH FROM | 4 Hz",14,290,&lv_font_montserrat_12,UiTheme::muted());
     label(parent,"ADVANCED: 12-LED FILL MAX",340,270,&lv_font_montserrat_12,UiTheme::muted());
     shift_max_=lv_slider_create(parent);lv_obj_add_flag(shift_max_,LV_OBJ_FLAG_HIDDEN);lv_slider_set_range(shift_max_,200,10000);
     lv_slider_set_value(shift_max_,config_->shift.max_rpm,LV_ANIM_OFF);

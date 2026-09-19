@@ -147,7 +147,6 @@ void Ui::clearSettingsWidgets() {
     shift_red_value_ = nullptr;
     shift_flash_value_ = nullptr;
     shift_max_value_ = nullptr;
-    shift_flash_enabled_ = nullptr;
     temp_unit_ = nullptr;
     pressure_unit_ = nullptr;
     speed_unit_ = nullptr;
@@ -498,15 +497,15 @@ void Ui::update(const VehicleState& state, const RuntimeDiagnostics& diagnostics
                 static_cast<unsigned>(status.received_frames),
                 static_cast<unsigned>(status.rejected_frames),
                 static_cast<unsigned>(status.decoder_mappings));
-        } else {
+        } else if (settings_flow_.category() == SettingsCategory::System) {
             std::snprintf(buffer, sizeof(buffer),
                 "Uptime: %u s\nFree heap: %u KiB\nPSRAM total: %u KiB\nUI updates: %u",
                 static_cast<unsigned>(diagnostics.uptime_ms / 1000U),
                 static_cast<unsigned>(diagnostics.free_heap / 1024U),
                 static_cast<unsigned>(diagnostics.psram_total / 1024U),
                 static_cast<unsigned>(diagnostics.ui_updates));
+            lv_label_set_text(settings_status_, buffer);
         }
-        lv_label_set_text(settings_status_, buffer);
     }
     if (commit_toast_ &&
         static_cast<int32_t>(lv_tick_get() - commit_toast_until_ms_) >= 0) {
@@ -850,12 +849,6 @@ void Ui::settingsEvent(lv_event_t* event) {
             static_cast<uint16_t>(lv_slider_get_value(slider)));
         instance_->stageSettings(candidate, false);
         instance_->refreshShiftControls();
-        return;
-    }
-    if (action == ShiftFlashEnabledChanged) {
-        candidate.shift.flash_enabled = lv_obj_has_state(
-            instance_->shift_flash_enabled_, LV_STATE_CHECKED);
-        instance_->stageSettings(candidate, false);
         return;
     }
     if (action == WarningSoundChanged) {

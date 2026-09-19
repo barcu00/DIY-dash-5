@@ -21,6 +21,13 @@ static lv_obj_t* find(lv_obj_t* root,const lv_obj_class_t* type,const char* text
     }
     return nullptr;
 }
+static lv_obj_t* findContaining(lv_obj_t* root,const char* text) {
+    if(lv_obj_check_type(root,&lv_label_class) && std::strstr(lv_label_get_text(root),text))return root;
+    for(uint32_t i=0;i<lv_obj_get_child_cnt(root);++i) {
+        auto* result=findContaining(lv_obj_get_child(root,i),text);if(result)return result;
+    }
+    return nullptr;
+}
 static lv_obj_t* button(lv_obj_t* root,const char* text) {
     if(lv_obj_check_type(root,&lv_btn_class)) {
         auto* label=find(root,&lv_label_class,text);if(label)return root;
@@ -137,7 +144,7 @@ int main(int argc,char** argv) {
         assert(find(lv_scr_act(),&lv_label_class,"RPM SCALE MAX"));
         ui.update(state,diagnostics,status,config,warnings);
         assert(!find(lv_scr_act(),&lv_label_class,"FLASH ENABLED") && "Duplicate flash toggle remains");
-        assert(!find(lv_scr_act(),&lv_label_class,"UI updates: 0") && "Runtime diagnostics overwrite RPM status");
+        assert(!findContaining(lv_scr_act(),"UI updates:") && "Runtime diagnostics overwrite RPM status");
         assert(find(lv_scr_act(),&lv_label_class,"Colors follow YELLOW / RED thresholds; 12 LEDs retain 4/4/4 zones"));
         screenshot("rpm");
         click("10000 RPM");click("8");click("0");click("0");click("0");click("APPLY");
