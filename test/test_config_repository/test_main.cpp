@@ -754,8 +754,133 @@ void test_sixth_layout_round_trips_without_sharing_analog_bank() {
     TEST_ASSERT_FALSE(activeTiles(loaded,PageId::Dash)[2].visible);
     TEST_ASSERT_FALSE(activeTiles(loaded,PageId::Track)[1].warning.enabled);
 }
+
+struct StoredAppConfigV8 {
+    uint32_t schema_version = 8U;
+    DataSource data_source = DataSource::Demo;
+    uint8_t brightness_percent = 100U;
+    CanSettings can{};
+    ShiftLightConfig shift{};
+    UnitSettings units{};
+    std::array<TileConfig, 14> dash_tiles{};
+    std::array<TileConfig, 12> track_tiles{};
+    DashboardLayout dash_layout = DashboardLayout::ClassicDash;
+    DashboardLayout track_layout = DashboardLayout::ClassicTrack;
+    uint16_t rpm_scale_max = 10000U;
+    std::array<AppConfig::TileBank, 5> dash_alternate_tiles{};
+    std::array<AppConfig::TileBank, 5> track_alternate_tiles{};
+    bool warning_sound_enabled = true;
+};
+
+StoredAppConfigV8 distinctV8Config() {
+    const AppConfig defaults = AppConfig::defaults();
+    StoredAppConfigV8 old;
+    old.data_source = DataSource::Can;
+    old.brightness_percent = 63U;
+    old.can = defaults.can;
+    std::strncpy(old.can.profile_id.data(), "bmw_ms43_stock",
+                 old.can.profile_id.size() - 1U);
+    old.can.bitrate = 250000U;
+    old.can.timeout_ms = 875U;
+    old.shift = {4200U, 6800U, 7600U, 8200U, false};
+    old.units = defaults.units;
+    old.units.speed = SpeedUnit::Mph;
+    old.units.pressure = PressureUnit::Psi;
+    old.dash_tiles = defaults.dash_tiles;
+    old.track_tiles = defaults.track_tiles;
+    old.dash_layout = DashboardLayout::ModernMotorsport;
+    old.track_layout = DashboardLayout::StripStyle;
+    old.rpm_scale_max = 8200U;
+    old.dash_alternate_tiles = defaults.dash_alternate_tiles;
+    old.track_alternate_tiles = defaults.track_alternate_tiles;
+    old.warning_sound_enabled = false;
+    for (std::size_t bank = 0U; bank < 5U; ++bank) {
+        old.dash_alternate_tiles[bank][bank].visible = false;
+        old.dash_alternate_tiles[bank][bank].decimals =
+            static_cast<uint8_t>(bank);
+        old.track_alternate_tiles[bank][bank + 1U].warning = {
+            true, WarningDirection::Above,
+            static_cast<float>(100U + bank), 2.5f,
+            static_cast<uint16_t>(bank * 100U)};
+    }
+    return old;
+}
+
+void test_schema_v8_migration_is_lossless_and_initializes_racechrono_off() {
+    const StoredAppConfigV8 old = distinctV8Config();
+    MemoryBackend backend;
+    TEST_ASSERT_TRUE(backend.write(&old, sizeof(old)));
+    ConfigRepository repository(backend);
+    AppConfig loaded{};
+
+    TEST_ASSERT_EQUAL_UINT8(
+        static_cast<uint8_t>(LoadResult::Migrated),
+        static_cast<uint8_t>(repository.load(loaded)));
+    TEST_ASSERT_EQUAL_UINT32(9U, loaded.schema_version);
+    TEST_ASSERT_FALSE(loaded.racechrono.enabled);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(old.data_source),
+                            static_cast<uint8_t>(loaded.data_source));
+    TEST_ASSERT_EQUAL_UINT8(old.brightness_percent, loaded.brightness_percent);
+    TEST_ASSERT_EQUAL_MEMORY(&old.can, &loaded.can, sizeof(old.can));
+    TEST_ASSERT_EQUAL_MEMORY(&old.shift, &loaded.shift, sizeof(old.shift));
+    TEST_ASSERT_EQUAL_MEMORY(&old.units, &loaded.units, sizeof(old.units));
+    TEST_ASSERT_EQUAL_MEMORY(old.dash_tiles.data(), loaded.dash_tiles.data(),
+                             sizeof(old.dash_tiles));
+    TEST_ASSERT_EQUAL_MEMORY(old.track_tiles.data(), loaded.track_tiles.data(),
+                             sizeof(old.track_tiles));
+    TEST_ASSERT_EQUAL_MEMORY(old.dash_alternate_tiles.data(),
+                             loaded.dash_alternate_tiles.data(),
+                             sizeof(old.dash_alternate_tiles));
+    TEST_ASSERT_EQUAL_MEMORY(old.track_alternate_tiles.data(),
+                             loaded.track_alternate_tiles.data(),
+                             sizeof(old.track_alternate_tiles));
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(old.dash_layout),
+                            static_cast<uint8_t>(loaded.dash_layout));
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(old.track_layout),
+                            static_cast<uint8_t>(loaded.track_layout));
+    TEST_ASSERT_EQUAL_UINT16(old.rpm_scale_max, loaded.rpm_scale_max);
+    TEST_ASSERT_EQUAL(old.warning_sound_enabled,
+                      loaded.warning_sound_enabled);
+    TEST_ASSERT_EQUAL_UINT32(sizeof(AppConfig), backend.storedSize());
+}
+
+void test_failed_schema_v8_rewrite_keeps_migrated_runtime() {
+    const StoredAppConfigV8 old = distinctV8Config();
+    MemoryBackend backend;
+    TEST_ASSERT_TRUE(backend.write(&old, sizeof(old)));
+    backend.fail_writes = true;
+    ConfigRepository repository(backend);
+    AppConfig loaded{};
+
+    TEST_ASSERT_EQUAL_UINT8(
+        static_cast<uint8_t>(LoadResult::MigrationWriteFailed),
+        static_cast<uint8_t>(repository.load(loaded)));
+    TEST_ASSERT_EQUAL_UINT8(63U, loaded.brightness_percent);
+    TEST_ASSERT_EQUAL_UINT16(8200U, loaded.rpm_scale_max);
+    TEST_ASSERT_FALSE(loaded.warning_sound_enabled);
+    TEST_ASSERT_FALSE(loaded.racechrono.enabled);
+}
+
+void test_racechrono_enable_setting_round_trips_in_schema_nine() {
+    MemoryBackend backend;
+    ConfigRepository repository(backend);
+    AppConfig candidate = AppConfig::defaults();
+    candidate.racechrono.enabled = true;
+    AppConfig runtime{};
+    TEST_ASSERT_TRUE(repository.saveCandidate(candidate, runtime));
+    TEST_ASSERT_TRUE(runtime.racechrono.enabled);
+
+    AppConfig loaded{};
+    TEST_ASSERT_EQUAL_UINT8(
+        static_cast<uint8_t>(LoadResult::Loaded),
+        static_cast<uint8_t>(repository.load(loaded)));
+    TEST_ASSERT_TRUE(loaded.racechrono.enabled);
+}
 int main(int, char**) {
     UNITY_BEGIN();
+    RUN_TEST(test_schema_v8_migration_is_lossless_and_initializes_racechrono_off);
+    RUN_TEST(test_failed_schema_v8_rewrite_keeps_migrated_runtime);
+    RUN_TEST(test_racechrono_enable_setting_round_trips_in_schema_nine);
     RUN_TEST(test_schema_v7_migration_keeps_banks_and_sound_and_initializes_sixth_layout);
     RUN_TEST(test_sixth_layout_round_trips_without_sharing_analog_bank);
     RUN_TEST(test_schema_v6_migration_preserves_all_layout_banks);
