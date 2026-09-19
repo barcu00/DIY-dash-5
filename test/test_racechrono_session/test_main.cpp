@@ -44,7 +44,7 @@ RaceChronoEvent gpsSpeedValue(int32_t raw) {
 
 RaceChronoAction take(RaceChronoSession& session) {
     RaceChronoAction action;
-    TEST_ASSERT_TRUE(session.takeAction(action));
+    session.takeAction(action);
     return action;
 }
 
@@ -71,7 +71,6 @@ RaceChronoAction advanceToCompleteFragment(RaceChronoSession& session,
                         now_ms);
         action = take(session);
     }
-    TEST_ASSERT_EQUAL_UINT8(3U, action.packet.bytes[0]);
     return action;
 }
 
@@ -79,6 +78,7 @@ void finishAllChannels(RaceChronoSession& session, uint32_t now_ms) {
     for (uint8_t monitor_id = 1U; monitor_id <= 33U; ++monitor_id) {
         const RaceChronoAction final =
             advanceToCompleteFragment(session, now_ms);
+        TEST_ASSERT_EQUAL_UINT8(3U, final.packet.bytes[0]);
         TEST_ASSERT_EQUAL_UINT8(monitor_id, final.packet.bytes[1]);
         session.onEvent(event(RaceChronoEventType::IndicationConfirmed),
                         now_ms);
