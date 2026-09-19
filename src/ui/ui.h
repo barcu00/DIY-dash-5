@@ -169,7 +169,7 @@ private:
     lv_obj_t* editor_summary_ = nullptr;
     lv_obj_t* editor_reset_label_ = nullptr;
     lv_obj_t* editor_context_ = nullptr;
-    std::array<lv_obj_t*,4> editor_decimal_buttons_{};
+    std::array<lv_obj_t*,6> editor_decimal_buttons_{};
     std::array<lv_obj_t*,3> editor_temperature_zones_{};
     lv_obj_t* editor_temperature_marker_=nullptr;
     lv_obj_t* editor_temperature_value_=nullptr;

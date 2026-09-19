@@ -17,6 +17,11 @@ const char* nativeUnitText(NativeUnit unit) {
         case NativeUnit::Degrees: return "deg";
         case NativeUnit::Milliseconds: return "ms";
         case NativeUnit::GramsPerSecond: return "g/s";
+        case NativeUnit::Seconds: return "s";
+        case NativeUnit::Meters: return "m";
+        case NativeUnit::Hertz: return "Hz";
+        case NativeUnit::GForce: return "g";
+        case NativeUnit::CoordinateDegrees: return "deg";
         case NativeUnit::None: return "";
     }
     return "";

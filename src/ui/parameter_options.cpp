@@ -2,6 +2,8 @@
 
 #include <cstdio>
 
+#include "racechrono/racechrono_channel_catalog.h"
+
 bool ParameterOptionList::write(char* output, std::size_t capacity) const {
     if (output == nullptr || capacity == 0U) {
         return false;
@@ -43,12 +45,20 @@ ParameterOptionList ParameterOptions::build(DataSource source,
         ParameterCapabilities::forSource(source, profile);
     const bool current_valid =
         static_cast<std::size_t>(current) < parameterCount();
-    if (current_valid && !capabilities.supports(current)) {
+    if (current_valid && !isRaceChronoParameter(current) &&
+        !capabilities.supports(current)) {
         result.parameters_[result.count_++] = current;
         result.first_unavailable_ = true;
     }
     for (std::size_t index = 0U; index < capabilities.count(); ++index) {
-        result.parameters_[result.count_++] = capabilities.at(index);
+        const ParameterId parameter = capabilities.at(index);
+        if (!isRaceChronoParameter(parameter)) {
+            result.parameters_[result.count_++] = parameter;
+        }
+    }
+    for (std::size_t index = 0U; index < raceChronoChannelCount(); ++index) {
+        result.parameters_[result.count_++] =
+            raceChronoChannelAt(index).parameter;
     }
     return result;
 }

@@ -8,7 +8,11 @@ ParameterCapabilities ParameterCapabilities::forSource(
     std::array<bool, parameterCount()> available{};
 
     if (source == DataSource::Demo) {
-        available.fill(true);
+        const std::size_t engine_count =
+            static_cast<std::size_t>(ParameterId::RcLapNumber);
+        for (std::size_t index = 0U; index < engine_count; ++index) {
+            available[index] = true;
+        }
     } else if (source == DataSource::Can && profile != nullptr) {
         for (std::size_t frame_index = 0U;
              frame_index < profile->frame_count; ++frame_index) {

@@ -133,7 +133,7 @@ void test_validation_normalizes_unsafe_persisted_values() {
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 14.7f, config.units.stoich_afr);
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(ParameterId::Rpm),
                             static_cast<uint8_t>(config.dash_tiles[0].parameter));
-    TEST_ASSERT_EQUAL_UINT8(3U, config.dash_tiles[0].decimals);
+    TEST_ASSERT_EQUAL_UINT8(5U, config.dash_tiles[0].decimals);
     TEST_ASSERT_FLOAT_WITHIN(
         0.001f, 0.0f, config.dash_tiles[0].warning.threshold_native);
     TEST_ASSERT_FLOAT_WITHIN(

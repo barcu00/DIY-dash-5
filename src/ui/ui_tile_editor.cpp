@@ -6,6 +6,7 @@
 #include "ui/editor_widgets.h"
 #include "ui/editor_value_model.h"
 #include "ui/fonts/numeric_fonts.h"
+#include "racechrono/racechrono_channel_catalog.h"
 using namespace EditorWidgets;
 namespace {
 float fieldValue(lv_obj_t* o) {return lv_spinbox_get_value(o)/10.f;}
@@ -44,10 +45,10 @@ void Ui::openEditor(TileAddress address) {
     darkCheckbox(editor_visible_);
     editor_decimals_label_=label(editor_data_panel_,"DECIMALS",20,220,&lv_font_montserrat_14,UiTheme::muted());
     editor_decimals_=lv_dropdown_create(editor_data_panel_);lv_obj_set_pos(editor_decimals_,170,208);
-    lv_obj_set_size(editor_decimals_,160,48);lv_dropdown_set_options(editor_decimals_,"0\n1\n2\n3");
+    lv_obj_set_size(editor_decimals_,160,48);lv_dropdown_set_options(editor_decimals_,"0\n1\n2\n3\n4\n5");
     lv_obj_add_flag(editor_decimals_,LV_OBJ_FLAG_HIDDEN);
-    const char* decimals[]={"0","1","2","3"};
-    for(int i=0;i<4;i++)editor_decimal_buttons_[i]=button(editor_data_panel_,decimals[i],170+i*64,208,58,48,editorTabEvent,10+i);
+    const char* decimals[]={"0","1","2","3","4","5"};
+    for(int i=0;i<6;i++)editor_decimal_buttons_[i]=button(editor_data_panel_,decimals[i],120+i*54,208,48,48,editorTabEvent,10+i);
     auto* preview=panel(editor_data_panel_,470,6,306,270);
     lv_obj_set_style_border_width(preview,1,0);lv_obj_set_style_border_color(preview,UiTheme::border(),0);
     editor_preview_name_=label(preview,"",0,22,&lv_font_montserrat_20);lv_obj_set_width(editor_preview_name_,306);
@@ -132,7 +133,7 @@ void Ui::showEditorTab(uint8_t tab) {
 void Ui::editorTabEvent(lv_event_t* event) {
     if(!instance_ || !instance_->editor_.isOpen())return;
     auto* self=instance_;const auto action=reinterpret_cast<intptr_t>(lv_event_get_user_data(event));
-    if(action>=10 && action<=13) {
+    if(action>=10 && action<=15) {
         lv_dropdown_set_selected(self->editor_decimals_,action-10);
         self->syncEditorDraftFromControls();self->refreshEditorPreview();return;
     }
@@ -222,13 +223,14 @@ void Ui::refreshEditorPreview() {
     lv_label_set_text(editor_preview_name_,d.short_name);
     char context[100];std::snprintf(context,sizeof(context),"%s / %s",editor_.draft().address.page==PageId::Dash ? "DASH":"TRACK",d.name);
     lv_label_set_text(editor_context_,context);
-    for(int i=0;i<4;i++) {
+    for(int i=0;i<6;i++) {
         lv_obj_set_style_bg_color(editor_decimal_buttons_[i],i==t.decimals ? UiTheme::blue():UiTheme::background(),0);
         lv_obj_set_style_text_color(lv_obj_get_child(editor_decimal_buttons_[i],0),i==t.decimals ? UiTheme::background():UiTheme::text(),0);
     }
     const auto& signal=latest_state_.get(t.parameter);const auto value=UnitPresenter::present(t.parameter,signal.value,config_->units);
     char text[64]="---";
-    if(signal.valid && capabilities_.supports(t.parameter)) {
+    if(signal.valid && (capabilities_.supports(t.parameter) ||
+                        isRaceChronoParameter(t.parameter))) {
         if(d.kind==ParameterKind::Flag)std::snprintf(text,sizeof(text),"%s",signal.value!=0 ? "ON":"OFF");
         else std::snprintf(text,sizeof(text),"%.*f",t.decimals,static_cast<double>(value.value));
     }

@@ -25,6 +25,14 @@ uint32_t tileRefreshIntervalMs(ParameterId parameter) {
         case ParameterId::Lambda2:
         case ParameterId::IgnitionTiming:
         case ParameterId::InjectorDuty:
+        case ParameterId::RcDeltaLapTime:
+        case ParameterId::RcLapTimeGain:
+        case ParameterId::RcGpsSpeed:
+        case ParameterId::RcDeltaSpeed:
+        case ParameterId::RcLateralAcceleration:
+        case ParameterId::RcLongitudinalAcceleration:
+        case ParameterId::RcCombinedAcceleration:
+        case ParameterId::RcLeanAngle:
             return 50U;
 
         case ParameterId::Clt:

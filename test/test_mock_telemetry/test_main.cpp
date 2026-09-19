@@ -3,9 +3,12 @@
 #include "telemetry/mock_telemetry.h"
 
 static void assert_ranges(const VehicleState& s) {
-    for (std::size_t i = 0U; i < parameterCount(); ++i) {
+    const std::size_t engine_count =
+        static_cast<std::size_t>(ParameterId::RcLapNumber);
+    for (std::size_t i = 0U; i < engine_count; ++i) {
         TEST_ASSERT_TRUE(s.get(static_cast<VehicleSignal>(i)).valid);
     }
+    TEST_ASSERT_FALSE(s.get(ParameterId::RcLapTime).valid);
     const float rpm = s.get(VehicleSignal::Rpm).value;
     const float gear = s.get(VehicleSignal::Gear).value;
     const float speed = s.get(VehicleSignal::Speed).value;

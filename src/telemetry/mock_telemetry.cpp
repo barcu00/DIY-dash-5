@@ -41,7 +41,9 @@ float demoEngineCycle(uint32_t elapsed_ms) {
 void setDemoFlags(VehicleState& state, uint32_t elapsed_ms) {
     const std::size_t first =
         static_cast<std::size_t>(ParameterId::IgnitionOn);
-    for (std::size_t index = first; index < parameterCount(); ++index) {
+    const std::size_t end =
+        static_cast<std::size_t>(ParameterId::RcLapNumber);
+    for (std::size_t index = first; index < end; ++index) {
         const bool active = ((elapsed_ms / 1000U) + index) % 4U == 0U;
         state.set(static_cast<VehicleSignal>(index), active ? 1.0f : 0.0f,
                   elapsed_ms);

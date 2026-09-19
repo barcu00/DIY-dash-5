@@ -23,10 +23,24 @@ void test_slow_thermal_signals_render_at_ten_hertz() {
     TEST_ASSERT_EQUAL_UINT32(100U, tileRefreshIntervalMs(ParameterId::Egt8));
 }
 
+void test_racechrono_live_channels_render_faster_than_timing_metadata() {
+    TEST_ASSERT_EQUAL_UINT32(50U,
+                             tileRefreshIntervalMs(ParameterId::RcGpsSpeed));
+    TEST_ASSERT_EQUAL_UINT32(50U,
+                             tileRefreshIntervalMs(ParameterId::RcDeltaLapTime));
+    TEST_ASSERT_EQUAL_UINT32(
+        50U, tileRefreshIntervalMs(ParameterId::RcLateralAcceleration));
+    TEST_ASSERT_EQUAL_UINT32(100U,
+                             tileRefreshIntervalMs(ParameterId::RcBestLapTime));
+    TEST_ASSERT_EQUAL_UINT32(100U,
+                             tileRefreshIntervalMs(ParameterId::RcSatellites));
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_fast_driving_signals_render_at_panel_cadence);
     RUN_TEST(test_medium_combustion_signals_render_at_twenty_hertz);
     RUN_TEST(test_slow_thermal_signals_render_at_ten_hertz);
+    RUN_TEST(test_racechrono_live_channels_render_faster_than_timing_metadata);
     return UNITY_END();
 }

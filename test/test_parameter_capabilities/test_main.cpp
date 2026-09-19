@@ -6,17 +6,20 @@
 #include "ecu/can_profile_registry.h"
 #include "ecu/parameter_capabilities.h"
 
-void test_demo_supports_every_registered_parameter_once() {
+void test_demo_supports_every_engine_parameter_once() {
     const ParameterCapabilities capabilities =
         ParameterCapabilities::forSource(DataSource::Demo, nullptr);
 
-    TEST_ASSERT_EQUAL_UINT32(parameterCount(), capabilities.count());
-    for (std::size_t index = 0U; index < parameterCount(); ++index) {
+    const std::size_t engine_count =
+        static_cast<std::size_t>(ParameterId::RcLapNumber);
+    TEST_ASSERT_EQUAL_UINT32(engine_count, capabilities.count());
+    for (std::size_t index = 0U; index < engine_count; ++index) {
         const ParameterId expected = static_cast<ParameterId>(index);
         TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(expected),
                                 static_cast<uint8_t>(capabilities.at(index)));
         TEST_ASSERT_TRUE(capabilities.supports(expected));
     }
+    TEST_ASSERT_FALSE(capabilities.supports(ParameterId::RcLapTime));
 }
 
 void test_ms43_capabilities_are_derived_from_compiled_signals() {
@@ -66,7 +69,7 @@ void test_null_can_profile_and_invalid_parameter_are_safe() {
 
 int main(int, char**) {
     UNITY_BEGIN();
-    RUN_TEST(test_demo_supports_every_registered_parameter_once);
+    RUN_TEST(test_demo_supports_every_engine_parameter_once);
     RUN_TEST(test_ms43_capabilities_are_derived_from_compiled_signals);
     RUN_TEST(test_profiles_without_documented_flags_remain_numeric_only);
     RUN_TEST(test_null_can_profile_and_invalid_parameter_are_safe);

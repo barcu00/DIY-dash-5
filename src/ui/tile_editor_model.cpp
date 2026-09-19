@@ -19,7 +19,7 @@ TileConfig* tileAt(AppConfig& config, TileAddress address) {
 
 bool validDraft(const TileConfig& tile) {
     return static_cast<std::size_t>(tile.parameter) < parameterCount() &&
-           tile.decimals <= 3U &&
+           tile.decimals <= 5U &&
            static_cast<uint8_t>(tile.flag_active_color) <=
                static_cast<uint8_t>(FlagActiveColor::Red) &&
            static_cast<uint8_t>(tile.warning.direction) <=

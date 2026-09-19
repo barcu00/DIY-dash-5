@@ -212,6 +212,14 @@ void test_parameter_change_assigns_descriptor_decimal_precision() {
     editor.setDecimals(0);editor.setParameter(ParameterId::Lambda);
     TEST_ASSERT_EQUAL_UINT8(2,editor.draft().tile.decimals);
 }
+void test_coordinate_parameter_supports_five_decimal_places() {
+    AppConfig config=AppConfig::defaults();TileEditorModel editor;
+    TEST_ASSERT_TRUE(editor.open({PageId::Dash,0},config));
+    editor.setParameter(ParameterId::RcLatitude);
+    TEST_ASSERT_EQUAL_UINT8(5U,editor.draft().tile.decimals);
+    TEST_ASSERT_TRUE(editor.applyTo(config));
+    TEST_ASSERT_EQUAL_UINT8(5U,config.dash_tiles[0].decimals);
+}
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_open_rejects_settings_page_and_out_of_range_slots);
@@ -227,5 +235,6 @@ int main(int, char**) {
     RUN_TEST(test_switching_to_flag_preserves_dormant_numeric_settings);
     RUN_TEST(test_candidate_preview_keeps_editor_open_and_runtime_unchanged);
     RUN_TEST(test_parameter_change_assigns_descriptor_decimal_precision);
+    RUN_TEST(test_coordinate_parameter_supports_five_decimal_places);
     return UNITY_END();
 }

@@ -3,6 +3,7 @@
 #include <cstdio>
 #include "ui/editor_widgets.h"
 #include "ui/editor_value_model.h"
+#include "racechrono/racechrono_channel_catalog.h"
 using namespace EditorWidgets;
 void Ui::bindNumeric(lv_obj_t* widget,const char* title,float minimum,float maximum,
     uint8_t decimals,const char* unit,bool slider) {
@@ -96,8 +97,8 @@ void Ui::renderParameterPicker() {
     auto* previous=auxiliary_screen_;auxiliary_screen_=lv_obj_create(nullptr);styleScreen(auxiliary_screen_);
     label(auxiliary_screen_,"SELECT PARAMETER",20,14,&lv_font_montserrat_24);
     label(auxiliary_screen_,active_source_==DataSource::Demo ? "Available in DEMO":active_profile_ ? active_profile_->id:"No CAN profile",470,22,&lv_font_montserrat_12,UiTheme::muted());
-    const char* categories[]={"ENGINE","TEMPERATURE","PRESSURE","FLAGS"};
-    for(int i=0;i<4;i++)button(auxiliary_screen_,categories[i],20+i*192,58,182,48,pickerEvent,200+i,i==picker_category_);
+    const char* categories[]={"ENGINE","TEMPERATURE","PRESSURE","FLAGS","RACECHRONO"};
+    for(int i=0;i<5;i++)button(auxiliary_screen_,categories[i],20+i*152,58,142,48,pickerEvent,200+i,i==picker_category_);
     auto options=ParameterOptions::build(active_source_,active_profile_,picker_selected_);
     size_t matched=0,shown=0;
     for(size_t i=0;i<options.count();i++) {
@@ -106,9 +107,10 @@ void Ui::renderParameterPicker() {
         const size_t position=matched++;
         if(position<picker_page_*4 || shown>=4)continue;
         const auto& d=parameterDescriptor(id);char text[110];
-        std::snprintf(text,sizeof(text),"%s    %s%s",d.name,UnitPresenter::present(id,0,config_->units).unit,capabilities_.supports(id) ? "":" (UNAVAILABLE)");
+        const bool available=capabilities_.supports(id) || isRaceChronoParameter(id);
+        std::snprintf(text,sizeof(text),"%s    %s%s",d.name,UnitPresenter::present(id,0,config_->units).unit,available ? "":" (UNAVAILABLE)");
         auto* row=button(auxiliary_screen_,text,20,120+shown*58,760,50,pickerEvent,300+static_cast<intptr_t>(id),id==picker_selected_);
-        if(!capabilities_.supports(id))lv_obj_add_state(row,LV_STATE_DISABLED);shown++;
+        if(!available)lv_obj_add_state(row,LV_STATE_DISABLED);shown++;
     }
     if(!matched)label(auxiliary_screen_,"No parameters available in this category",100,210);
     auto* prev=button(auxiliary_screen_,"<",20,356,90,48,pickerEvent,210);
@@ -117,14 +119,15 @@ void Ui::renderParameterPicker() {
     if((picker_page_+1)*4>=matched)lv_obj_add_state(next,LV_STATE_DISABLED);
     button(auxiliary_screen_,"BACK",20,420,180,48,pickerEvent,212);
     auto* select=button(auxiliary_screen_,"SELECT",590,420,190,48,pickerEvent,213,true);
-    if(!capabilities_.supports(picker_selected_))lv_obj_add_state(select,LV_STATE_DISABLED);
+    if(!capabilities_.supports(picker_selected_) &&
+       !isRaceChronoParameter(picker_selected_))lv_obj_add_state(select,LV_STATE_DISABLED);
     lv_scr_load(auxiliary_screen_);if(previous)lv_obj_del_async(previous);
 }
 void Ui::pickerEvent(lv_event_t* e) {
     if(!instance_)return;auto* s=instance_;
     const auto action=reinterpret_cast<intptr_t>(lv_event_get_user_data(e));
     if(action==100) {s->openParameterPicker();return;}
-    if(action>=200 && action<204) {s->picker_category_=action-200;s->picker_page_=0;}
+    if(action>=200 && action<205) {s->picker_category_=action-200;s->picker_page_=0;}
     else if(action==210) {if(s->picker_page_)s->picker_page_--;}
     else if(action==211)s->picker_page_++;
     else if(action==212) {s->closeAuxiliary();return;}

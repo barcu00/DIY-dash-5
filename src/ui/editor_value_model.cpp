@@ -1,6 +1,8 @@
 #include "editor_value_model.h"
 #include <cmath>
+#include "racechrono/racechrono_channel_catalog.h"
 ParameterCategory parameterCategory(ParameterId id) {
+    if(isRaceChronoParameter(id))return ParameterCategory::RaceChrono;
     const auto& d=parameterDescriptor(id);
     if(d.kind==ParameterKind::Flag)return ParameterCategory::Flags;
     if(d.native_unit==NativeUnit::Celsius)return ParameterCategory::Temperature;
