@@ -28,6 +28,11 @@ static lv_obj_t* findContaining(lv_obj_t* root,const char* text) {
     }
     return nullptr;
 }
+static unsigned countType(lv_obj_t* root,const lv_obj_class_t* type) {
+    unsigned count=lv_obj_check_type(root,type) ? 1U:0U;
+    for(uint32_t i=0;i<lv_obj_get_child_cnt(root);++i)count+=countType(lv_obj_get_child(root,i),type);
+    return count;
+}
 static lv_obj_t* button(lv_obj_t* root,const char* text) {
     if(lv_obj_check_type(root,&lv_btn_class)) {
         auto* label=find(root,&lv_label_class,text);if(label)return root;
@@ -144,6 +149,8 @@ int main(int argc,char** argv) {
         assert(find(lv_scr_act(),&lv_label_class,"RPM SCALE MAX"));
         ui.update(state,diagnostics,status,config,warnings);
         assert(find(lv_scr_act(),&lv_label_class,"FLASH ENABLED") && "Flash enable switch is missing");
+        assert(find(lv_scr_act(),&lv_label_class,"12-LED FILL MAX") && "12-LED fill maximum slider is missing");
+        assert(countType(lv_scr_act(),&lv_slider_class)==5 && "RPM settings must expose five sliders");
         assert(!find(lv_scr_act(),&lv_label_class,"ADVANCED: 12-LED FILL MAX") && "Duplicate lower-right RPM field remains");
         assert(!findContaining(lv_scr_act(),"UI updates:") && "Runtime diagnostics overwrite RPM status");
         assert(find(lv_scr_act(),&lv_label_class,"Colors follow YELLOW / RED thresholds; 12 LEDs retain 4/4/4 zones"));
