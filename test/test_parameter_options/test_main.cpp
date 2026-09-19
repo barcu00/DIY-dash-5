@@ -5,6 +5,17 @@
 
 #include "ui/parameter_options.h"
 #include "ecu/can_profile_registry.h"
+#include "racechrono/racechrono_channel_catalog.h"
+
+namespace {
+std::size_t raceChronoOptionCount(const ParameterOptionList& options) {
+    std::size_t count = 0U;
+    for (std::size_t index = 0U; index < options.count(); ++index) {
+        count += isRaceChronoParameter(options.parameterAt(index)) ? 1U : 0U;
+    }
+    return count;
+}
+}
 
 void test_tile_parameter_options_include_every_registered_parameter() {
     char options[8192]{};
@@ -61,11 +72,23 @@ void test_unsupported_saved_parameter_is_retained_and_labeled_in_english() {
     }
 }
 
+void test_all_racechrono_options_are_present_for_demo_and_can() {
+    const auto demo = ParameterOptions::build(
+        DataSource::Demo, nullptr, ParameterId::Rpm);
+    const auto can = ParameterOptions::build(
+        DataSource::Can, CanProfileRegistry::find("bmw_ms43_stock"),
+        ParameterId::Rpm);
+
+    TEST_ASSERT_EQUAL_UINT32(33U, raceChronoOptionCount(demo));
+    TEST_ASSERT_EQUAL_UINT32(33U, raceChronoOptionCount(can));
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_tile_parameter_options_include_every_registered_parameter);
     RUN_TEST(test_tile_parameter_options_report_truncation);
     RUN_TEST(test_filtered_options_map_indexes_to_stable_parameter_ids);
     RUN_TEST(test_unsupported_saved_parameter_is_retained_and_labeled_in_english);
+    RUN_TEST(test_all_racechrono_options_are_present_for_demo_and_can);
     return UNITY_END();
 }

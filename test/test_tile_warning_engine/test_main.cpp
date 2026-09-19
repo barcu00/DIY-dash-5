@@ -6,6 +6,7 @@
 // retriggering after acknowledgement, or hidden/multiple warnings being lost.
 
 #include "alarms/tile_warning_engine.h"
+#include "telemetry/composite_telemetry_view.h"
 
 namespace {
 AppConfig oneWarning(PageId page, uint8_t slot, ParameterId parameter,
@@ -180,6 +181,30 @@ void test_flag_tiles_never_open_numeric_warning_modal() {
     TEST_ASSERT_FALSE(engine.isHighlighted({PageId::Dash, 0U}));
 }
 
+void test_racechrono_warning_clears_without_touching_engine_state() {
+    const AppConfig config = oneWarning(
+        PageId::Dash, 0U, ParameterId::RcGpsSpeed,
+        WarningDirection::Above, 100.0f, 5.0f, 0U);
+    VehicleState engine_state;
+    engine_state.reset(DataSource::Can);
+    engine_state.set(ParameterId::Rpm, 6840.0f, 100U);
+    RaceChronoTelemetry racechrono;
+    TEST_ASSERT_TRUE(racechrono.acceptRaw(17U, 12000, 100U));
+    TileWarningEngine warnings;
+
+    CompositeTelemetryView active(engine_state, racechrono);
+    warnings.evaluate(config, active, 100U);
+    TEST_ASSERT_TRUE(warnings.nextModal().has_value());
+
+    racechrono.invalidateAll();
+    CompositeTelemetryView disconnected(engine_state, racechrono);
+    warnings.evaluate(config, disconnected, 101U);
+    TEST_ASSERT_FALSE(warnings.nextModal().has_value());
+    TEST_ASSERT_TRUE(engine_state.get(ParameterId::Rpm).valid);
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, 6840.0f, engine_state.get(ParameterId::Rpm).value);
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_above_warning_activates_only_after_configured_delay);
@@ -190,5 +215,6 @@ int main(int, char**) {
     RUN_TEST(test_largest_normalized_excursion_is_shown_first);
     RUN_TEST(test_equal_excursions_use_page_then_slot_order);
     RUN_TEST(test_flag_tiles_never_open_numeric_warning_modal);
+    RUN_TEST(test_racechrono_warning_clears_without_touching_engine_state);
     return UNITY_END();
 }
