@@ -2,7 +2,6 @@
 
 #include <unity.h>
 
-#include <cstdio>
 
 // Production changes caught: wrong approved tile defaults, unsafe persisted
 // values reaching runtime, or invalid shift-light ordering being accepted.
@@ -221,11 +220,15 @@ void test_validation_rejects_unsnapped_or_out_of_range_shift_values() {
     TEST_ASSERT_FALSE(above_range.validate().valid);
 }
 
-int main(int, char**) {
+void test_reports_persisted_blob_size() {
     TEST_ASSERT_EQUAL_UINT32_MESSAGE(
         0U, static_cast<uint32_t>(sizeof(AppConfig)),
         "CONFIG DIAG: actual value is persisted blob size");
+}
+
+int main(int, char**) {
     UNITY_BEGIN();
+    RUN_TEST(test_reports_persisted_blob_size);
     RUN_TEST(test_defaults_define_approved_dash_and_track_slots);
     RUN_TEST(test_tiles_default_and_normalize_to_yellow_flag_color);
     RUN_TEST(test_validation_preserves_dormant_numeric_settings_on_flag_tiles);
