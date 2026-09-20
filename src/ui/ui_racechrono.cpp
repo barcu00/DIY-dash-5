@@ -101,8 +101,8 @@ void Ui::createRaceChronoSettings(lv_obj_t* root) {
         constexpr const char* names[] = {
             "ENABLED", "CONNECTION", "BLE DEVICE", "LAST DATA"};
         for (int row = 0; row < 4; ++row) {
-            clippedLabel(content, names[row], 16, row * 42 + 14, 220,
-                         UiTheme::muted());
+            label(content, names[row], 16, row * 42 + 14,
+                  &lv_font_montserrat_12, UiTheme::muted());
             addSeparator(content, (row + 1) * 42 - 1, 750);
         }
 
@@ -134,8 +134,8 @@ void Ui::createRaceChronoSettings(lv_obj_t* root) {
             const int column = index % 2;
             const int row = index / 2;
             const int x = 16 + column * 370;
-            clippedLabel(content, summary_names[index], x,
-                         177 + row * 26, 170, UiTheme::muted());
+            label(content, summary_names[index], x, 177 + row * 26,
+                  &lv_font_montserrat_12, UiTheme::muted());
             *summary_values[index] = clippedLabel(
                 content, "", x + 174, 177 + row * 26, 160);
             lv_obj_set_style_text_align(*summary_values[index],
@@ -147,8 +147,8 @@ void Ui::createRaceChronoSettings(lv_obj_t* root) {
         button(content, "RESTART BLE", 568, 237, 166, 38,
                raceChronoEvent, RestartBle);
     } else {
-        clippedLabel(content, "CHANNEL FILTER", 16, 14, 220,
-                     UiTheme::muted());
+        label(content, "CHANNEL FILTER", 16, 14,
+              &lv_font_montserrat_12, UiTheme::muted());
         lv_obj_t* filter = lv_dropdown_create(content);
         lv_obj_set_pos(filter, 498, 5);
         lv_obj_set_size(filter, 236, 34);
@@ -189,8 +189,10 @@ void Ui::createRaceChronoSettings(lv_obj_t* root) {
         std::snprintf(page_text, sizeof(page_text), "PAGE %u / %u",
             static_cast<unsigned>(racechrono_settings_.pageIndex() + 1U),
             static_cast<unsigned>(racechrono_settings_.pageCount()));
-        lv_obj_t* page_number = clippedLabel(content, page_text, 276, 254,
-                                              200, UiTheme::muted());
+        lv_obj_t* page_number = label(content, page_text, 276, 254,
+                                      &lv_font_montserrat_12,
+                                      UiTheme::muted());
+        lv_obj_set_width(page_number, 200);
         lv_obj_set_style_text_align(page_number, LV_TEXT_ALIGN_CENTER, 0);
         lv_obj_t* next = button(content, "NEXT >", 584, 243, 150, 34,
                                 raceChronoEvent, NextPage);
