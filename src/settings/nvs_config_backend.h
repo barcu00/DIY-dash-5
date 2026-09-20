@@ -9,6 +9,7 @@ public:
     bool write(const void* data, std::size_t size) override;
     bool erase() override;
 
+    static constexpr const char* kPartition = "dashcfg";
     static constexpr const char* kNamespace = "diy_dash";
     static constexpr const char* kBlobKey = "config";
 };

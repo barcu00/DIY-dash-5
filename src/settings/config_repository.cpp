@@ -1,6 +1,7 @@
 #include "config_repository.h"
 
 #include <algorithm>
+#include <cstring>
 #include "ui/dashboard_layout.h"
 
 namespace {
@@ -499,7 +500,14 @@ bool ConfigRepository::saveCandidate(const AppConfig& candidate,
         return false;
     }
 
-    runtime_config = validated;
+    AppConfig stored{};
+    if (backend_.storedSize() != sizeof(stored) ||
+        !backend_.read(&stored, sizeof(stored)) ||
+        std::memcmp(&stored, &validated, sizeof(stored)) != 0) {
+        return false;
+    }
+
+    runtime_config = stored;
     return true;
 }
 
