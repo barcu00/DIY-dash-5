@@ -30,6 +30,10 @@ public:
     }
     bool indicate(const uint8_t* data, std::size_t size) override {
         calls.push_back(TransportCall::Indicate);
+        if (fail_next_indication) {
+            fail_next_indication = false;
+            return false;
+        }
         RaceChronoPacket packet;
         packet.size = static_cast<uint8_t>(size);
         std::memcpy(packet.bytes.data(), data, size);
@@ -39,6 +43,7 @@ public:
 
     std::vector<TransportCall> calls;
     std::vector<RaceChronoPacket> indications;
+    bool fail_next_indication = false;
 };
 
 RaceChronoEvent event(RaceChronoEventType type) {
@@ -167,11 +172,29 @@ void test_disable_invalidates_racechrono_without_touching_engine_state() {
     TEST_ASSERT_EQUAL_MEMORY(&before, &engine, sizeof(engine));
 }
 
+void test_failed_indication_is_retried_without_stalling_configuration() {
+    FakeTransport transport;
+    RaceChronoRuntime runtime(transport);
+    runtime.setEnabled(true, 0U);
+    runtime.service(0U);
+    enqueueAndService(runtime, event(RaceChronoEventType::Connected));
+    transport.fail_next_indication = true;
+
+    enqueueAndService(runtime,
+                      event(RaceChronoEventType::IndicationsSubscribed));
+    TEST_ASSERT_EQUAL_UINT32(0U, transport.indications.size());
+
+    runtime.service(1U);
+    TEST_ASSERT_EQUAL_UINT32(1U, transport.indications.size());
+    TEST_ASSERT_EQUAL_UINT8(0U, transport.indications[0].bytes[0]);
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_enable_and_complete_handshake_emit_remove_add_update_order);
     RUN_TEST(test_service_consumes_at_most_eight_events);
     RUN_TEST(test_restart_disconnects_then_advertises);
     RUN_TEST(test_disable_invalidates_racechrono_without_touching_engine_state);
+    RUN_TEST(test_failed_indication_is_retried_without_stalling_configuration);
     return UNITY_END();
 }

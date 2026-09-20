@@ -108,6 +108,17 @@ int main(int argc,char** argv) {
                "RaceChrono channel filter is missing");
         assert(findContaining(lv_scr_act(),"PAGE 1 / 6"));
         screenshot("racechrono-channels");
+        auto* filter=find(lv_scr_act(),&lv_dropdown_class);assert(filter);
+        lv_dropdown_set_selected(filter,1);
+        lv_event_send(filter,LV_EVENT_VALUE_CHANGED,nullptr);
+        racechrono.acceptRaw(17U,1234,1U);
+        diagnostics.uptime_ms=1000U;
+        ui.update(telemetry,diagnostics,status,config,warnings);
+        assert(find(lv_scr_act(),&lv_label_class,"GPS speed") &&
+               "Active filter did not reveal the newly active channel");
+        filter=find(lv_scr_act(),&lv_dropdown_class);assert(filter);
+        lv_dropdown_set_selected(filter,0);
+        lv_event_send(filter,LV_EVENT_VALUE_CHANGED,nullptr);
         click("NEXT >");
         assert(findContaining(lv_scr_act(),"PAGE 2 / 6"));
         click("CONNECTION");
