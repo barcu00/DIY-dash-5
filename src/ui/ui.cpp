@@ -646,7 +646,11 @@ void Ui::completeConfigCommit(uint32_t revision, bool success) {
             showCommitFeedback("SAVED");
         } else {
             if (editor_message_) lv_label_set_text(editor_message_, "SAVE ERROR");
-            if (editor_cancel_) lv_obj_clear_state(editor_cancel_, LV_STATE_DISABLED);
+            if (editor_cancel_) {
+                auto* caption = lv_obj_get_child(editor_cancel_, 0);
+                if (caption) lv_label_set_text(caption, "EXIT WITHOUT SAVE");
+                lv_obj_clear_state(editor_cancel_, LV_STATE_DISABLED);
+            }
             if (editor_save_) lv_obj_clear_state(editor_save_, LV_STATE_DISABLED);
         }
         lv_obj_invalidate(lv_scr_act());
@@ -691,6 +695,7 @@ void Ui::completeConfigCommit(uint32_t revision, bool success) {
             if (board_ && config_)
                 board_->setSoftwareBrightness(config_->brightness_percent);
             showCommitFeedback("SAVE ERROR");
+            showSettingsSaveFailure();
         }
         lv_obj_invalidate(lv_scr_act());
         return;
@@ -763,6 +768,7 @@ void Ui::beginSettingsSession() {
     settings_draft_ = *config_;
     settings_draft_active_ = true;
     pending_settings_exit_ = false;
+    clearSettingsSaveFailure();
 }
 
 void Ui::setSettingsCommitBlocked(bool blocked) {
@@ -792,6 +798,7 @@ void Ui::requestSettingsExit(Page destination) {
         return;
     }
     if (!queueSettingsOnExit()) return;
+    clearSettingsSaveFailure();
     pending_settings_exit_ = true;
     pending_settings_exit_to_page_ = true;
     pending_settings_page_ = destination;
@@ -805,6 +812,7 @@ void Ui::requestSettingsExit(SettingsCategory destination) {
         return;
     }
     if (!queueSettingsOnExit()) return;
+    clearSettingsSaveFailure();
     pending_settings_exit_ = true;
     pending_settings_exit_to_page_ = false;
     pending_settings_category_ = destination;
@@ -823,6 +831,37 @@ void Ui::finishSettingsExit() {
         settings_flow_.open(category);
         showSettings(category);
     }
+}
+
+void Ui::showSettingsSaveFailure() {
+    settings_save_failed_ = true;
+    if (settings_discard_exit_) return;
+    settings_discard_exit_ = makeButton(
+        lv_layer_top(), "EXIT WITHOUT SAVE", 500, 404, 280, 58,
+        discardSettingsExitEvent);
+    lv_obj_set_style_bg_color(settings_discard_exit_, UiTheme::red(), 0);
+    lv_obj_set_style_border_color(settings_discard_exit_, UiTheme::text(), 0);
+    lv_obj_set_style_border_width(settings_discard_exit_, 2, 0);
+    lv_obj_move_foreground(settings_discard_exit_);
+}
+
+void Ui::clearSettingsSaveFailure() {
+    settings_save_failed_ = false;
+    if (!settings_discard_exit_) return;
+    lv_obj_del(settings_discard_exit_);
+    settings_discard_exit_ = nullptr;
+}
+
+void Ui::discardFailedSettingsExit() {
+    if (!settings_save_failed_ || !config_ ||
+        !commit_model_.discardChanges()) {
+        return;
+    }
+    settings_draft_ = *config_;
+    if (board_) board_->setSoftwareBrightness(config_->brightness_percent);
+    clearSettingsSaveFailure();
+    pending_settings_exit_ = true;
+    finishSettingsExit();
 }
 
 void Ui::openResetConfirmation(SettingsResetTarget target) {
@@ -1072,6 +1111,10 @@ void Ui::settingsBackEvent(lv_event_t*) {
     if (!instance_) return;
     if (instance_->pending_settings_exit_) return;
     instance_->requestSettingsExit(SettingsCategory::Home);
+}
+
+void Ui::discardSettingsExitEvent(lv_event_t*) {
+    if (instance_) instance_->discardFailedSettingsExit();
 }
 
 void Ui::layoutPageEvent(lv_event_t* event) {

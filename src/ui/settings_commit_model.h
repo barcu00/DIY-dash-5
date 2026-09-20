@@ -25,6 +25,7 @@ public:
     bool queueFactoryReset();
     bool take(ConfigCommitRequest& request);
     bool complete(uint32_t revision, bool success);
+    bool discardChanges();
 
 private:
     bool dirty_ = false;

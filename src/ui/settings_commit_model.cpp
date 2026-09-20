@@ -69,3 +69,11 @@ bool SettingsCommitModel::complete(uint32_t revision, bool success) {
     }
     return true;
 }
+
+bool SettingsCommitModel::discardChanges() {
+    if (busy()) return false;
+    dirty_ = false;
+    reconfigure_runtime_ = false;
+    pending_request_ = ConfigCommitRequest{};
+    return true;
+}

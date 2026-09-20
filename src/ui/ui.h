@@ -62,6 +62,7 @@ private:
     static void settingsEvent(lv_event_t* event);
     static void settingsCategoryEvent(lv_event_t* event);
     static void settingsBackEvent(lv_event_t* event);
+    static void discardSettingsExitEvent(lv_event_t* event);
     static void warningEvent(lv_event_t* event);
     static void layoutSlotEvent(lv_event_t* event);
     static void layoutPageEvent(lv_event_t* event);
@@ -112,6 +113,9 @@ private:
     void requestSettingsExit(Page destination);
     void requestSettingsExit(SettingsCategory destination);
     void finishSettingsExit();
+    void showSettingsSaveFailure();
+    void clearSettingsSaveFailure();
+    void discardFailedSettingsExit();
     void setSettingsCommitBlocked(bool blocked);
     void showCommitFeedback(const char* message);
     void showSettingsMessage(const char* message);
@@ -158,6 +162,8 @@ private:
     lv_obj_t* settings_message_ = nullptr;
     lv_obj_t* settings_back_ = nullptr;
     lv_obj_t* settings_commit_blocker_ = nullptr;
+    lv_obj_t* settings_discard_exit_ = nullptr;
+    bool settings_save_failed_ = false;
     lv_obj_t* commit_toast_ = nullptr;
     uint32_t commit_toast_until_ms_ = 0U;
     lv_obj_t* brightness_slider_ = nullptr;
