@@ -237,9 +237,50 @@ int main(int argc,char** argv) {
         assert(find(lv_scr_act(),&lv_label_class,"RACECHRONO"));
         assert(button(lv_scr_act(),"CONNECTION"));
         assert(button(lv_scr_act(),"CHANNELS"));
-        assert(find(lv_scr_act(),&lv_checkbox_class) &&
-               "RaceChrono enable switch is missing");
-        screenshot("racechrono-connection");
+        auto* enabled=find(lv_scr_act(),&lv_switch_class);assert(enabled);
+        assert(lv_obj_get_width(enabled)>=64 && lv_obj_get_height(enabled)>=32);
+        assert(find(lv_scr_act(),&lv_label_class,"BLE DISABLED"));
+        assert(find(lv_scr_act(),&lv_label_class,"DATA: DISABLED"));
+        assert(find(lv_scr_act(),&lv_label_class,"GPS: NO FIX"));
+        assert(!find(lv_scr_act(),&lv_label_class,"DATA: ACTIVE"));
+        screenshot("racechrono-disabled");
+
+        lv_obj_add_state(enabled,LV_STATE_CHECKED);
+        lv_event_send(enabled,LV_EVENT_VALUE_CHANGED,nullptr);
+        status.racechrono_connection=RaceChronoConnectionState::Advertising;
+        status.racechrono={};diagnostics.uptime_ms+=250U;
+        ui.update(telemetry,diagnostics,status,config,warnings);
+        assert(find(lv_scr_act(),&lv_label_class,"BLE: WAITING FOR APP"));
+        assert(find(lv_scr_act(),&lv_label_class,"DATA: WAITING"));
+        assert(find(lv_scr_act(),&lv_label_class,"GPS: NO FIX"));
+        screenshot("racechrono-waiting");
+
+        status.racechrono_connection=RaceChronoConnectionState::Connected;
+        diagnostics.uptime_ms+=250U;
+        ui.update(telemetry,diagnostics,status,config,warnings);
+        assert(find(lv_scr_act(),&lv_label_class,"BLE: CONNECTED"));
+        assert(find(lv_scr_act(),&lv_label_class,"DATA: WAITING"));
+        screenshot("racechrono-connected");
+
+        status.racechrono_connection=RaceChronoConnectionState::Active;
+        status.racechrono.has_valid_packet=true;
+        status.racechrono.gps_fix_type=3U;
+        status.racechrono.satellites=15U;
+        status.racechrono.gps_accuracy=0.8f;
+        diagnostics.uptime_ms+=250U;
+        ui.update(telemetry,diagnostics,status,config,warnings);
+        assert(find(lv_scr_act(),&lv_label_class,"DATA: ACTIVE"));
+        assert(find(lv_scr_act(),&lv_label_class,"GPS: 3D FIX"));
+        screenshot("racechrono-active");
+
+        lv_obj_clear_state(enabled,LV_STATE_CHECKED);
+        lv_event_send(enabled,LV_EVENT_VALUE_CHANGED,nullptr);
+        auto* enabled_label=find(lv_scr_act(),&lv_label_class,"ENABLED");
+        assert(enabled_label);
+        auto* enabled_row=lv_obj_get_parent(enabled_label);
+        assert(lv_obj_has_flag(enabled_row,LV_OBJ_FLAG_CLICKABLE));
+        lv_event_send(enabled_row,LV_EVENT_CLICKED,nullptr);
+        assert(lv_obj_has_state(enabled,LV_STATE_CHECKED));
 
         click("CHANNELS");
         assert(find(lv_scr_act(),&lv_dropdown_class) &&
@@ -261,9 +302,7 @@ int main(int argc,char** argv) {
         assert(findContaining(lv_scr_act(),"PAGE 2 / 6"));
         click("CONNECTION");
 
-        auto* enabled=find(lv_scr_act(),&lv_checkbox_class);assert(enabled);
-        lv_obj_add_state(enabled,LV_STATE_CHECKED);
-        lv_event_send(enabled,LV_EVENT_VALUE_CHANGED,nullptr);
+        enabled=find(lv_scr_act(),&lv_switch_class);assert(enabled);
         assert(!config.racechrono.enabled &&
                "RaceChrono edit leaked into live configuration before BACK");
         click("RESTART BLE");
