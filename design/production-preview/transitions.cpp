@@ -167,6 +167,7 @@ int main(int argc,char** argv) {
             auto* slider=find(lv_scr_act(),&lv_slider_class);assert(slider);
             lv_slider_set_value(slider,35,LV_ANIM_OFF);
             lv_event_send(slider,LV_EVENT_VALUE_CHANGED,nullptr);
+            lv_event_send(slider,LV_EVENT_RELEASED,nullptr);
             assert(active_config.brightness_percent==100U);
             assert(active_board.brightness_percent==35U);
         };
