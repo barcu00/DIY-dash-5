@@ -2,7 +2,6 @@
 
 #include <unity.h>
 
-
 // Production changes caught: wrong approved tile defaults, unsafe persisted
 // values reaching runtime, or invalid shift-light ordering being accepted.
 
