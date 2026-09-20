@@ -13,6 +13,7 @@ public:
     virtual void stopAdvertising() = 0;
     virtual void disconnect() = 0;
     virtual bool indicate(const uint8_t* data, std::size_t size) = 0;
+    virtual bool pollEvent(RaceChronoEvent&) { return false; }
 };
 
 class RaceChronoRuntime {
@@ -32,6 +33,7 @@ public:
 
 private:
     void executeActions();
+    bool nextEvent(RaceChronoEvent& event);
 
     RaceChronoTransport& transport_;
     RaceChronoTelemetry telemetry_{};

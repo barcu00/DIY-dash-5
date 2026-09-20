@@ -14,7 +14,8 @@
 #include "alarms/tile_warning_engine.h"
 #include "alarms/buzzer_model.h"
 #include "alarms/buzzer_test_pulse.h"
-#include "racechrono/racechrono_telemetry.h"
+#include "racechrono/racechrono_ble_transport.h"
+#include "racechrono/racechrono_runtime.h"
 
 class App {
 public:
@@ -22,13 +23,15 @@ public:
     void loop();
 
 private:
-    void applyRuntimeConfig(uint32_t now_ms);
+    void applyRuntimeConfig(uint32_t now_ms, bool configure_engine = true);
+    UiRuntimeStatus runtimeStatus(uint32_t now_ms) const;
 
     BoardDisplay board_;
     CanDriver can_;
     EcuCanDecoder decoder_{nullptr, 0U};
     TelemetryManager telemetry_{decoder_, DashboardConfig::kCanTimeoutMs};
-    RaceChronoTelemetry racechrono_{};
+    RaceChronoBleTransport racechrono_transport_{};
+    RaceChronoRuntime racechrono_runtime_{racechrono_transport_};
     NvsConfigBackend config_backend_{};
     ConfigRepository config_repository_{config_backend_};
     AppConfig config_ = AppConfig::defaults();

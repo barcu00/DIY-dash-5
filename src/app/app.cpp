@@ -10,9 +10,12 @@ bool App::begin() {
         Serial.println("[DIY Dash] FATAL: display subsystem unavailable");
         return false;
     }
+    if (!racechrono_transport_.begin())
+        Serial.println("[DIY Dash] WARNING: RaceChrono BLE initialization failed");
 
     const uint32_t now = millis();
     applyRuntimeConfig(now);
+    racechrono_runtime_.service(now);
 
     if (!board_.lock()) {
         Serial.println("[DIY Dash] FATAL: cannot lock LVGL");
@@ -21,12 +24,9 @@ bool App::begin() {
 
     ui_.begin(config_, board_);
     telemetry_.update(now);
-    const UiRuntimeStatus status{
-        telemetry_.canStatus(), telemetry_.demoActive(),
-        config_.can.bitrate, config_.can.timeout_ms,
-        telemetry_.mappingCount(),
-        can_.receivedFrames(), can_.rejectedFrames()};
-    const CompositeTelemetryView combined(telemetry_.state(), racechrono_);
+    const UiRuntimeStatus status = runtimeStatus(now);
+    const CompositeTelemetryView combined(
+        telemetry_.state(), racechrono_runtime_.telemetry());
     warnings_.evaluate(config_, combined, now);
     ui_.update(combined, board_.diagnostics(), status, config_, warnings_);
     ui_.updateShiftLight(telemetry_.state(), now, config_.shift);
@@ -50,26 +50,35 @@ void App::loop() {
     const uint32_t now = millis();
     ConfigCommitRequest commit;
     if (ui_.takeConfigCommit(commit)) {
+        const AppConfig previous = config_;
         const bool saved = commit.kind == ConfigCommitKind::FactoryReset
                                ? config_repository_.reset(config_)
                                : config_repository_.saveCandidate(
                                      commit.candidate, config_);
         if (saved && commit.reconfigure_runtime) {
-            applyRuntimeConfig(now);
+            const bool configure_engine =
+                previous.data_source != config_.data_source ||
+                previous.can.profile_id != config_.can.profile_id ||
+                previous.can.bitrate != config_.can.bitrate ||
+                previous.can.timeout_ms != config_.can.timeout_ms;
+            applyRuntimeConfig(now, configure_engine);
         }
         if (board_.lock()) {
             ui_.completeConfigCommit(commit.revision, saved);
             board_.unlock();
         }
     }
+    if (ui_.takeRaceChronoRestart()) racechrono_runtime_.restart(now);
     CanFrame frame;
     for (uint8_t drained = 0U; drained < 32U && can_.poll(frame); ++drained) {
         telemetry_.accept(frame, now);
     }
+    racechrono_runtime_.service(now);
     telemetry_.update(now);
 
     if (frame_scheduler_.takeShift(now)) {
-        const CompositeTelemetryView combined(telemetry_.state(), racechrono_);
+        const CompositeTelemetryView combined(
+            telemetry_.state(), racechrono_runtime_.telemetry());
         warnings_.evaluate(config_, combined, now);
         if (board_.lock()) {
             ui_.updateShiftLight(telemetry_.state(), now, config_.shift);
@@ -80,12 +89,9 @@ void App::loop() {
     if (frame_scheduler_.takeRender(now)) {
         if (board_.lock()) {
             board_.incrementUiUpdates();
-            const UiRuntimeStatus status{
-                telemetry_.canStatus(), telemetry_.demoActive(),
-                config_.can.bitrate, config_.can.timeout_ms,
-                telemetry_.mappingCount(),
-                can_.receivedFrames(), can_.rejectedFrames()};
-            const CompositeTelemetryView combined(telemetry_.state(), racechrono_);
+            const UiRuntimeStatus status = runtimeStatus(now);
+            const CompositeTelemetryView combined(
+                telemetry_.state(), racechrono_runtime_.telemetry());
             ui_.update(combined, board_.diagnostics(), status, config_, warnings_);
             board_.unlock();
         }
@@ -104,7 +110,9 @@ void App::loop() {
     delay(2);
 }
 
-void App::applyRuntimeConfig(uint32_t now_ms) {
+void App::applyRuntimeConfig(uint32_t now_ms, bool configure_engine) {
+    racechrono_runtime_.setEnabled(config_.racechrono.enabled, now_ms);
+    if (!configure_engine) return;
     can_.stop();
     telemetry_.selectProfile(
         CanProfileRegistry::find(config_.can.profile_id.data()), now_ms);
@@ -121,4 +129,18 @@ void App::applyRuntimeConfig(uint32_t now_ms) {
                   profile == nullptr ? "none" : profile->id,
                   can_ready ? "READY" : "INACTIVE",
                   static_cast<unsigned>(config_.can.bitrate));
+}
+
+UiRuntimeStatus App::runtimeStatus(uint32_t now_ms) const {
+    UiRuntimeStatus status;
+    status.can_status = telemetry_.canStatus();
+    status.demo_active = telemetry_.demoActive();
+    status.can_bitrate = config_.can.bitrate;
+    status.can_timeout_ms = config_.can.timeout_ms;
+    status.decoder_mappings = telemetry_.mappingCount();
+    status.received_frames = can_.receivedFrames();
+    status.rejected_frames = can_.rejectedFrames();
+    status.racechrono_connection = racechrono_runtime_.state();
+    status.racechrono = racechrono_runtime_.status(now_ms);
+    return status;
 }

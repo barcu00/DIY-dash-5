@@ -17,12 +17,16 @@ bool RaceChronoRuntime::enqueueEvent(const RaceChronoEvent& event) {
 void RaceChronoRuntime::service(uint32_t now_ms) {
     RaceChronoEvent event;
     for (uint8_t drained = 0U;
-         drained < 8U && events_.popFromConsumer(event); ++drained) {
+         drained < 8U && nextEvent(event); ++drained) {
         session_.onEvent(event, now_ms);
     }
     session_.update(now_ms);
     executeActions();
     telemetry_.updateStale(now_ms);
+}
+
+bool RaceChronoRuntime::nextEvent(RaceChronoEvent& event) {
+    return events_.popFromConsumer(event) || transport_.pollEvent(event);
 }
 
 void RaceChronoRuntime::restart(uint32_t now_ms) {
