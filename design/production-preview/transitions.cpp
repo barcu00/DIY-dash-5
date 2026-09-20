@@ -69,8 +69,39 @@ int main(int argc,char** argv) {
     const bool track=argc>1 && !std::strcmp(argv[1],"--track");
     const bool psi=argc>1 && !std::strcmp(argv[1],"--psi");
     const bool tempunits=argc>1 && !std::strcmp(argv[1],"--tempunits");
+    const bool racechrono=argc>1 && !std::strcmp(argv[1],"--racechrono");
     const bool units=argc>1 && (!std::strcmp(argv[1],"--units") || psi || tempunits);
-    if(units) {
+    if(racechrono) {
+        click("SETTINGS");click("DATA & CAN");
+        assert(button(lv_scr_act(),"RACECHRONO") && "DATA & CAN entry is missing");
+        click("RACECHRONO");
+        assert(find(lv_scr_act(),&lv_label_class,"RACECHRONO"));
+        assert(button(lv_scr_act(),"CONNECTION"));
+        assert(button(lv_scr_act(),"CHANNELS"));
+        assert(find(lv_scr_act(),&lv_label_class,"ENABLED"));
+        screenshot("racechrono-connection");
+
+        click("CHANNELS");
+        assert(find(lv_scr_act(),&lv_label_class,"CHANNEL FILTER"));
+        assert(find(lv_scr_act(),&lv_label_class,"PAGE 1 / 6"));
+        screenshot("racechrono-channels");
+        click("NEXT >");
+        assert(find(lv_scr_act(),&lv_label_class,"PAGE 2 / 6"));
+        click("CONNECTION");
+
+        auto* enabled=find(lv_scr_act(),&lv_checkbox_class);assert(enabled);
+        lv_obj_add_state(enabled,LV_STATE_CHECKED);
+        lv_event_send(enabled,LV_EVENT_VALUE_CHANGED,nullptr);
+        assert(config.racechrono.enabled);
+        click("RESTART BLE");
+        assert(ui.takeRaceChronoRestart());
+        assert(!ui.takeRaceChronoRestart());
+        click("< BACK");
+        assert(find(lv_scr_act(),&lv_label_class,"DATA & CAN"));
+        ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
+        assert(request.candidate.racechrono.enabled);
+        std::puts("RaceChrono settings navigation, paging and staged save passed");
+    } else if(units) {
         config.units.pressure=psi ? PressureUnit::Psi:PressureUnit::Kpa;
         config.dash_tiles[0].parameter=ParameterId::OilPressure;
         config.dash_tiles[0].warning={true,WarningDirection::Below,900,200,0};
