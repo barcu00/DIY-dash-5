@@ -57,6 +57,9 @@ jobs:
       - name: Check Settings BACK persistence and retry
         if: success() || failure()
         run: /tmp/ui-transitions --settings-save
+      - name: Check recoverable save failures for every exit
+        if: success() || failure()
+        run: /tmp/ui-transitions --save-exits
       - name: Check transactional reset completion and retry
         if: success() || failure()
         run: /tmp/ui-transitions --reset

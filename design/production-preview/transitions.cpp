@@ -92,6 +92,7 @@ int main(int argc,char** argv) {
     const bool tempunits=argc>1 && !std::strcmp(argv[1],"--tempunits");
     const bool racechrono_mode=argc>1 && !std::strcmp(argv[1],"--racechrono");
     const bool settings_save=argc>1 && !std::strcmp(argv[1],"--settings-save");
+    const bool save_exits=argc>1 && !std::strcmp(argv[1],"--save-exits");
     const bool reset_mode=argc>1 && !std::strcmp(argv[1],"--reset");
     const bool can_tile=argc>1 && !std::strcmp(argv[1],"--can-tile");
     const bool units=argc>1 && (!std::strcmp(argv[1],"--units") || psi || tempunits);
@@ -159,6 +160,49 @@ int main(int argc,char** argv) {
         assert(find(lv_scr_act(),&lv_label_class,"SETTINGS"));
         assert(config.brightness_percent==100U);
         std::puts("DASH, TRACK and factory resets wait for persistence safely");
+    } else if(save_exits) {
+        auto stageBrightness=[](Ui& active_ui,AppConfig& active_config,
+                                BoardDisplay& active_board) {
+            click("SETTINGS");click("DISPLAY");
+            auto* slider=find(lv_scr_act(),&lv_slider_class);assert(slider);
+            lv_slider_set_value(slider,35,LV_ANIM_OFF);
+            lv_event_send(slider,LV_EVENT_VALUE_CHANGED,nullptr);
+            assert(active_config.brightness_percent==100U);
+            assert(active_board.brightness_percent==35U);
+        };
+        ConfigCommitRequest request;
+
+        stageBrightness(ui,config,board);
+        auto* settings_page=lv_scr_act();click("< BACK");
+        assert(ui.takeConfigCommit(request));
+        ui.completeConfigCommit(request.revision,false);
+        assert(lv_scr_act()==settings_page);
+        assert(board.brightness_percent==100U);
+        assert(button(lv_layer_top(),"EXIT WITHOUT SAVE"));
+        clickOn(lv_layer_top(),"EXIT WITHOUT SAVE");
+        assert(button(lv_scr_act(),"RPM & SHIFT LIGHT"));
+
+        click("DASH");assert(lv_scr_act()==dash);
+        stageBrightness(ui,config,board);
+        settings_page=lv_scr_act();click("DASH");
+        assert(ui.takeConfigCommit(request));
+        ui.completeConfigCommit(request.revision,false);
+        assert(lv_scr_act()==settings_page);
+        assert(button(lv_layer_top(),"EXIT WITHOUT SAVE"));
+        clickOn(lv_layer_top(),"EXIT WITHOUT SAVE");
+        assert(lv_scr_act()==dash && config.brightness_percent==100U);
+
+        stageBrightness(ui,config,board);
+        settings_page=lv_scr_act();click("TRACK");
+        assert(ui.takeConfigCommit(request));
+        ui.completeConfigCommit(request.revision,false);
+        assert(lv_scr_act()==settings_page);
+        assert(button(lv_layer_top(),"EXIT WITHOUT SAVE"));
+        clickOn(lv_layer_top(),"EXIT WITHOUT SAVE");
+        assert(lv_scr_act()!=dash);
+        assert(find(lv_scr_act(),&lv_label_class,"TRACK"));
+        assert(config.brightness_percent==100U);
+        std::puts("BACK, DASH and TRACK save failures remain recoverable");
     } else if(settings_save) {
         click("SETTINGS");click("RPM & SHIFT LIGHT");
         auto* settings_page=lv_scr_act();
@@ -361,9 +405,15 @@ int main(int argc,char** argv) {
         ui.completeConfigCommit(request.revision,false);
         assert(lv_scr_act()==editor && config.dash_tiles[0].visible);
         assert(!lv_obj_has_state(button(editor,"BACK"),LV_STATE_DISABLED));
+        assert(button(editor,"EXIT WITHOUT SAVE"));
+        click("EXIT WITHOUT SAVE");
+        assert(lv_scr_act()==dash && config.dash_tiles[0].visible);
+        lv_event_send(tile,LV_EVENT_LONG_PRESSED,nullptr);
+        editor=lv_scr_act();visible=find(editor,&lv_checkbox_class);
+        lv_obj_clear_state(visible,LV_STATE_CHECKED);
         click("BACK");assert(ui.takeConfigCommit(request));config=request.candidate;ui.completeConfigCommit(request.revision,true);
         assert(lv_scr_act()==dash && !config.dash_tiles[0].visible);
-        std::puts("Failed tile save stays editable and retries transactionally");
+        std::puts("Failed tile save can be discarded or retried transactionally");
     } else if(center) {
         auto* tile=lv_obj_get_child(dash,8); // configurable Analog slot 6
         lv_event_send(tile,LV_EVENT_LONG_PRESSED,nullptr);

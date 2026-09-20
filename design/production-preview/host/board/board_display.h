@@ -9,5 +9,6 @@ struct RuntimeDiagnostics {
 // Only the physical brightness output is substituted; UI and LVGL are real.
 class BoardDisplay {
 public:
-    void setSoftwareBrightness(uint8_t) {}
+    void setSoftwareBrightness(uint8_t percent) { brightness_percent = percent; }
+    uint8_t brightness_percent = 0U;
 };

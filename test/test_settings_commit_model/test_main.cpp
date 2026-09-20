@@ -145,6 +145,32 @@ void test_factory_reset_uses_a_distinct_commit_kind() {
     TEST_ASSERT_TRUE(model.dirty());
 }
 
+void test_discard_is_rejected_while_a_request_is_in_flight() {
+    SettingsCommitModel model;
+    model.markDirty(true);
+    TEST_ASSERT_TRUE(model.queueOnExit(AppConfig::defaults()));
+    ConfigCommitRequest request;
+    TEST_ASSERT_TRUE(model.take(request));
+
+    TEST_ASSERT_FALSE(model.discardChanges());
+    TEST_ASSERT_TRUE(model.dirty());
+    TEST_ASSERT_TRUE(model.busy());
+}
+
+void test_discard_clears_retry_state_after_failed_request() {
+    SettingsCommitModel model;
+    model.markDirty(true);
+    TEST_ASSERT_TRUE(model.queueOnExit(AppConfig::defaults()));
+    ConfigCommitRequest request;
+    TEST_ASSERT_TRUE(model.take(request));
+    TEST_ASSERT_TRUE(model.complete(request.revision, false));
+
+    TEST_ASSERT_TRUE(model.discardChanges());
+    TEST_ASSERT_FALSE(model.dirty());
+    TEST_ASSERT_FALSE(model.busy());
+    TEST_ASSERT_FALSE(model.take(request));
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_unchanged_exit_does_not_queue_a_commit);
@@ -156,5 +182,7 @@ int main(int, char**) {
     RUN_TEST(test_wrong_completion_revision_does_not_unlock_commit_model);
     RUN_TEST(test_reset_request_is_rejected_while_save_is_in_flight);
     RUN_TEST(test_factory_reset_uses_a_distinct_commit_kind);
+    RUN_TEST(test_discard_is_rejected_while_a_request_is_in_flight);
+    RUN_TEST(test_discard_clears_retry_state_after_failed_request);
     return UNITY_END();
 }
