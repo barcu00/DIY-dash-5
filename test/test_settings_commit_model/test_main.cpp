@@ -82,9 +82,58 @@ void test_stale_success_does_not_clean_a_newer_edit() {
     TEST_ASSERT_TRUE(second.revision > first.revision);
 }
 
+void test_newer_snapshot_waits_until_in_flight_commit_completes() {
+    SettingsCommitModel model;
+    AppConfig first_candidate = AppConfig::defaults();
+    first_candidate.brightness_percent = 80U;
+    model.markDirty(false);
+    TEST_ASSERT_TRUE(model.queueOnExit(first_candidate));
+
+    ConfigCommitRequest first;
+    TEST_ASSERT_TRUE(model.take(first));
+    TEST_ASSERT_TRUE(model.busy());
+
+    AppConfig newer_candidate = first_candidate;
+    newer_candidate.brightness_percent = 35U;
+    model.markDirty(false);
+    TEST_ASSERT_TRUE(model.queueOnExit(newer_candidate));
+
+    ConfigCommitRequest newer;
+    TEST_ASSERT_FALSE(model.take(newer));
+    model.complete(first.revision, true);
+    TEST_ASSERT_TRUE(model.take(newer));
+    TEST_ASSERT_EQUAL_UINT8(35U, newer.candidate.brightness_percent);
+    TEST_ASSERT_TRUE(newer.revision > first.revision);
+}
+
+void test_wrong_completion_revision_does_not_unlock_commit_model() {
+    SettingsCommitModel model;
+    model.markDirty(false);
+    TEST_ASSERT_TRUE(model.queueOnExit(AppConfig::defaults()));
+    ConfigCommitRequest request;
+    TEST_ASSERT_TRUE(model.take(request));
+
+    model.complete(request.revision + 1U, true);
+
+    TEST_ASSERT_TRUE(model.busy());
+    TEST_ASSERT_FALSE(model.take(request));
+}
+
+void test_reset_request_is_rejected_while_save_is_in_flight() {
+    SettingsCommitModel model;
+    model.markDirty(false);
+    TEST_ASSERT_TRUE(model.queueOnExit(AppConfig::defaults()));
+    ConfigCommitRequest request;
+    TEST_ASSERT_TRUE(model.take(request));
+
+    TEST_ASSERT_FALSE(model.queueFactoryReset());
+    model.complete(request.revision, true);
+    TEST_ASSERT_FALSE(model.take(request));
+}
+
 void test_factory_reset_uses_a_distinct_commit_kind() {
     SettingsCommitModel model;
-    model.queueFactoryReset();
+    TEST_ASSERT_TRUE(model.queueFactoryReset());
 
     ConfigCommitRequest request;
     TEST_ASSERT_TRUE(model.take(request));
@@ -101,6 +150,9 @@ int main(int, char**) {
     RUN_TEST(test_repeated_edits_coalesce_to_the_latest_snapshot);
     RUN_TEST(test_success_cleans_matching_revision_and_failure_is_retryable);
     RUN_TEST(test_stale_success_does_not_clean_a_newer_edit);
+    RUN_TEST(test_newer_snapshot_waits_until_in_flight_commit_completes);
+    RUN_TEST(test_wrong_completion_revision_does_not_unlock_commit_model);
+    RUN_TEST(test_reset_request_is_rejected_while_save_is_in_flight);
     RUN_TEST(test_factory_reset_uses_a_distinct_commit_kind);
     return UNITY_END();
 }
