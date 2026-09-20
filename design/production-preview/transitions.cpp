@@ -99,7 +99,8 @@ int main(int argc,char** argv) {
         assert(find(lv_scr_act(),&lv_label_class,"RACECHRONO"));
         assert(button(lv_scr_act(),"CONNECTION"));
         assert(button(lv_scr_act(),"CHANNELS"));
-        assert(find(lv_scr_act(),&lv_label_class,"ENABLED"));
+        assert(find(lv_scr_act(),&lv_checkbox_class) &&
+               "RaceChrono enable switch is missing");
         screenshot("racechrono-connection");
 
         click("CHANNELS");
