@@ -71,6 +71,25 @@ int main(int argc,char** argv) {
     const bool tempunits=argc>1 && !std::strcmp(argv[1],"--tempunits");
     const bool racechrono=argc>1 && !std::strcmp(argv[1],"--racechrono");
     const bool units=argc>1 && (!std::strcmp(argv[1],"--units") || psi || tempunits);
+    if(units) {
+        config.units.pressure=psi ? PressureUnit::Psi:PressureUnit::Kpa;
+        config.dash_tiles[0].parameter=ParameterId::OilPressure;
+        config.dash_tiles[0].warning={true,WarningDirection::Below,900,200,0};
+        if(tempunits) {
+            config.units.temperature=TemperatureUnit::Fahrenheit;
+            config.dash_tiles[0].parameter=ParameterId::OilTemperature;
+            config.dash_tiles[0].warning={true,WarningDirection::Above,120.15f,5.15f,250};
+            config.dash_tiles[0].temperature_bar={true,40.1f,75.15f,115.12f,130.3f};
+        }
+    }
+    if(center)config.dash_layout=DashboardLayout::AnalogStyle;
+    ui.setDataContext(DataSource::Demo,nullptr);ui.begin(config,board);
+    VehicleState state;state.reset(DataSource::Demo);state.set(ParameterId::Rpm,6840,0);
+    state.set(ParameterId::Speed,137,0);
+    state.set(ParameterId::OilTemperature,108,0);
+    RuntimeDiagnostics diagnostics{};UiRuntimeStatus status{};TileWarningEngine warnings;
+    ui.update(state,diagnostics,status,config,warnings);ui.updateShiftLight(state,0,config.shift);
+    auto* dash=lv_scr_act();
     if(racechrono) {
         click("SETTINGS");click("DATA & CAN");
         assert(button(lv_scr_act(),"RACECHRONO") && "DATA & CAN entry is missing");
@@ -102,25 +121,6 @@ int main(int argc,char** argv) {
         assert(request.candidate.racechrono.enabled);
         std::puts("RaceChrono settings navigation, paging and staged save passed");
     } else if(units) {
-        config.units.pressure=psi ? PressureUnit::Psi:PressureUnit::Kpa;
-        config.dash_tiles[0].parameter=ParameterId::OilPressure;
-        config.dash_tiles[0].warning={true,WarningDirection::Below,900,200,0};
-        if(tempunits) {
-            config.units.temperature=TemperatureUnit::Fahrenheit;
-            config.dash_tiles[0].parameter=ParameterId::OilTemperature;
-            config.dash_tiles[0].warning={true,WarningDirection::Above,120.15f,5.15f,250};
-            config.dash_tiles[0].temperature_bar={true,40.1f,75.15f,115.12f,130.3f};
-        }
-    }
-    if(center)config.dash_layout=DashboardLayout::AnalogStyle;
-    ui.setDataContext(DataSource::Demo,nullptr);ui.begin(config,board);
-    VehicleState state;state.reset(DataSource::Demo);state.set(ParameterId::Rpm,6840,0);
-    state.set(ParameterId::Speed,137,0);
-    state.set(ParameterId::OilTemperature,108,0);
-    RuntimeDiagnostics diagnostics{};UiRuntimeStatus status{};TileWarningEngine warnings;
-    ui.update(state,diagnostics,status,config,warnings);ui.updateShiftLight(state,0,config.shift);
-    auto* dash=lv_scr_act();
-    if(units) {
         lv_event_send(lv_obj_get_child(dash,2),LV_EVENT_LONG_PRESSED,nullptr);
         click("SAVE TILE");ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
         if(tempunits) {
