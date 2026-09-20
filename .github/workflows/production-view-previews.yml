@@ -66,6 +66,9 @@ jobs:
       - name: Check Analog center editor and parameter selection
         if: success() || failure()
         run: /tmp/ui-transitions --center
+      - name: Check BMW MS43 CAN tile parameter selection
+        if: success() || failure()
+        run: /tmp/ui-transitions --can-tile
       - name: Check RaceChrono settings transitions and redraws
         if: success() || failure()
         run: |

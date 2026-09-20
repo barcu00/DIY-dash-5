@@ -7,6 +7,7 @@
 #include <lvgl.h>
 #include "ui/ui.h"
 #include "ui/dashboard_layout.h"
+#include "ecu/can_profile_registry.h"
 #include "board/lvgl_memory.h"
 
 alignas(std::max_align_t) unsigned char pool[LV_MEM_SIZE];
@@ -50,6 +51,22 @@ static void clickOn(lv_obj_t* root,const char* text) {
     auto* target=button(root,text);assert(target);
     lv_event_send(target,LV_EVENT_CLICKED,nullptr);
 }
+static void choosePickerRow(const char* category,const char* name) {
+    click(category);
+    for(unsigned page=0;page<32;page++) {
+        auto* row_text=findContaining(lv_scr_act(),name);
+        if(row_text) {
+            auto* row=lv_obj_get_parent(row_text);
+            assert(lv_obj_check_type(row,&lv_btn_class));
+            lv_event_send(row,LV_EVENT_CLICKED,nullptr);
+            return;
+        }
+        auto* next=button(lv_scr_act(),">");assert(next);
+        assert(!lv_obj_has_state(next,LV_STATE_DISABLED));
+        lv_event_send(next,LV_EVENT_CLICKED,nullptr);
+    }
+    assert(false && "Parameter picker row was not found");
+}
 static void flush(lv_disp_drv_t* driver,const lv_area_t* area,lv_color_t* pixels) {
     if(driver->direct_mode)std::memcpy(captured,pixels,sizeof(captured));
     else for(int y=area->y1;y<=area->y2;y++)for(int x=area->x1;x<=area->x2;x++)captured[y*800+x]=*pixels++;
@@ -76,6 +93,7 @@ int main(int argc,char** argv) {
     const bool racechrono_mode=argc>1 && !std::strcmp(argv[1],"--racechrono");
     const bool settings_save=argc>1 && !std::strcmp(argv[1],"--settings-save");
     const bool reset_mode=argc>1 && !std::strcmp(argv[1],"--reset");
+    const bool can_tile=argc>1 && !std::strcmp(argv[1],"--can-tile");
     const bool units=argc>1 && (!std::strcmp(argv[1],"--units") || psi || tempunits);
     if(units) {
         config.units.pressure=psi ? PressureUnit::Psi:PressureUnit::Kpa;
@@ -94,7 +112,9 @@ int main(int argc,char** argv) {
         config.dash_tiles[0].visible=false;
         config.track_tiles[0].visible=false;
     }
-    ui.setDataContext(DataSource::Demo,nullptr);ui.begin(config,board);
+    ui.setDataContext(can_tile ? DataSource::Can:DataSource::Demo,
+        can_tile ? CanProfileRegistry::find("bmw_ms43_stock"):nullptr);
+    ui.begin(config,board);
     VehicleState state;state.reset(DataSource::Demo);state.set(ParameterId::Rpm,6840,0);
     state.set(ParameterId::Speed,137,0);
     state.set(ParameterId::OilTemperature,108,0);
@@ -221,15 +241,27 @@ int main(int argc,char** argv) {
         auto* channel_row=lv_obj_get_parent(channel);
         assert(lv_obj_check_type(channel_row,&lv_btn_class));
         lv_event_send(channel_row,LV_EVENT_CLICKED,nullptr);
-        click("SELECT");click("SAVE TILE");
+        click("SELECT");click("BACK");
         assert(ui.takeConfigCommit(request));
         assert(request.candidate.dash_tiles[0].parameter==
                ParameterId::RcLapNumber &&
                "RaceChrono parameter was not assigned to the tile");
         std::puts("RaceChrono settings navigation, paging and staged save passed");
+    } else if(can_tile) {
+        auto* tile=lv_obj_get_child(dash,2);
+        lv_event_send(tile,LV_EVENT_LONG_PRESSED,nullptr);
+        click("SELECT PARAMETER");
+        choosePickerRow("FLAGS","Check engine");
+        click("SELECT");click("BACK");
+        ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
+        assert(request.candidate.dash_tiles[0].parameter==
+               ParameterId::CheckEngine);
+        config=request.candidate;ui.completeConfigCommit(request.revision,true);
+        assert(lv_scr_act()==dash);
+        std::puts("BMW MS43 CAN parameter picker and BACK persistence passed");
     } else if(units) {
         lv_event_send(lv_obj_get_child(dash,2),LV_EVENT_LONG_PRESSED,nullptr);
-        click("SAVE TILE");ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
+        click("BACK");ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
         if(tempunits) {
             assert(request.candidate.dash_tiles[0].warning.delay_ms==250 && "Unchanged delay rounded during save");
             assert(std::fabs(request.candidate.dash_tiles[0].temperature_bar.ready_native-75.15f)<.00001f && "Unchanged temperature limit rounded during save");
@@ -325,21 +357,21 @@ int main(int argc,char** argv) {
     } else if(argc>1 && !std::strcmp(argv[1],"--retry")) {
         auto* tile=lv_obj_get_child(dash,2);lv_event_send(tile,LV_EVENT_LONG_PRESSED,nullptr);
         auto* editor=lv_scr_act();auto* visible=find(editor,&lv_checkbox_class);lv_obj_clear_state(visible,LV_STATE_CHECKED);
-        click("SAVE TILE");ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
+        click("BACK");ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
         ui.completeConfigCommit(request.revision,false);
         assert(lv_scr_act()==editor && config.dash_tiles[0].visible);
-        assert(!lv_obj_has_state(button(editor,"SAVE TILE"),LV_STATE_DISABLED));
-        click("SAVE TILE");assert(ui.takeConfigCommit(request));config=request.candidate;ui.completeConfigCommit(request.revision,true);
+        assert(!lv_obj_has_state(button(editor,"BACK"),LV_STATE_DISABLED));
+        click("BACK");assert(ui.takeConfigCommit(request));config=request.candidate;ui.completeConfigCommit(request.revision,true);
         assert(lv_scr_act()==dash && !config.dash_tiles[0].visible);
         std::puts("Failed tile save stays editable and retries transactionally");
     } else if(center) {
         auto* tile=lv_obj_get_child(dash,8); // configurable Analog slot 6
         lv_event_send(tile,LV_EVENT_LONG_PRESSED,nullptr);
         assert(find(lv_scr_act(),&lv_label_class,"TILE SETTINGS"));
-        auto* dropdown=find(lv_scr_act(),&lv_dropdown_class);assert(dropdown);
-        lv_dropdown_set_selected(dropdown,9); // SPEED in the complete Demo parameter list
-        lv_event_send(dropdown,LV_EVENT_VALUE_CHANGED,nullptr);
-        click("SAVE TILE");ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
+        click("SELECT PARAMETER");
+        choosePickerRow("ENGINE","Vehicle speed");
+        click("SELECT");click("BACK");
+        ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
         config=request.candidate;ui.completeConfigCommit(request.revision,true);
         assert(activeTiles(config,PageId::Dash)[6].parameter==ParameterId::Speed);
         assert(find(tile,&lv_label_class,"137") && "Analog center shows old RPM after saving SPEED");
@@ -351,7 +383,7 @@ int main(int argc,char** argv) {
         assert(find(lv_scr_act(),&lv_label_class,"TILE SETTINGS"));
         auto* visible=find(lv_scr_act(),&lv_checkbox_class);assert(visible);
         lv_obj_clear_state(visible,LV_STATE_CHECKED);
-        click("SAVE TILE");ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
+        click("BACK");ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
         config=request.candidate;ui.completeConfigCommit(request.revision,true);
         assert(lv_scr_act()==dash);
         assert(lv_obj_has_flag(tile,LV_OBJ_FLAG_HIDDEN) && "Saved tile visibility applied after screen return");

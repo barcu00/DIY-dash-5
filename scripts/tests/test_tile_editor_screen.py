@@ -25,9 +25,11 @@ class TileEditorScreenContractTests(unittest.TestCase):
         self.assertNotIn("lv_layer_top()", self.open_editor)
 
     def test_parameter_selection_uses_profile_aware_id_mapping(self):
-        self.assertIn("editor_parameter_options_", self.header)
-        self.assertIn("ParameterOptions::build", self.open_editor)
-        self.assertIn("parameterAt", self.editor_event)
+        self.assertNotIn("editor_parameter_options_", self.header)
+        self.assertNotIn("editor_parameter_=lv_dropdown_create", self.open_editor)
+        self.assertIn("editor_parameter_value_", self.header)
+        self.assertIn("pickerEvent,100", self.open_editor)
+        self.assertNotIn("action == 3", self.editor_event)
         self.assertNotRegex(
             self.editor_event,
             r"static_cast<ParameterId>\s*\(\s*lv_dropdown_get_selected",
@@ -65,7 +67,7 @@ class TileEditorScreenContractTests(unittest.TestCase):
         self.assertIn("loadEditorControlsFromDraft", self.header)
         self.assertNotIn("load_temperature_defaults", self.header)
 
-    def test_tile_save_waits_for_persistence_before_closing(self):
+    def test_tile_back_waits_for_persistence_before_closing(self):
         save_editor = self.source.split("void Ui::saveEditor", 1)[1]
         save_editor = save_editor.split("void Ui::showSettingsMessage", 1)[0]
         completion = self.source.split("void Ui::completeConfigCommit", 1)[1]
@@ -77,6 +79,8 @@ class TileEditorScreenContractTests(unittest.TestCase):
         self.assertNotIn("closeEditor()", save_editor)
         self.assertIn("editor_commit_pending_", completion)
         self.assertIn("closeEditor()", completion)
+        self.assertIn('"BACK"', self.open_editor)
+        self.assertNotIn('"SAVE TILE"', self.open_editor)
 
     def test_opening_editor_clears_existing_warning_visual(self):
         self.assertIn("warning_panel_", self.open_editor)
