@@ -222,8 +222,9 @@ void test_validation_rejects_unsnapped_or_out_of_range_shift_values() {
 }
 
 int main(int, char**) {
-    std::printf("[CONFIG DIAG] sizeof(AppConfig)=%u bytes\n",
-                static_cast<unsigned>(sizeof(AppConfig)));
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(
+        0U, static_cast<uint32_t>(sizeof(AppConfig)),
+        "CONFIG DIAG: actual value is persisted blob size");
     UNITY_BEGIN();
     RUN_TEST(test_defaults_define_approved_dash_and_track_slots);
     RUN_TEST(test_tiles_default_and_normalize_to_yellow_flag_color);
