@@ -31,8 +31,12 @@ void Ui::openEditor(TileAddress address) {
     for(int i=0;i<3;i++)editor_tabs_[i]=button(editor_screen_,tabs[i],20+i*254,54,244,48,editorTabEvent,i);
     editor_data_panel_=panel(editor_screen_,0,112,800,298);
     label(editor_data_panel_,"PARAMETER",20,6,&lv_font_montserrat_12,UiTheme::muted());
-    auto* parameter_button=button(editor_data_panel_,"",20,28,410,106,pickerEvent,100,true);
-    editor_parameter_value_=lv_obj_get_child(parameter_button,0);
+    auto* parameter_button=button(editor_data_panel_,"SELECT PARAMETER",20,28,410,106,pickerEvent,100,true);
+    auto* parameter_caption=lv_obj_get_child(parameter_button,0);
+    lv_obj_align(parameter_caption,LV_ALIGN_BOTTOM_MID,0,-10);
+    editor_parameter_value_=label(parameter_button,"",0,16,&lv_font_montserrat_20,UiTheme::background());
+    lv_obj_set_width(editor_parameter_value_,410);
+    lv_obj_set_style_text_align(editor_parameter_value_,LV_TEXT_ALIGN_CENTER,0);
     editor_visible_=lv_checkbox_create(editor_data_panel_);lv_obj_set_pos(editor_visible_,20,158);
     lv_checkbox_set_text(editor_visible_,"VISIBLE");
     darkCheckbox(editor_visible_);
