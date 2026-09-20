@@ -16,7 +16,9 @@ void Ui::openEditor(TileAddress address) {
     if(!config_ || editor_commit_pending_)return;
     if(editor_screen_)closeEditor();
     editor_return_page_=current_page_;editor_return_category_=settings_flow_.category();
-    if(!editor_.open(address,*config_))return;
+    const AppConfig& source = current_page_==Page::Settings &&
+        settings_draft_active_ ? settings_draft_:*config_;
+    if(!editor_.open(address,source))return;
     if(warning_panel_) {lv_obj_del(warning_panel_);warning_panel_=nullptr;warning_text_=nullptr;}
     numeric_binding_count_=0;editor_tab_=0;
     const auto& tile=editor_.draft().tile;
@@ -29,17 +31,8 @@ void Ui::openEditor(TileAddress address) {
     for(int i=0;i<3;i++)editor_tabs_[i]=button(editor_screen_,tabs[i],20+i*254,54,244,48,editorTabEvent,i);
     editor_data_panel_=panel(editor_screen_,0,112,800,298);
     label(editor_data_panel_,"PARAMETER",20,6,&lv_font_montserrat_12,UiTheme::muted());
-    // The dropdown remains a compact quick choice; SELECT PARAMETER opens the categorized picker.
-    editor_parameter_=lv_dropdown_create(editor_data_panel_);
-    darkDropdown(editor_parameter_);
-    lv_obj_set_pos(editor_parameter_,20,28);lv_obj_set_size(editor_parameter_,410,48);
-    editor_parameter_options_=ParameterOptions::build(active_source_,active_profile_,tile.parameter);
-    char options[2048]{};editor_parameter_options_.write(options,sizeof(options));
-    lv_dropdown_set_options(editor_parameter_,options);
-    for(size_t i=0;i<editor_parameter_options_.count();++i)
-        if(editor_parameter_options_.parameterAt(i)==tile.parameter)lv_dropdown_set_selected(editor_parameter_,i);
-    lv_obj_add_event_cb(editor_parameter_,editorEvent,LV_EVENT_VALUE_CHANGED,reinterpret_cast<void*>(3));
-    button(editor_data_panel_,"SELECT PARAMETER",20,86,410,48,pickerEvent,100);
+    auto* parameter_button=button(editor_data_panel_,"",20,28,410,106,pickerEvent,100,true);
+    editor_parameter_value_=lv_obj_get_child(parameter_button,0);
     editor_visible_=lv_checkbox_create(editor_data_panel_);lv_obj_set_pos(editor_visible_,20,158);
     lv_checkbox_set_text(editor_visible_,"VISIBLE");
     darkCheckbox(editor_visible_);
@@ -98,7 +91,7 @@ void Ui::openEditor(TileAddress address) {
     darkDropdown(editor_flag_color_);
     label(editor_flag_panel_,"OFF stays neutral. ON uses the selected color.",160,192);
     editor_cancel_=button(editor_screen_,"CANCEL",20,420,180,48,editorEvent,1);
-    editor_save_=button(editor_screen_,"SAVE TILE",590,420,190,48,editorEvent,2,true);
+    editor_save_=button(editor_screen_,"BACK",590,420,190,48,editorEvent,2,true);
     editor_message_=label(editor_screen_,"Unsaved changes",225,436,&lv_font_montserrat_14,UiTheme::muted());
     loadEditorControlsFromDraft();
     update_policy_.activate(UiActivity::TileEditor);lv_scr_load(editor_screen_);
@@ -158,6 +151,10 @@ void Ui::loadEditorTemperatureControls(const TemperatureBarConfig& bar) {
 }
 void Ui::loadEditorControlsFromDraft() {
     const auto& t=editor_.draft().tile;const auto id=t.parameter;
+    if(editor_parameter_value_) {
+        char text[96];std::snprintf(text,sizeof(text),"%s  >",parameterDescriptor(id).name);
+        lv_label_set_text(editor_parameter_value_,text);
+    }
     if(t.visible)lv_obj_add_state(editor_visible_,LV_STATE_CHECKED);else lv_obj_clear_state(editor_visible_,LV_STATE_CHECKED);
     lv_dropdown_set_selected(editor_decimals_,t.decimals);lv_dropdown_set_selected(editor_flag_color_,static_cast<uint16_t>(t.flag_active_color));
     if(t.warning.enabled)lv_obj_add_state(editor_warning_,LV_STATE_CHECKED);else lv_obj_clear_state(editor_warning_,LV_STATE_CHECKED);
@@ -274,7 +271,8 @@ void Ui::closeEditor() {
 void Ui::saveEditor() {
     if(!config_ || !editor_.isOpen() || editor_commit_pending_)return;
     syncEditorDraftFromControls();if(!editor_controls_valid_)return;
-    AppConfig candidate=*config_;
+    AppConfig candidate=editor_return_page_==Page::Settings &&
+        settings_draft_active_ ? settings_draft_:*config_;
     if(!editor_.writeCandidate(candidate)) {lv_label_set_text(editor_message_,"Check value ranges");return;}
     commit_model_.markDirty(false);
     if(!commit_model_.queueOnExit(candidate)) {lv_label_set_text(editor_message_,"SAVE FAILED");return;}

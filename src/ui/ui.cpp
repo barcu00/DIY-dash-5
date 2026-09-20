@@ -639,6 +639,8 @@ void Ui::completeConfigCommit(uint32_t revision, bool success) {
     if (editor_commit_pending_) {
         editor_commit_pending_ = false;
         if (success) {
+            if (editor_return_page_ == Page::Settings)
+                settings_draft_ = *config_;
             update_policy_.markLayoutDirty();
             closeEditor();
             showCommitFeedback("SAVED");
@@ -905,14 +907,6 @@ void Ui::editorEvent(lv_event_t* event) {
     const intptr_t action = reinterpret_cast<intptr_t>(lv_event_get_user_data(event));
     if (action == 1) instance_->closeEditor();
     if (action == 2) instance_->saveEditor();
-    if (action == 3) {
-        instance_->syncEditorDraftFromControls();
-        const ParameterId parameter =
-            instance_->editor_parameter_options_.parameterAt(
-                lv_dropdown_get_selected(instance_->editor_parameter_));
-        instance_->editor_.setParameter(parameter);
-        instance_->loadEditorControlsFromDraft();
-    }
 }
 
 void Ui::settingsEvent(lv_event_t* event) {

@@ -136,7 +136,6 @@ void Ui::pickerEvent(lv_event_t* e) {
     else if(action==212) {s->closeAuxiliary();return;}
     else if(action==213) {
         s->editor_.setParameter(s->picker_selected_);
-        for(size_t i=0;i<s->editor_parameter_options_.count();i++)if(s->editor_parameter_options_.parameterAt(i)==s->picker_selected_)lv_dropdown_set_selected(s->editor_parameter_,i);
         s->closeAuxiliary();s->loadEditorControlsFromDraft();return;
     } else if(action>=300)s->picker_selected_=static_cast<ParameterId>(action-300);
     s->renderParameterPicker();

@@ -601,7 +601,7 @@ def editor_page():
     draw.text((20, 368),
               "Temperature: -999.0 to 999.0 | Warning: 0.0 to 999.0",
               fill=C["muted"], font=F12)
-    for x, text, width in ((20, "CANCEL", 180), (590, "SAVE TILE", 190)):
+    for x, text, width in ((20, "CANCEL", 180), (590, "BACK", 190)):
         draw.rounded_rectangle((x, 420, x + width, 468), 5, fill="#153B57")
         draw.text((x + width / 2, 444), text, fill=C["text"], font=F14, anchor="mm")
     return image.convert("RGB")
@@ -623,7 +623,7 @@ def flag_editor_page():
     draw.text((400, 292),
               "OFF stays neutral. ON uses the selected accent color.",
               fill=C["text"], font=F14, anchor="ma")
-    for x, text, width in ((20, "CANCEL", 180), (590, "SAVE TILE", 190)):
+    for x, text, width in ((20, "CANCEL", 180), (590, "BACK", 190)):
         draw.rounded_rectangle((x, 420, x + width, 468), 5, fill="#153B57")
         draw.text((x + width / 2, 444), text, fill=C["text"], font=F14,
                   anchor="mm")

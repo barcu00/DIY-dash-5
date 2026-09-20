@@ -214,7 +214,6 @@ private:
     SettingsResetTarget reset_commit_target_ = SettingsResetTarget::DashLayout;
     Page editor_return_page_ = Page::Dash;
     SettingsCategory editor_return_category_ = SettingsCategory::Home;
-    ParameterOptionList editor_parameter_options_{};
     lv_obj_t* editor_screen_ = nullptr;
     lv_obj_t* editor_data_panel_ = nullptr;
     lv_obj_t* editor_temperature_panel_ = nullptr;
@@ -249,7 +248,7 @@ private:
     ParameterId picker_selected_=ParameterId::Rpm;
     bool warning_test_requested_=false;
     lv_obj_t* warning_test_screen_=nullptr;
-    lv_obj_t* editor_parameter_ = nullptr;
+    lv_obj_t* editor_parameter_value_ = nullptr;
     lv_obj_t* editor_visible_ = nullptr;
     lv_obj_t* editor_decimals_label_ = nullptr;
     lv_obj_t* editor_decimals_ = nullptr;
