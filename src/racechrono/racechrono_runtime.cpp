@@ -6,6 +6,7 @@ RaceChronoRuntime::RaceChronoRuntime(RaceChronoTransport& transport)
 void RaceChronoRuntime::setEnabled(bool enabled, uint32_t) {
     if (enabled == enabled_) return;
     enabled_ = enabled;
+    has_deferred_action_ = false;
     if (!enabled_) events_.clear();
     session_.setEnabled(enabled_);
 }
@@ -32,6 +33,7 @@ bool RaceChronoRuntime::nextEvent(RaceChronoEvent& event) {
 void RaceChronoRuntime::restart(uint32_t now_ms) {
     if (!enabled_) return;
     events_.clear();
+    has_deferred_action_ = false;
     transport_.disconnect();
     session_.onEvent(RaceChronoEvent{RaceChronoEventType::Disconnected},
                      now_ms);
@@ -59,24 +61,35 @@ uint32_t RaceChronoRuntime::droppedEvents() const {
 }
 
 void RaceChronoRuntime::executeActions() {
+    if (has_deferred_action_) {
+        if (!executeAction(deferred_action_)) return;
+        has_deferred_action_ = false;
+    }
     RaceChronoAction action;
     while (session_.takeAction(action)) {
-        switch (action.type) {
-            case RaceChronoActionType::StartAdvertising:
-                transport_.startAdvertising();
-                break;
-            case RaceChronoActionType::StopAdvertising:
-                transport_.stopAdvertising();
-                break;
-            case RaceChronoActionType::Disconnect:
-                transport_.disconnect();
-                break;
-            case RaceChronoActionType::Indicate:
-                transport_.indicate(action.packet.bytes.data(),
-                                    action.packet.size);
-                break;
-            case RaceChronoActionType::None:
-                break;
+        if (!executeAction(action)) {
+            deferred_action_ = action;
+            has_deferred_action_ = true;
+            return;
         }
     }
+}
+
+bool RaceChronoRuntime::executeAction(const RaceChronoAction& action) {
+    switch (action.type) {
+        case RaceChronoActionType::StartAdvertising:
+            return transport_.startAdvertising();
+        case RaceChronoActionType::StopAdvertising:
+            transport_.stopAdvertising();
+            return true;
+        case RaceChronoActionType::Disconnect:
+            transport_.disconnect();
+            return true;
+        case RaceChronoActionType::Indicate:
+            return transport_.indicate(action.packet.bytes.data(),
+                                       action.packet.size);
+        case RaceChronoActionType::None:
+            return true;
+    }
+    return true;
 }

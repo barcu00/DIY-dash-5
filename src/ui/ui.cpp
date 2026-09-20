@@ -147,8 +147,12 @@ void Ui::clearSettingsWidgets() {
     racechrono_satellites_ = nullptr;
     racechrono_accuracy_ = nullptr;
     racechrono_signal_ = nullptr;
+    racechrono_channel_names_.fill(nullptr);
     racechrono_channel_states_.fill(nullptr);
     racechrono_channel_values_.fill(nullptr);
+    racechrono_previous_page_ = nullptr;
+    racechrono_next_page_ = nullptr;
+    racechrono_page_number_ = nullptr;
     shift_start_ = nullptr;
     shift_red_ = nullptr;
     shift_flash_ = nullptr;

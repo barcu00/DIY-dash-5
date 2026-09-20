@@ -165,9 +165,14 @@ private:
     lv_obj_t* racechrono_accuracy_ = nullptr;
     lv_obj_t* racechrono_signal_ = nullptr;
     std::array<lv_obj_t*, RaceChronoSettingsModel::kRowsPerPage>
+        racechrono_channel_names_{};
+    std::array<lv_obj_t*, RaceChronoSettingsModel::kRowsPerPage>
         racechrono_channel_states_{};
     std::array<lv_obj_t*, RaceChronoSettingsModel::kRowsPerPage>
         racechrono_channel_values_{};
+    lv_obj_t* racechrono_previous_page_ = nullptr;
+    lv_obj_t* racechrono_next_page_ = nullptr;
+    lv_obj_t* racechrono_page_number_ = nullptr;
     lv_obj_t* shift_start_ = nullptr;
     lv_obj_t* shift_red_ = nullptr;
     lv_obj_t* shift_flash_ = nullptr;

@@ -160,45 +160,40 @@ void Ui::createRaceChronoSettings(lv_obj_t* root) {
                             reinterpret_cast<void*>(ChangeFilter));
         addSeparator(content, 41, 750);
 
-        const std::size_t rows = racechrono_settings_.rowsOnPage();
         for (std::size_t row = 0U;
              row < RaceChronoSettingsModel::kRowsPerPage; ++row) {
             const int y = 42 + static_cast<int>(row) * 32;
-            if (row < rows) {
-                const std::size_t catalog_index =
-                    racechrono_settings_.catalogIndexAtRow(row);
-                const ParameterId id =
-                    raceChronoChannelAt(catalog_index).parameter;
-                clippedLabel(content, parameterDescriptor(id).name,
-                             16, y + 10, 330);
-                racechrono_channel_states_[row] = clippedLabel(
-                    content, "", 360, y + 10, 130, UiTheme::muted());
-                racechrono_channel_values_[row] = clippedLabel(
-                    content, "", 500, y + 10, 218);
-                lv_obj_set_style_text_align(racechrono_channel_values_[row],
-                                            LV_TEXT_ALIGN_RIGHT, 0);
-            }
+            racechrono_channel_names_[row] = clippedLabel(
+                content, "", 16, y + 10, 330);
+            racechrono_channel_states_[row] = clippedLabel(
+                content, "", 360, y + 10, 130, UiTheme::muted());
+            racechrono_channel_values_[row] = clippedLabel(
+                content, "", 500, y + 10, 218);
+            lv_obj_set_style_text_align(racechrono_channel_values_[row],
+                                        LV_TEXT_ALIGN_RIGHT, 0);
             addSeparator(content, y + 31, 750);
         }
 
-        lv_obj_t* previous = button(content, "< PREVIOUS", 16, 243, 150, 34,
-                                    raceChronoEvent, PreviousPage);
+        racechrono_previous_page_ = button(
+            content, "< PREVIOUS", 16, 243, 150, 34,
+            raceChronoEvent, PreviousPage);
         if (racechrono_settings_.pageIndex() == 0U)
-            lv_obj_add_state(previous, LV_STATE_DISABLED);
+            lv_obj_add_state(racechrono_previous_page_, LV_STATE_DISABLED);
         char page_text[32];
         std::snprintf(page_text, sizeof(page_text), "PAGE %u / %u",
             static_cast<unsigned>(racechrono_settings_.pageIndex() + 1U),
             static_cast<unsigned>(racechrono_settings_.pageCount()));
-        lv_obj_t* page_number = label(content, page_text, 276, 254,
-                                      &lv_font_montserrat_12,
-                                      UiTheme::muted());
-        lv_obj_set_width(page_number, 200);
-        lv_obj_set_style_text_align(page_number, LV_TEXT_ALIGN_CENTER, 0);
-        lv_obj_t* next = button(content, "NEXT >", 584, 243, 150, 34,
-                                raceChronoEvent, NextPage);
+        racechrono_page_number_ = label(content, page_text, 276, 254,
+                                        &lv_font_montserrat_12,
+                                        UiTheme::muted());
+        lv_obj_set_width(racechrono_page_number_, 200);
+        lv_obj_set_style_text_align(racechrono_page_number_,
+                                    LV_TEXT_ALIGN_CENTER, 0);
+        racechrono_next_page_ = button(content, "NEXT >", 584, 243, 150, 34,
+                                       raceChronoEvent, NextPage);
         if (racechrono_settings_.pageIndex() + 1U >=
             racechrono_settings_.pageCount())
-            lv_obj_add_state(next, LV_STATE_DISABLED);
+            lv_obj_add_state(racechrono_next_page_, LV_STATE_DISABLED);
     }
     refreshRaceChronoSettings();
 }
@@ -263,12 +258,29 @@ void Ui::refreshRaceChronoSettings() {
 
     for (std::size_t row = 0U;
          row < RaceChronoSettingsModel::kRowsPerPage; ++row) {
-        if (!racechrono_channel_states_[row] ||
+        if (!racechrono_channel_names_[row] ||
+            !racechrono_channel_states_[row] ||
             !racechrono_channel_values_[row] ||
-            row >= racechrono_settings_.rowsOnPage()) continue;
+            row >= racechrono_settings_.rowsOnPage()) {
+            if (racechrono_channel_names_[row])
+                lv_obj_add_flag(racechrono_channel_names_[row],
+                                LV_OBJ_FLAG_HIDDEN);
+            if (racechrono_channel_states_[row])
+                lv_obj_add_flag(racechrono_channel_states_[row],
+                                LV_OBJ_FLAG_HIDDEN);
+            if (racechrono_channel_values_[row])
+                lv_obj_add_flag(racechrono_channel_values_[row],
+                                LV_OBJ_FLAG_HIDDEN);
+            continue;
+        }
+        lv_obj_clear_flag(racechrono_channel_names_[row], LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(racechrono_channel_states_[row], LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(racechrono_channel_values_[row], LV_OBJ_FLAG_HIDDEN);
         const std::size_t catalog_index =
             racechrono_settings_.catalogIndexAtRow(row);
         const ParameterId id = raceChronoChannelAt(catalog_index).parameter;
+        lv_label_set_text(racechrono_channel_names_[row],
+                          parameterDescriptor(id).name);
         const RaceChronoChannelState state =
             latest_racechrono_.channelState(id);
         lv_label_set_text(racechrono_channel_states_[row],
@@ -287,6 +299,25 @@ void Ui::refreshRaceChronoSettings() {
                       static_cast<int>(decimals),
                       static_cast<double>(value.value), value.unit);
         lv_label_set_text(racechrono_channel_values_[row], text);
+    }
+    if (racechrono_page_number_) {
+        std::snprintf(text, sizeof(text), "PAGE %u / %u",
+            static_cast<unsigned>(racechrono_settings_.pageIndex() + 1U),
+            static_cast<unsigned>(racechrono_settings_.pageCount()));
+        lv_label_set_text(racechrono_page_number_, text);
+    }
+    if (racechrono_previous_page_) {
+        if (racechrono_settings_.pageIndex() == 0U)
+            lv_obj_add_state(racechrono_previous_page_, LV_STATE_DISABLED);
+        else
+            lv_obj_clear_state(racechrono_previous_page_, LV_STATE_DISABLED);
+    }
+    if (racechrono_next_page_) {
+        if (racechrono_settings_.pageIndex() + 1U >=
+            racechrono_settings_.pageCount())
+            lv_obj_add_state(racechrono_next_page_, LV_STATE_DISABLED);
+        else
+            lv_obj_clear_state(racechrono_next_page_, LV_STATE_DISABLED);
     }
 }
 

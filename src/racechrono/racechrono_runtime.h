@@ -33,6 +33,7 @@ public:
 
 private:
     void executeActions();
+    bool executeAction(const RaceChronoAction& action);
     bool nextEvent(RaceChronoEvent& event);
 
     RaceChronoTransport& transport_;
@@ -40,4 +41,6 @@ private:
     RaceChronoSession session_{telemetry_};
     RaceChronoEventQueue<32U> events_{};
     bool enabled_ = false;
+    RaceChronoAction deferred_action_{};
+    bool has_deferred_action_ = false;
 };
