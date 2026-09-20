@@ -113,10 +113,12 @@ void test_wrong_completion_revision_does_not_unlock_commit_model() {
     ConfigCommitRequest request;
     TEST_ASSERT_TRUE(model.take(request));
 
-    model.complete(request.revision + 1U, true);
+    TEST_ASSERT_FALSE(model.complete(request.revision + 1U, true));
 
     TEST_ASSERT_TRUE(model.busy());
     TEST_ASSERT_FALSE(model.take(request));
+    TEST_ASSERT_TRUE(model.complete(request.revision, true));
+    TEST_ASSERT_FALSE(model.busy());
 }
 
 void test_reset_request_is_rejected_while_save_is_in_flight() {
