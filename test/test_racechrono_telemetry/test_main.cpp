@@ -37,6 +37,20 @@ void test_coordinate_invalid_sentinel_clears_only_that_channel() {
             telemetry.channelState(ParameterId::RcLatitude)));
 }
 
+void test_invalid_sentinel_is_never_scaled_into_a_numeric_channel() {
+    RaceChronoTelemetry telemetry;
+    TEST_ASSERT_TRUE(telemetry.acceptRaw(3U, 1234, 1000U));
+
+    TEST_ASSERT_FALSE(telemetry.acceptRaw(
+        3U, std::numeric_limits<int32_t>::max(), 1200U));
+
+    TEST_ASSERT_FALSE(telemetry.get(ParameterId::RcLapDistance).valid);
+    TEST_ASSERT_EQUAL_UINT8(
+        static_cast<uint8_t>(RaceChronoChannelState::NoData),
+        static_cast<uint8_t>(
+            telemetry.channelState(ParameterId::RcLapDistance)));
+}
+
 void test_unknown_monitor_ids_are_counted_without_publishing() {
     RaceChronoTelemetry telemetry;
     TEST_ASSERT_FALSE(telemetry.acceptRaw(99U, 1234, 1000U));
@@ -77,6 +91,7 @@ int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_raw_values_use_catalog_scale_and_signed_decoding);
     RUN_TEST(test_coordinate_invalid_sentinel_clears_only_that_channel);
+    RUN_TEST(test_invalid_sentinel_is_never_scaled_into_a_numeric_channel);
     RUN_TEST(test_unknown_monitor_ids_are_counted_without_publishing);
     RUN_TEST(test_malformed_batch_is_rejected_atomically);
     RUN_TEST(test_stale_update_and_wraparound_invalidate_only_expired_channels);

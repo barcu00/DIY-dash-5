@@ -134,6 +134,22 @@ int main(int argc,char** argv) {
         assert(find(lv_scr_act(),&lv_label_class,"DATA & CAN"));
         ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
         assert(request.candidate.racechrono.enabled);
+        config=request.candidate;ui.completeConfigCommit(request.revision,true);
+
+        click("DASH");dash=lv_scr_act();
+        auto* tile=lv_obj_get_child(dash,2);
+        lv_event_send(tile,LV_EVENT_LONG_PRESSED,nullptr);
+        click("SELECT PARAMETER");click("RACECHRONO");
+        auto* channel=findContaining(lv_scr_act(),"Current lap number");
+        assert(channel && "RaceChrono picker has no selectable channels");
+        auto* channel_row=lv_obj_get_parent(channel);
+        assert(lv_obj_check_type(channel_row,&lv_btn_class));
+        lv_event_send(channel_row,LV_EVENT_CLICKED,nullptr);
+        click("SELECT");click("SAVE TILE");
+        assert(ui.takeConfigCommit(request));
+        assert(request.candidate.dash_tiles[0].parameter==
+               ParameterId::RcLapNumber &&
+               "RaceChrono parameter was not assigned to the tile");
         std::puts("RaceChrono settings navigation, paging and staged save passed");
     } else if(units) {
         lv_event_send(lv_obj_get_child(dash,2),LV_EVENT_LONG_PRESSED,nullptr);
