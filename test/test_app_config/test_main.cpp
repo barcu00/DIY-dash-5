@@ -2,6 +2,8 @@
 
 #include <unity.h>
 
+#include <cstdio>
+
 // Production changes caught: wrong approved tile defaults, unsafe persisted
 // values reaching runtime, or invalid shift-light ordering being accepted.
 
@@ -220,6 +222,8 @@ void test_validation_rejects_unsnapped_or_out_of_range_shift_values() {
 }
 
 int main(int, char**) {
+    std::printf("[CONFIG DIAG] sizeof(AppConfig)=%u bytes\n",
+                static_cast<unsigned>(sizeof(AppConfig)));
     UNITY_BEGIN();
     RUN_TEST(test_defaults_define_approved_dash_and_track_slots);
     RUN_TEST(test_tiles_default_and_normalize_to_yellow_flag_color);
