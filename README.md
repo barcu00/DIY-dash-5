@@ -34,6 +34,26 @@ Flash the complete image at address **`0x0`**. Its expected SHA-256 is:
 > wiring, touch response, CAN traffic, temperature, and long-duration stability
 > still require validation on the actual installation.
 
+## Development firmware: required storage migration
+
+The current development build stores the complete dashboard configuration in
+the dedicated **`dashcfg`** NVS partition. It is **512 KiB**, separate from the
+small system NVS partition used by the ESP32 and Bluetooth stack. Every save is
+read back byte-for-byte before the active configuration is changed.
+
+This partition layout must be installed once with the merged image. Download
+`DIY-Dash-ESP32-S3-Touch-LCD-5-full.bin` from the matching successful GitHub
+Actions run and **flash at 0x0**. Installing this full image replaces the old
+partition table and **clears existing settings**; configure the dashboard again
+after the first boot. Do not install this migration using `firmware.bin` alone.
+Later source builds remain fully compilable with PlatformIO as described below.
+
+BACK, DASH, and TRACK all use the same deferred, verified save path. A failed
+save keeps the current screen usable and shows `EXIT WITHOUT SAVE`, so the
+driver can discard the draft instead of becoming trapped in `SAVE ERROR`.
+RaceChrono now uses a 64 × 32 switch and separate status lines, including
+`BLE: WAITING FOR APP`, `DATA: WAITING`/`DATA: ACTIVE`, and `GPS: NO FIX`.
+
 ## Interface preview
 
 ### Development: six selectable layouts
@@ -154,8 +174,9 @@ RaceChrono Settings
   Monitor
 ```
 
-RaceChrono initiates the connection after a session starts, so `ADVERTISING`
-before a session is expected. See the complete
+RaceChrono initiates the connection after a session starts. The connection
+screen reports `BLE: WAITING FOR APP` before the phone connects, then
+`BLE: CONNECTED`; data and GPS are reported independently. See the complete
 [RaceChrono setup guide](docs/racechrono/setup.md).
 
 | CONNECTION | CHANNELS | RACECHRONO picker |

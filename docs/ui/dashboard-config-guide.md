@@ -106,7 +106,18 @@ category queues one complete configuration snapshot when the user presses BACK,
 DASH, TRACK, or otherwise leaves that category. Repeated edits are coalesced,
 and an unchanged category performs no write. `SAVING`, `SAVED`, and `SAVE ERROR`
 provide non-modal status; a failed write keeps the RAM values and can be retried
-by leaving again.
+by leaving again. After a failed attempt, `EXIT WITHOUT SAVE` discards the draft,
+restores preview brightness, and completes the originally requested BACK, DASH,
+or TRACK transition. The tile editor offers the same discard action after a
+failed commit.
+
+The configuration blob is stored in the dedicated `dashcfg` NVS partition.
+Its 512 KiB capacity is isolated from the system/Bluetooth NVS area, and a write
+is accepted only after complete byte-for-byte read-back. The first firmware with
+this layout must be installed using
+`DIY-Dash-ESP32-S3-Touch-LCD-5-full.bin`: flash at 0x0. The full-image migration
+replaces the partition table and clears existing settings. Flashing only
+`firmware.bin` over the older layout is not supported.
 
 ## Available settings
 
@@ -118,6 +129,10 @@ by leaving again.
 - DATA & CAN includes a full-width RACECHRONO entry. Its non-scrolling
   CONNECTION page controls the `DIY DASH RC` BLE Monitor device; CHANNELS shows
   six of 33 channels per page with ALL / ACTIVE / NO DATA / ERROR filters.
+  The large switch and its ENABLED row share one toggle action. Separate lines
+  show `BLE: WAITING FOR APP`, `DATA: WAITING` or `DATA: ACTIVE`, and
+  `GPS: NO FIX`, `GPS: 2D FIX`, or `GPS: 3D FIX`; disabled state overrides stale
+  telemetry.
   RaceChrono uses service `0x1FF8`, saves its enable state on exit, and does not
   restart or replace engine CAN/DEMO telemetry.
 - The profile picker offers `none`, six source-pinned ECU profiles including

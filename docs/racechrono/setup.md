@@ -9,10 +9,12 @@ additional channels.
 ## Enable the dashboard
 
 1. Open `SETTINGS > DATA & CAN > RACECHRONO`.
-2. On the `CONNECTION` page, enable the switch.
+2. On the `CONNECTION` page, enable the large switch or tap the ENABLED row.
 3. Leave the screen with `< BACK`, `DASH`, or `TRACK` to save the setting.
-4. The status changes to `ADVERTISING`. This is normal before RaceChrono starts
-   a session and initiates the connection.
+4. `BLE: WAITING FOR APP` is normal before RaceChrono starts a session and
+   initiates the connection. `BLE: CONNECTED` confirms the phone link,
+   `DATA: ACTIVE` confirms valid monitor packets, and `GPS: NO FIX`,
+   `GPS: 2D FIX`, or `GPS: 3D FIX` reports positioning independently.
 
 `RESTART BLE` disconnects the current client and immediately resumes
 advertising. It does not restart CAN, DEMO, the display, or the shift light.
@@ -40,8 +42,9 @@ Configuration is exchanged automatically after RaceChrono subscribes.
 
 ## Dashboard pages
 
-The `CONNECTION` page shows the BLE state, last-packet age, configured and active
-channel counts, satellites, GPS accuracy, and fix quality. The `CHANNELS` page
+The `CONNECTION` page shows separate BLE, data, and GPS states plus configured
+and active channel counts, satellites, and GPS accuracy. Disabling RaceChrono
+immediately replaces stale active/fix text with disabled/no-fix states. The `CHANNELS` page
 lists six channels at a time and filters them by `ALL`, `ACTIVE`, `NO DATA`, or
 `ERROR`. The 33-channel catalog occupies six pages; the final page has three
 rows. Unavailable or stale values show `---`.
@@ -78,3 +81,10 @@ software checks cover protocol framing, queue limits, session recovery, UI
 redraws, ESP32-S3 compilation, and firmware packaging. Physical phone, BLE
 range, reconnect, heap, CAN-load, and long-duration tests must still be
 performed on the target board before a release is considered hardware-validated.
+
+The development firmware introduces a dedicated `dashcfg` NVS partition with
+512 KiB capacity. For this migration, download the matching
+`DIY-Dash-ESP32-S3-Touch-LCD-5-full.bin` and **flash at 0x0**. This replaces the
+old partition table and **clears existing settings**. Do not flash only the app
+image over an older installation. If saving ever fails, BACK/DASH/TRACK remain
+available for retry and `EXIT WITHOUT SAVE` safely discards the pending draft.
