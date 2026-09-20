@@ -17,6 +17,9 @@ class TileEditorScreenContractTests(unittest.TestCase):
         )[0]
         cls.editor_event = cls.source.split("void Ui::editorEvent", 1)[1]
         cls.editor_event = cls.editor_event.split("void Ui::settingsEvent", 1)[0]
+        cls.picker_source = (ROOT / "src/ui/ui_numeric_entry.cpp").read_text(
+            encoding="utf-8"
+        )
 
     def test_editor_is_an_independent_full_screen(self):
         self.assertIn("editor_screen_", self.header)
@@ -91,8 +94,9 @@ class TileEditorScreenContractTests(unittest.TestCase):
     def test_editor_uses_the_runtime_capability_context(self):
         self.assertIn("active_profile_", self.header)
         self.assertIn("active_source_", self.header)
-        self.assertIn("active_profile_", self.open_editor)
-        self.assertNotIn("CanProfileRegistry::find", self.open_editor)
+        self.assertIn("active_profile_", self.picker_source)
+        self.assertIn("active_source_", self.picker_source)
+        self.assertNotIn("CanProfileRegistry::find", self.picker_source)
 
     def test_ui_strings_are_english_only(self):
         ui_files = list((ROOT / "src/ui").glob("*.cpp"))
