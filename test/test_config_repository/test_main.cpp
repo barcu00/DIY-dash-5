@@ -10,6 +10,7 @@
 // writes changing runtime state, or reset erasing without restoring defaults.
 
 #include "settings/config_repository.h"
+#include "settings/nvs_config_backend.h"
 #include "ui/dashboard_layout.h"
 
 namespace {
@@ -190,10 +191,13 @@ public:
     }
 
     bool read(void* data, std::size_t size) override {
-        if (!has_value || size != stored_size) {
+        if (fail_reads || !has_value || size != stored_size) {
             return false;
         }
         std::memcpy(data, bytes.data(), size);
+        if (corrupt_after_write && size > 0U) {
+            static_cast<uint8_t*>(data)[size - 1U] ^= 0x01U;
+        }
         return true;
     }
 
@@ -219,10 +223,40 @@ public:
     std::array<uint8_t, sizeof(AppConfig)> bytes{};
     std::size_t stored_size = 0U;
     bool has_value = false;
+    bool fail_reads = false;
+    bool corrupt_after_write = false;
     bool fail_writes = false;
     bool fail_erases = false;
 };
 }  // namespace
+
+void test_nvs_backend_names_the_dedicated_configuration_partition() {
+    TEST_ASSERT_EQUAL_STRING("dashcfg", NvsConfigBackend::kPartition);
+}
+
+void test_save_requires_readback_before_applying_runtime() {
+    MemoryBackend backend;
+    backend.fail_reads = true;
+    ConfigRepository repository(backend);
+    AppConfig runtime = AppConfig::defaults();
+    AppConfig candidate = runtime;
+    candidate.brightness_percent = 40U;
+
+    TEST_ASSERT_FALSE(repository.saveCandidate(candidate, runtime));
+    TEST_ASSERT_EQUAL_UINT8(100U, runtime.brightness_percent);
+}
+
+void test_save_rejects_mismatched_readback() {
+    MemoryBackend backend;
+    backend.corrupt_after_write = true;
+    ConfigRepository repository(backend);
+    AppConfig runtime = AppConfig::defaults();
+    AppConfig candidate = runtime;
+    candidate.racechrono.enabled = true;
+
+    TEST_ASSERT_FALSE(repository.saveCandidate(candidate, runtime));
+    TEST_ASSERT_FALSE(runtime.racechrono.enabled);
+}
 
 void test_missing_configuration_loads_safe_defaults() {
     MemoryBackend backend;
@@ -878,6 +912,9 @@ void test_racechrono_enable_setting_round_trips_in_schema_nine() {
 }
 int main(int, char**) {
     UNITY_BEGIN();
+    RUN_TEST(test_nvs_backend_names_the_dedicated_configuration_partition);
+    RUN_TEST(test_save_requires_readback_before_applying_runtime);
+    RUN_TEST(test_save_rejects_mismatched_readback);
     RUN_TEST(test_schema_v8_migration_is_lossless_and_initializes_racechrono_off);
     RUN_TEST(test_failed_schema_v8_rewrite_keeps_migrated_runtime);
     RUN_TEST(test_racechrono_enable_setting_round_trips_in_schema_nine);
