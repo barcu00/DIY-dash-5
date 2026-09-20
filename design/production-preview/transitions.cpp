@@ -69,7 +69,7 @@ int main(int argc,char** argv) {
     const bool track=argc>1 && !std::strcmp(argv[1],"--track");
     const bool psi=argc>1 && !std::strcmp(argv[1],"--psi");
     const bool tempunits=argc>1 && !std::strcmp(argv[1],"--tempunits");
-    const bool racechrono=argc>1 && !std::strcmp(argv[1],"--racechrono");
+    const bool racechrono_mode=argc>1 && !std::strcmp(argv[1],"--racechrono");
     const bool units=argc>1 && (!std::strcmp(argv[1],"--units") || psi || tempunits);
     if(units) {
         config.units.pressure=psi ? PressureUnit::Psi:PressureUnit::Kpa;
@@ -92,7 +92,7 @@ int main(int argc,char** argv) {
     RuntimeDiagnostics diagnostics{};UiRuntimeStatus status{};TileWarningEngine warnings;
     ui.update(telemetry,diagnostics,status,config,warnings);ui.updateShiftLight(state,0,config.shift);
     auto* dash=lv_scr_act();
-    if(racechrono) {
+    if(racechrono_mode) {
         click("SETTINGS");click("DATA & CAN");
         assert(button(lv_scr_act(),"RACECHRONO") && "DATA & CAN entry is missing");
         click("RACECHRONO");
