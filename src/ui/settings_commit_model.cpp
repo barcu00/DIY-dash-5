@@ -57,9 +57,9 @@ bool SettingsCommitModel::take(ConfigCommitRequest& request) {
     return true;
 }
 
-void SettingsCommitModel::complete(uint32_t revision, bool success) {
+bool SettingsCommitModel::complete(uint32_t revision, bool success) {
     if (!in_flight_ || revision != in_flight_revision_) {
-        return;
+        return false;
     }
     in_flight_ = false;
     in_flight_revision_ = 0U;
@@ -67,4 +67,5 @@ void SettingsCommitModel::complete(uint32_t revision, bool success) {
         dirty_ = false;
         reconfigure_runtime_ = false;
     }
+    return true;
 }

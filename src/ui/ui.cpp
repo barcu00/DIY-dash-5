@@ -635,7 +635,7 @@ bool Ui::takeConfigCommit(ConfigCommitRequest& request) {
 }
 
 void Ui::completeConfigCommit(uint32_t revision, bool success) {
-    commit_model_.complete(revision, success);
+    if (!commit_model_.complete(revision, success)) return;
     if (editor_commit_pending_) {
         editor_commit_pending_ = false;
         if (success) {

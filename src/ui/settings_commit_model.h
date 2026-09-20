@@ -24,7 +24,7 @@ public:
     bool queueOnExit(const AppConfig& candidate);
     bool queueFactoryReset();
     bool take(ConfigCommitRequest& request);
-    void complete(uint32_t revision, bool success);
+    bool complete(uint32_t revision, bool success);
 
 private:
     bool dirty_ = false;
