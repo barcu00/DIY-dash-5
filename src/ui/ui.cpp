@@ -142,13 +142,13 @@ void Ui::clearSettingsWidgets() {
     bitrate_dropdown_ = nullptr;
     can_timeout_ = nullptr;
     racechrono_enabled_ = nullptr;
-    racechrono_connection_ = nullptr;
-    racechrono_last_data_ = nullptr;
+    racechrono_ble_status_ = nullptr;
+    racechrono_data_status_ = nullptr;
+    racechrono_gps_status_ = nullptr;
     racechrono_packets_ = nullptr;
     racechrono_active_ = nullptr;
     racechrono_satellites_ = nullptr;
     racechrono_accuracy_ = nullptr;
-    racechrono_signal_ = nullptr;
     racechrono_channel_names_.fill(nullptr);
     racechrono_channel_states_.fill(nullptr);
     racechrono_channel_values_.fill(nullptr);

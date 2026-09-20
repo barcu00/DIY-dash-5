@@ -310,19 +310,23 @@ def _racechrono_shell(selected):
 
 def racechrono_connection_page(active=True):
     image, draw = _racechrono_shell("CONNECTION")
-    state = "ACTIVE" if active else "NO DATA"
     state_color = C["green"] if active else C["muted"]
-    rows = (("ENABLED", "ON"), ("CONNECTION", state),
-            ("BLE DEVICE", "DIY DASH RC"),
-            ("LAST DATA", "12 ms" if active else "---"))
+    rows = (("ENABLED", ""),
+            ("BLE STATUS", "BLE: CONNECTED" if active
+             else "BLE: WAITING FOR APP"),
+            ("DATA STATUS", "DATA: ACTIVE" if active
+             else "DATA: WAITING"),
+            ("GPS STATUS", "GPS: 3D FIX" if active else "GPS: NO FIX"))
     for index, (name, value) in enumerate(rows):
         y = 123 + index * 42
         draw.text((42, y + 21), name, fill=C["muted"], font=F12,
                   anchor="lm")
-        draw.text((754, y + 21), value,
-                  fill=state_color if name == "CONNECTION" else C["text"],
-                  font=F14, anchor="rm")
+        if value:
+            draw.text((754, y + 21), value, fill=state_color,
+                      font=F14, anchor="rm")
         draw.line((24, y + 41, 776, y + 41), fill="#283139")
+    draw.rounded_rectangle((694, 133, 758, 165), 16, fill=C["blue"])
+    draw.ellipse((730, 136, 756, 162), fill=C["text"])
     summary = (("BLE PACKETS", "1942" if active else "0"),
                ("ACTIVE CHANNELS", "24 / 33" if active else "0 / 33"),
                ("SATELLITES", "15" if active else "0"),
@@ -333,8 +337,8 @@ def racechrono_connection_page(active=True):
         draw.text((x, y), name, fill=C["muted"], font=F12)
         draw.text((x + 330, y), value, fill=C["text"], font=F12,
                   anchor="ra")
-    draw.text((42, 384), "GOOD · 3D FIX" if active else "WAITING · NO FIX",
-              fill=state_color, font=F12, anchor="lm")
+    draw.text((42, 384), "DEVICE: DIY DASH RC", fill=C["muted"],
+              font=F12, anchor="lm")
     draw.rounded_rectangle((592, 367, 758, 400), 5, fill=C["panel"],
                            outline=C["border"])
     draw.text((675, 383), "RESTART BLE", fill=C["text"], font=F12,

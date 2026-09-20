@@ -79,6 +79,7 @@ private:
     void createDataCanSettings(lv_obj_t* panel);
     void createRaceChronoSettings(lv_obj_t* panel);
     void refreshRaceChronoSettings();
+    void setRaceChronoDraftEnabled(bool enabled);
     void createShiftSettings(lv_obj_t* panel);
     void refreshShiftControls();
     void createUnitSettings(lv_obj_t* panel);
@@ -177,13 +178,13 @@ private:
     bool racechrono_channels_tab_ = false;
     bool racechrono_restart_requested_ = false;
     lv_obj_t* racechrono_enabled_ = nullptr;
-    lv_obj_t* racechrono_connection_ = nullptr;
-    lv_obj_t* racechrono_last_data_ = nullptr;
+    lv_obj_t* racechrono_ble_status_ = nullptr;
+    lv_obj_t* racechrono_data_status_ = nullptr;
+    lv_obj_t* racechrono_gps_status_ = nullptr;
     lv_obj_t* racechrono_packets_ = nullptr;
     lv_obj_t* racechrono_active_ = nullptr;
     lv_obj_t* racechrono_satellites_ = nullptr;
     lv_obj_t* racechrono_accuracy_ = nullptr;
-    lv_obj_t* racechrono_signal_ = nullptr;
     std::array<lv_obj_t*, RaceChronoSettingsModel::kRowsPerPage>
         racechrono_channel_names_{};
     std::array<lv_obj_t*, RaceChronoSettingsModel::kRowsPerPage>

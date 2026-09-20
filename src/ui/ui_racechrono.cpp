@@ -17,24 +17,12 @@ enum RaceChronoUiAction : intptr_t {
     ShowConnection = 100,
     ShowChannels,
     ToggleEnabled,
+    ToggleEnabledRow,
     RestartBle,
     ChangeFilter,
     PreviousPage,
     NextPage,
 };
-
-const char* connectionText(RaceChronoConnectionState state) {
-    switch (state) {
-        case RaceChronoConnectionState::Disabled: return "DISABLED";
-        case RaceChronoConnectionState::Advertising: return "ADVERTISING";
-        case RaceChronoConnectionState::Connected: return "CONNECTED";
-        case RaceChronoConnectionState::Configuring: return "CONFIGURING";
-        case RaceChronoConnectionState::Active: return "ACTIVE";
-        case RaceChronoConnectionState::NoData: return "NO DATA";
-        case RaceChronoConnectionState::Error: return "ERROR";
-    }
-    return "UNKNOWN";
-}
 
 const char* channelStateText(RaceChronoChannelState state) {
     switch (state) {
@@ -99,32 +87,55 @@ void Ui::createRaceChronoSettings(lv_obj_t* root) {
 
     lv_obj_t* content = framedPanel(root, 8, 50, 752, 286);
     if (!racechrono_channels_tab_) {
+        lv_obj_t* enabled_row = lv_obj_create(content);
+        lv_obj_set_pos(enabled_row, 0, 0);
+        lv_obj_set_size(enabled_row, 650, 42);
+        lv_obj_set_style_bg_opa(enabled_row, LV_OPA_TRANSP, 0);
+        lv_obj_set_style_border_width(enabled_row, 0, 0);
+        lv_obj_set_style_pad_all(enabled_row, 0, 0);
+        lv_obj_clear_flag(enabled_row, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_add_flag(enabled_row, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_event_cb(enabled_row, raceChronoEvent, LV_EVENT_CLICKED,
+                            reinterpret_cast<void*>(ToggleEnabledRow));
+        label(enabled_row, "ENABLED", 16, 14,
+              &lv_font_montserrat_12, UiTheme::muted());
+
         constexpr const char* names[] = {
-            "ENABLED", "CONNECTION", "BLE DEVICE", "LAST DATA"};
-        for (int row = 0; row < 4; ++row) {
-            label(content, names[row], 16, row * 42 + 14,
+            "BLE STATUS", "DATA STATUS", "GPS STATUS"};
+        for (int row = 1; row < 4; ++row) {
+            label(content, names[row - 1], 16, row * 42 + 14,
                   &lv_font_montserrat_12, UiTheme::muted());
             addSeparator(content, (row + 1) * 42 - 1, 750);
         }
+        addSeparator(content, 41, 750);
 
-        racechrono_enabled_ = lv_checkbox_create(content);
-        lv_obj_set_pos(racechrono_enabled_, 684, 9);
-        lv_checkbox_set_text(racechrono_enabled_, "");
-        darkCheckbox(racechrono_enabled_);
+        racechrono_enabled_ = lv_switch_create(content);
+        lv_obj_set_pos(racechrono_enabled_, 670, 5);
+        lv_obj_set_size(racechrono_enabled_, 64, 32);
+        lv_obj_set_style_bg_color(racechrono_enabled_, UiTheme::border(),
+                                  LV_PART_MAIN);
+        lv_obj_set_style_bg_color(racechrono_enabled_, UiTheme::blue(),
+                                  LV_PART_INDICATOR | LV_STATE_CHECKED);
+        lv_obj_set_style_bg_color(racechrono_enabled_, UiTheme::text(),
+                                  LV_PART_KNOB);
         if (settings.racechrono.enabled)
             lv_obj_add_state(racechrono_enabled_, LV_STATE_CHECKED);
         lv_obj_add_event_cb(racechrono_enabled_, raceChronoEvent,
                             LV_EVENT_VALUE_CHANGED,
                             reinterpret_cast<void*>(ToggleEnabled));
 
-        racechrono_connection_ = clippedLabel(
-            content, "", 430, 56, 286, UiTheme::green());
-        lv_obj_set_style_text_align(racechrono_connection_,
-                                    LV_TEXT_ALIGN_RIGHT, 0);
-        clippedLabel(content, "DIY DASH RC", 430, 98, 286);
-        racechrono_last_data_ = clippedLabel(content, "", 430, 140, 286);
-        lv_obj_set_style_text_align(racechrono_last_data_,
-                                    LV_TEXT_ALIGN_RIGHT, 0);
+        racechrono_ble_status_ = clippedLabel(
+            content, "", 430, 56, 286, UiTheme::muted());
+        racechrono_data_status_ = clippedLabel(
+            content, "", 430, 98, 286, UiTheme::muted());
+        racechrono_gps_status_ = clippedLabel(
+            content, "", 430, 140, 286, UiTheme::muted());
+        lv_obj_t* status_labels[] = {racechrono_ble_status_,
+                                     racechrono_data_status_,
+                                     racechrono_gps_status_};
+        for (lv_obj_t* status : status_labels) {
+            lv_obj_set_style_text_align(status, LV_TEXT_ALIGN_RIGHT, 0);
+        }
 
         constexpr const char* summary_names[] = {
             "BLE PACKETS", "ACTIVE CHANNELS", "SATELLITES", "GPS ACCURACY"};
@@ -143,8 +154,8 @@ void Ui::createRaceChronoSettings(lv_obj_t* root) {
                                         LV_TEXT_ALIGN_RIGHT, 0);
         }
         addSeparator(content, 227, 750);
-        racechrono_signal_ = clippedLabel(content, "", 16, 240, 480,
-                                           UiTheme::green());
+        clippedLabel(content, "DEVICE: DIY DASH RC", 16, 250, 480,
+                     UiTheme::muted());
         button(content, "RESTART BLE", 568, 237, 166, 38,
                raceChronoEvent, RestartBle);
     } else {
@@ -213,54 +224,67 @@ void Ui::refreshRaceChronoSettings() {
     }
 
     const RaceChronoRuntimeStatus& status = latest_ui_status_.racechrono;
-    if (racechrono_connection_) {
-        lv_label_set_text(racechrono_connection_,
-                          connectionText(latest_ui_status_.racechrono_connection));
-        lv_obj_set_style_text_color(
-            racechrono_connection_,
-            latest_ui_status_.racechrono_connection ==
-                    RaceChronoConnectionState::Active
-                ? UiTheme::green()
-                : latest_ui_status_.racechrono_connection ==
-                          RaceChronoConnectionState::Error
-                    ? UiTheme::red() : UiTheme::muted(), 0);
-    }
+    const RaceChronoConnectionState connection =
+        latest_ui_status_.racechrono_connection;
+    const bool enabled = settingsConfig().racechrono.enabled;
+    const bool connection_error =
+        enabled && connection == RaceChronoConnectionState::Error;
+    const bool connected = enabled &&
+        (connection == RaceChronoConnectionState::Connected ||
+         connection == RaceChronoConnectionState::Configuring ||
+         connection == RaceChronoConnectionState::Active ||
+         connection == RaceChronoConnectionState::NoData);
+    const bool active = enabled && status.has_valid_packet;
+    const bool has_fix = active && status.gps_fix_type >= 2U;
+    auto set_status = [](lv_obj_t* object, const char* text,
+                         lv_color_t color) {
+        if (!object) return;
+        lv_label_set_text(object, text);
+        lv_obj_set_style_text_color(object, color, 0);
+    };
+    const char* ble_text = !enabled ? "BLE DISABLED" :
+        connection_error ? "BLE: ERROR" :
+        connected ? "BLE: CONNECTED" :
+        connection == RaceChronoConnectionState::Advertising
+            ? "BLE: WAITING FOR APP" : "BLE: STARTING";
+    set_status(racechrono_ble_status_, ble_text,
+               connection_error ? UiTheme::red() :
+               connected ? UiTheme::green() : UiTheme::muted());
+    set_status(racechrono_data_status_,
+               !enabled ? "DATA: DISABLED" :
+               connection_error ? "DATA: ERROR" :
+               active ? "DATA: ACTIVE" : "DATA: WAITING",
+               connection_error ? UiTheme::red() :
+               active ? UiTheme::green() : UiTheme::muted());
+    const char* gps_text = has_fix
+        ? (status.gps_fix_type >= 3U ? "GPS: 3D FIX" : "GPS: 2D FIX")
+        : "GPS: NO FIX";
+    set_status(racechrono_gps_status_, gps_text,
+               has_fix ? UiTheme::green() : UiTheme::muted());
     char text[64];
-    if (racechrono_last_data_) {
-        if (status.has_valid_packet)
-            std::snprintf(text, sizeof(text), "%u ms",
-                          static_cast<unsigned>(status.last_packet_age_ms));
-        else
-            std::snprintf(text, sizeof(text), "---");
-        lv_label_set_text(racechrono_last_data_, text);
-    }
     if (racechrono_packets_) {
         std::snprintf(text, sizeof(text), "%u",
-                      static_cast<unsigned>(status.value_packets));
+                      static_cast<unsigned>(enabled ? status.value_packets : 0U));
         lv_label_set_text(racechrono_packets_, text);
     }
     if (racechrono_active_) {
         std::snprintf(text, sizeof(text), "%u / %u",
-            static_cast<unsigned>(status.active_channels),
+                      static_cast<unsigned>(enabled ? status.active_channels : 0U),
             static_cast<unsigned>(status.configured_channels));
         lv_label_set_text(racechrono_active_, text);
     }
     if (racechrono_satellites_) {
         std::snprintf(text, sizeof(text), "%u",
-                      static_cast<unsigned>(status.satellites));
+                      static_cast<unsigned>(active ? status.satellites : 0U));
         lv_label_set_text(racechrono_satellites_, text);
     }
     if (racechrono_accuracy_) {
-        std::snprintf(text, sizeof(text), "%.1f m",
-                      static_cast<double>(status.gps_accuracy));
+        if (has_fix)
+            std::snprintf(text, sizeof(text), "%.1f m",
+                          static_cast<double>(status.gps_accuracy));
+        else
+            std::snprintf(text, sizeof(text), "---");
         lv_label_set_text(racechrono_accuracy_, text);
-    }
-    if (racechrono_signal_) {
-        std::snprintf(text, sizeof(text), "%s · %s FIX",
-            status.has_valid_packet ? "GOOD" : "WAITING",
-            status.gps_fix_type >= 3U ? "3D" :
-            status.gps_fix_type == 2U ? "2D" : "NO");
-        lv_label_set_text(racechrono_signal_, text);
     }
 
     for (std::size_t row = 0U;
@@ -339,10 +363,13 @@ void Ui::raceChronoEvent(lv_event_t* event) {
         return;
     }
     if (action == ToggleEnabled) {
-        AppConfig candidate = self->settings_draft_;
-        candidate.racechrono.enabled = lv_obj_has_state(
-            self->racechrono_enabled_, LV_STATE_CHECKED);
-        self->stageSettings(candidate, true);
+        self->setRaceChronoDraftEnabled(lv_obj_has_state(
+            self->racechrono_enabled_, LV_STATE_CHECKED));
+        return;
+    }
+    if (action == ToggleEnabledRow) {
+        self->setRaceChronoDraftEnabled(
+            !self->settingsConfig().racechrono.enabled);
         return;
     }
     if (action == RestartBle) {
@@ -360,6 +387,19 @@ void Ui::raceChronoEvent(lv_event_t* event) {
         ? self->racechrono_settings_.previousPage()
         : self->racechrono_settings_.nextPage();
     if (changed) self->showSettings(SettingsCategory::RaceChrono);
+}
+
+void Ui::setRaceChronoDraftEnabled(bool enabled) {
+    AppConfig candidate = settings_draft_;
+    candidate.racechrono.enabled = enabled;
+    if (!stageSettings(candidate, true)) return;
+    if (racechrono_enabled_) {
+        if (enabled)
+            lv_obj_add_state(racechrono_enabled_, LV_STATE_CHECKED);
+        else
+            lv_obj_clear_state(racechrono_enabled_, LV_STATE_CHECKED);
+    }
+    refreshRaceChronoSettings();
 }
 
 void Ui::raceChronoBackEvent(lv_event_t*) {
