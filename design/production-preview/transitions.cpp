@@ -46,6 +46,10 @@ static void click(const char* text) {
     auto* target=button(lv_scr_act(),text);assert(target);
     lv_event_send(target,LV_EVENT_CLICKED,nullptr);
 }
+static void clickOn(lv_obj_t* root,const char* text) {
+    auto* target=button(root,text);assert(target);
+    lv_event_send(target,LV_EVENT_CLICKED,nullptr);
+}
 static void flush(lv_disp_drv_t* driver,const lv_area_t* area,lv_color_t* pixels) {
     if(driver->direct_mode)std::memcpy(captured,pixels,sizeof(captured));
     else for(int y=area->y1;y<=area->y2;y++)for(int x=area->x1;x<=area->x2;x++)captured[y*800+x]=*pixels++;
@@ -71,6 +75,7 @@ int main(int argc,char** argv) {
     const bool tempunits=argc>1 && !std::strcmp(argv[1],"--tempunits");
     const bool racechrono_mode=argc>1 && !std::strcmp(argv[1],"--racechrono");
     const bool settings_save=argc>1 && !std::strcmp(argv[1],"--settings-save");
+    const bool reset_mode=argc>1 && !std::strcmp(argv[1],"--reset");
     const bool units=argc>1 && (!std::strcmp(argv[1],"--units") || psi || tempunits);
     if(units) {
         config.units.pressure=psi ? PressureUnit::Psi:PressureUnit::Kpa;
@@ -84,6 +89,11 @@ int main(int argc,char** argv) {
         }
     }
     if(center)config.dash_layout=DashboardLayout::AnalogStyle;
+    if(reset_mode) {
+        config.brightness_percent=55U;
+        config.dash_tiles[0].visible=false;
+        config.track_tiles[0].visible=false;
+    }
     ui.setDataContext(DataSource::Demo,nullptr);ui.begin(config,board);
     VehicleState state;state.reset(DataSource::Demo);state.set(ParameterId::Rpm,6840,0);
     state.set(ParameterId::Speed,137,0);
@@ -93,7 +103,43 @@ int main(int argc,char** argv) {
     RuntimeDiagnostics diagnostics{};UiRuntimeStatus status{};TileWarningEngine warnings;
     ui.update(telemetry,diagnostics,status,config,warnings);ui.updateShiftLight(state,0,config.shift);
     auto* dash=lv_scr_act();
-    if(settings_save) {
+    if(reset_mode) {
+        click("SETTINGS");click("SYSTEM");
+        auto* system_page=lv_scr_act();
+        click("RESET DASH");
+        auto* confirm=button(lv_layer_top(),"CONFIRM");assert(confirm);
+        clickOn(lv_layer_top(),"CONFIRM");
+        assert(lv_scr_act()==system_page && button(lv_layer_top(),"CONFIRM"));
+        assert(lv_obj_has_state(confirm,LV_STATE_DISABLED));
+        ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
+        assert(request.kind==ConfigCommitKind::Save);
+        assert(request.candidate.dash_tiles[0].visible);
+        assert(!request.candidate.track_tiles[0].visible);
+        assert(request.candidate.brightness_percent==55U);
+        ui.completeConfigCommit(request.revision,false);
+        confirm=button(lv_layer_top(),"CONFIRM");assert(confirm);
+        assert(!lv_obj_has_state(confirm,LV_STATE_DISABLED));
+
+        clickOn(lv_layer_top(),"CONFIRM");assert(ui.takeConfigCommit(request));
+        config=request.candidate;ui.completeConfigCommit(request.revision,true);
+        assert(!button(lv_layer_top(),"CONFIRM"));
+        assert(lv_scr_act()==system_page && config.dash_tiles[0].visible);
+
+        click("RESET TRACK");clickOn(lv_layer_top(),"CONFIRM");
+        assert(ui.takeConfigCommit(request));
+        assert(request.candidate.track_tiles[0].visible);
+        config=request.candidate;ui.completeConfigCommit(request.revision,true);
+        assert(!button(lv_layer_top(),"CONFIRM"));
+
+        click("FACTORY RESET");clickOn(lv_layer_top(),"CONFIRM");
+        assert(ui.takeConfigCommit(request));
+        assert(request.kind==ConfigCommitKind::FactoryReset);
+        config=AppConfig::defaults();ui.completeConfigCommit(request.revision,true);
+        assert(!button(lv_layer_top(),"CONFIRM"));
+        assert(find(lv_scr_act(),&lv_label_class,"SETTINGS"));
+        assert(config.brightness_percent==100U);
+        std::puts("DASH, TRACK and factory resets wait for persistence safely");
+    } else if(settings_save) {
         click("SETTINGS");click("RPM & SHIFT LIGHT");
         auto* settings_page=lv_scr_act();
         auto* scale=find(settings_page,&lv_slider_class);assert(scale);

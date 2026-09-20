@@ -51,6 +51,18 @@ class DeferredSettingsSaveContractTests(unittest.TestCase):
         self.assertIn("showCommitFeedback", source)
         self.assertIn("lv_layer_top()", source)
 
+    def test_reset_overlay_is_closed_only_after_commit_completion(self):
+        source = (ROOT / "src/ui/ui.cpp").read_text(encoding="utf-8")
+        confirm = source.split("void Ui::confirmReset", 1)[1]
+        confirm = confirm.split("void Ui::editorEvent", 1)[0]
+        completion = source.split("void Ui::completeConfigCommit", 1)[1]
+        completion = completion.split("void Ui::showSettingsMessage", 1)[0]
+
+        self.assertIn("reset_commit_pending_", confirm)
+        self.assertNotIn("closeResetConfirmation()", confirm)
+        self.assertIn("reset_commit_pending_", completion)
+        self.assertIn("closeResetConfirmation()", completion)
+
 
 if __name__ == "__main__":
     unittest.main()
