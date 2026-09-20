@@ -28,13 +28,6 @@ static lv_obj_t* findContaining(lv_obj_t* root,const char* text) {
     }
     return nullptr;
 }
-static void dumpLabels(lv_obj_t* root) {
-    if(lv_obj_check_type(root,&lv_label_class))
-        std::fprintf(stderr,"label: '%s' hidden=%d\n",lv_label_get_text(root),
-                     lv_obj_has_flag(root,LV_OBJ_FLAG_HIDDEN) ? 1 : 0);
-    for(uint32_t i=0;i<lv_obj_get_child_cnt(root);++i)
-        dumpLabels(lv_obj_get_child(root,i));
-}
 static unsigned countType(lv_obj_t* root,const lv_obj_class_t* type) {
     unsigned count=lv_obj_check_type(root,type) ? 1U:0U;
     for(uint32_t i=0;i<lv_obj_get_child_cnt(root);++i)count+=countType(lv_obj_get_child(root,i),type);
@@ -121,8 +114,6 @@ int main(int argc,char** argv) {
         racechrono.acceptRaw(17U,1234,1U);
         diagnostics.uptime_ms=1000U;
         ui.update(telemetry,diagnostics,status,config,warnings);
-        if(!find(lv_scr_act(),&lv_label_class,"GPS speed"))
-            dumpLabels(lv_scr_act());
         assert(find(lv_scr_act(),&lv_label_class,"GPS speed") &&
                "Active filter did not reveal the newly active channel");
         filter=find(lv_scr_act(),&lv_dropdown_class);assert(filter);

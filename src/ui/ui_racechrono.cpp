@@ -169,6 +169,12 @@ void Ui::createRaceChronoSettings(lv_obj_t* root) {
                 content, "", 360, y + 10, 130, UiTheme::muted());
             racechrono_channel_values_[row] = clippedLabel(
                 content, "", 500, y + 10, 218);
+            lv_label_set_long_mode(racechrono_channel_names_[row],
+                                   LV_LABEL_LONG_CLIP);
+            lv_label_set_long_mode(racechrono_channel_states_[row],
+                                   LV_LABEL_LONG_CLIP);
+            lv_label_set_long_mode(racechrono_channel_values_[row],
+                                   LV_LABEL_LONG_CLIP);
             lv_obj_set_style_text_align(racechrono_channel_values_[row],
                                         LV_TEXT_ALIGN_RIGHT, 0);
             addSeparator(content, y + 31, 750);
