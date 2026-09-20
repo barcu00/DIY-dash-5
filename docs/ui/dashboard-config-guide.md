@@ -43,7 +43,9 @@ new profile, its assignment and position remain intact and the tile displays
 `---` / `UNAVAILABLE`; the editor keeps that value as its first labelled option.
 Filtered dropdown indexes are mapped explicitly to stable parameter IDs.
 SELECT PARAMETER opens a full-screen, paged ENGINE / TEMPERATURE / PRESSURE /
-FLAGS picker using the same capability filtering. BACK discards the picker
+FLAGS / RACECHRONO picker using the same capability filtering. RaceChrono
+channels remain selectable while Bluetooth LE is disabled or disconnected;
+their tiles show `---` until data is valid. BACK discards the picker
 selection; SELECT updates only the editor draft.
 
 The editor has DATA, WARNING, and (for temperature parameters only) TEMPERATURE
@@ -113,6 +115,11 @@ by leaving again.
 - Source is explicitly CAN or DEMO. CAN never automatically falls back to DEMO.
 - CAN is receive-only. Available bitrates are 125, 250, 500, and 1000 kbit/s;
   timeout is adjustable from 100 to 5000 ms.
+- DATA & CAN includes a full-width RACECHRONO entry. Its non-scrolling
+  CONNECTION page controls the `DIY DASH RC` BLE Monitor device; CHANNELS shows
+  six of 33 channels per page with ALL / ACTIVE / NO DATA / ERROR filters.
+  RaceChrono uses service `0x1FF8`, saves its enable state on exit, and does not
+  restart or replace engine CAN/DEMO telemetry.
 - The profile picker offers `none`, six source-pinned ECU profiles including
   BMW MS43 Stock, and separately marked experimental Link and PSA C2 profiles.
   MS43 uses only stock receive-only CAN; OLM/custom `0x33C` is absent. Selecting `none`
@@ -181,3 +188,7 @@ The illustrations below are older geometry previews, not current editor captures
 | Flag tile states | Flag editor |
 | --- | --- |
 | ![Flag tile states](screenshots/ui-preview-flag-tiles.png) | ![Flag tile editor](screenshots/ui-preview-flag-editor.png) |
+
+| RaceChrono connection | RaceChrono channels | RaceChrono picker |
+| --- | --- | --- |
+| ![RaceChrono connection](screenshots/racechrono-connection.png) | ![RaceChrono channels](screenshots/racechrono-channels.png) | ![RaceChrono picker](screenshots/racechrono-picker.png) |

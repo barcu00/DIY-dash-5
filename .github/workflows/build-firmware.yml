@@ -50,7 +50,9 @@ jobs:
         run: python -m pip install --disable-pip-version-check platformio==6.1.18 Pillow==11.3.0
 
       - name: Build Waveshare firmware
-        run: pio run -e waveshare_5
+        run: |
+          grep -F 'h2zero/NimBLE-Arduino@2.5.1' platformio.ini
+          pio run -e waveshare_5
 
       - name: Render 800x480 UI previews
         run: python scripts/ui_preview/render_ui_preview.py --output ui-previews
@@ -73,6 +75,13 @@ jobs:
             cp "$build_dir/boot_app0.bin" "$artifact_dir/"
           fi
           cp ui-previews/*.png "$artifact_dir/"
+          for image in ui-preview-racechrono-connection-active.png \
+            ui-preview-racechrono-connection-nodata.png \
+            ui-preview-racechrono-channels.png \
+            ui-preview-racechrono-channels-last.png \
+            ui-preview-racechrono-picker.png; do
+            test -f "$artifact_dir/$image"
+          done
 
           ls -lah "$artifact_dir"
 

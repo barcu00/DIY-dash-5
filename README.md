@@ -132,6 +132,36 @@ The real layout captures and earlier geometry previews are available in
 
 ## Main features
 
+### RaceChrono Bluetooth LE monitor (development)
+
+The development firmware advertises as **`DIY DASH RC`** and implements the
+RaceChrono DIY Monitor service `0x1FF8`. Enable it under
+`SETTINGS > DATA & CAN > RACECHRONO`; the full-screen `CONNECTION` and
+`CHANNELS` pages show live BLE/GPS state and all 33 supplemental channels.
+**CAN / DEMO remains active** while RaceChrono adds lap time, live delta,
+comparison/reference time, sector, GPS, satellite, accuracy, position, and
+acceleration data. RaceChrono values can be selected for any compatible tile
+even while the phone is disconnected, and unavailable values show `---`.
+
+One-time RaceChrono app path:
+
+```text
+RaceChrono Settings
+  Add other device
+  RaceChrono DIY
+  Bluetooth LE
+  DIY DASH RC
+  Monitor
+```
+
+RaceChrono initiates the connection after a session starts, so `ADVERTISING`
+before a session is expected. See the complete
+[RaceChrono setup guide](docs/racechrono/setup.md).
+
+| CONNECTION | CHANNELS | RACECHRONO picker |
+| --- | --- | --- |
+| ![RaceChrono connection](docs/ui/screenshots/racechrono-connection.png) | ![RaceChrono channels](docs/ui/screenshots/racechrono-channels.png) | ![RaceChrono picker](docs/ui/screenshots/racechrono-picker.png) |
+
 Development firmware also supports an active 12 V warning buzzer on DO0: one
 startup test chirp, intermittent unacknowledged-warning sound and a persistent
 `SETTINGS > SYSTEM > WARNING SOUND` option. See [wiring and behavior](docs/hardware/warning-buzzer.md).
@@ -239,11 +269,13 @@ the runtime only after persistent storage confirms a successful write.
 
 ## Telemetry and selectable data
 
-`VehicleState` is the common model used by DEMO, CAN profiles, warnings, and the
-UI. The current registry contains **101 selectable parameters**:
+`VehicleState` plus the independent RaceChrono overlay are the common sources
+used by DEMO, CAN profiles, warnings, and the UI. The current registry contains
+**134 selectable parameters**:
 
 - 35 numeric measurements;
-- 66 boolean or status flags.
+- 66 boolean or status flags;
+- 33 RaceChrono lap, sector, GPS, position, and acceleration channels.
 
 Numeric data includes RPM, speed, gear, throttle, MAP/boost, lambda, coolant,
 oil and intake temperatures, oil/fuel/coolant pressure, battery voltage,
@@ -483,6 +515,7 @@ developer builds reproducible.
 | `src/can` | ESP32 TWAI receive-only driver |
 | `src/ecu` | CAN profiles and table-driven decoding |
 | `src/telemetry` | Parameter registry, DEMO data, and `VehicleState` |
+| `src/racechrono` | RaceChrono Monitor protocol, session, telemetry, and BLE transport |
 | `src/alarms` | Per-tile warning state machine |
 | `src/settings` | Defaults, validation, schema migration, and NVS storage |
 | `src/ui` | Layout, editor, settings, tiles, shift light, and presentation |
@@ -501,6 +534,7 @@ developer builds reproducible.
   K-line acquisition.
 - The PSA profile does not decode VAN traffic.
 - microSD logging and profile import/export are not implemented in v0.2.1.
+- RaceChrono BLE hardware acceptance is pending on a physical phone and board.
 - CI cannot validate electrical wiring, display timing under every condition,
   vehicle-bus compatibility, or long-duration thermal stability.
 
@@ -522,6 +556,7 @@ After flashing, verify:
 ## Documentation
 
 - [Dashboard configuration guide](docs/ui/dashboard-config-guide.md)
+- [RaceChrono Bluetooth LE setup](docs/racechrono/setup.md)
 - [CAN profile source ledger](docs/can/profile-sources.md)
 - [Current v0.2.1 release](https://github.com/barcu00/DIY-dash-5/releases/tag/v0.2.1)
 - [GitHub Actions firmware workflow](.github/workflows/build-firmware.yml)
