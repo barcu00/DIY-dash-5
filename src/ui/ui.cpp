@@ -650,6 +650,32 @@ void Ui::completeConfigCommit(uint32_t revision, bool success) {
         lv_obj_invalidate(lv_scr_act());
         return;
     }
+    if (reset_commit_pending_) {
+        if (commit_model_.busy()) return;
+        reset_commit_pending_ = false;
+        if (success) {
+            settings_draft_ = *config_;
+            update_policy_.markLayoutDirty();
+            const bool factory =
+                reset_commit_target_ == SettingsResetTarget::Factory;
+            closeResetConfirmation();
+            if (factory) {
+                if (board_)
+                    board_->setSoftwareBrightness(
+                        config_->brightness_percent);
+                showSettings(SettingsCategory::Home);
+            }
+            showCommitFeedback("SAVED");
+        } else {
+            if (reset_cancel_)
+                lv_obj_clear_state(reset_cancel_, LV_STATE_DISABLED);
+            if (reset_confirm_)
+                lv_obj_clear_state(reset_confirm_, LV_STATE_DISABLED);
+            showCommitFeedback("SAVE ERROR");
+        }
+        lv_obj_invalidate(lv_scr_act());
+        return;
+    }
     if (pending_settings_exit_) {
         if (commit_model_.busy()) return;
         setSettingsCommitBlocked(false);
@@ -798,6 +824,7 @@ void Ui::finishSettingsExit() {
 }
 
 void Ui::openResetConfirmation(SettingsResetTarget target) {
+    if (reset_commit_pending_ || commit_model_.busy()) return;
     closeResetConfirmation();
     settings_flow_.requestReset(target);
     reset_overlay_ = lv_obj_create(lv_layer_top());
@@ -818,50 +845,59 @@ void Ui::openResetConfirmation(SettingsResetTarget target) {
     lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, 0);
     makeLabel(reset_overlay_, "This operation cannot be undone", 164, 98,
               &lv_font_montserrat_14, UiTheme::muted());
-    makeButton(reset_overlay_, "CANCEL", 40, 166, 220, 56,
-               settingsConfirmEvent, reinterpret_cast<void*>(0));
-    makeButton(reset_overlay_, "CONFIRM", 340, 166, 220, 56,
-               settingsConfirmEvent, reinterpret_cast<void*>(1));
+    reset_cancel_ = makeButton(reset_overlay_, "CANCEL", 40, 166, 220, 56,
+                               settingsConfirmEvent,
+                               reinterpret_cast<void*>(0));
+    reset_confirm_ = makeButton(reset_overlay_, "CONFIRM", 340, 166, 220, 56,
+                                settingsConfirmEvent,
+                                reinterpret_cast<void*>(1));
 }
 
 void Ui::closeResetConfirmation() {
     if (reset_overlay_) {
-        lv_obj_del_async(reset_overlay_);
+        lv_obj_del(reset_overlay_);
         reset_overlay_ = nullptr;
     }
+    reset_cancel_ = nullptr;
+    reset_confirm_ = nullptr;
     settings_flow_.cancelReset();
 }
 
 void Ui::confirmReset() {
-    if (!config_ || !settings_flow_.resetPending()) return;
+    if (!config_ || !settings_flow_.resetPending() ||
+        reset_commit_pending_ || commit_model_.busy()) return;
     const SettingsResetTarget target = settings_flow_.pendingReset();
-    bool staged = false;
+    bool queued = false;
     if (target == SettingsResetTarget::DashLayout) {
-        AppConfig candidate = *config_;
+        AppConfig candidate = settings_draft_;
         resetPageLayouts(candidate, PageId::Dash);
-        staged = stageSettings(candidate, false);
+        if (candidate.validate().valid) {
+            settings_draft_ = candidate;
+            commit_model_.markDirty(false);
+            queued = commit_model_.queueOnExit(settings_draft_);
+        }
     } else if (target == SettingsResetTarget::TrackLayout) {
-        AppConfig candidate = *config_;
+        AppConfig candidate = settings_draft_;
         resetPageLayouts(candidate, PageId::Track);
-        staged = stageSettings(candidate, false);
+        if (candidate.validate().valid) {
+            settings_draft_ = candidate;
+            commit_model_.markDirty(false);
+            queued = commit_model_.queueOnExit(settings_draft_);
+        }
     } else {
-        *config_ = AppConfig::defaults();
-        commit_model_.queueFactoryReset();
-        showCommitFeedback("SAVING");
-        staged = true;
+        queued = commit_model_.queueFactoryReset();
     }
-    closeResetConfirmation();
-    if (!staged) {
+    if (!queued) {
         showSettingsMessage("SAVE ERROR");
         return;
     }
-    update_policy_.markLayoutDirty();
-    if (target == SettingsResetTarget::Factory) {
-        if (board_) board_->setSoftwareBrightness(config_->brightness_percent);
-        showSettings(SettingsCategory::Home);
-    } else {
-        queueSettingsOnExit();
-    }
+    reset_commit_pending_ = true;
+    reset_commit_target_ = target;
+    if (reset_cancel_)
+        lv_obj_add_state(reset_cancel_, LV_STATE_DISABLED);
+    if (reset_confirm_)
+        lv_obj_add_state(reset_confirm_, LV_STATE_DISABLED);
+    showCommitFeedback("SAVING");
 }
 
 void Ui::editorEvent(lv_event_t* event) {

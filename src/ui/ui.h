@@ -208,6 +208,10 @@ private:
     std::array<lv_obj_t*, SettingsFlowModel::kSlotsPerPage> layout_labels_{};
     std::array<std::size_t, SettingsFlowModel::kSlotsPerPage> layout_slots_{};
     lv_obj_t* reset_overlay_ = nullptr;
+    lv_obj_t* reset_cancel_ = nullptr;
+    lv_obj_t* reset_confirm_ = nullptr;
+    bool reset_commit_pending_ = false;
+    SettingsResetTarget reset_commit_target_ = SettingsResetTarget::DashLayout;
     Page editor_return_page_ = Page::Dash;
     SettingsCategory editor_return_category_ = SettingsCategory::Home;
     ParameterOptionList editor_parameter_options_{};
