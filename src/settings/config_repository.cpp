@@ -196,6 +196,53 @@ struct LegacyAppConfigV7 {
     bool warning_sound_enabled = true;
 };
 
+struct LegacyAppConfigV8 {
+    uint32_t schema_version = 8U;
+    DataSource data_source = DataSource::Demo;
+    uint8_t brightness_percent = 100U;
+    CanSettings can{};
+    ShiftLightConfig shift{};
+    UnitSettings units{};
+    std::array<TileConfig, 14> dash_tiles{};
+    std::array<TileConfig, 12> track_tiles{};
+    DashboardLayout dash_layout = DashboardLayout::ClassicDash;
+    DashboardLayout track_layout = DashboardLayout::ClassicTrack;
+    uint16_t rpm_scale_max = 10000U;
+    std::array<AppConfig::TileBank, 5> dash_alternate_tiles{};
+    std::array<AppConfig::TileBank, 5> track_alternate_tiles{};
+    bool warning_sound_enabled = true;
+};
+
+LoadResult migrateV8(ConfigBackend& backend, AppConfig& config) {
+    LegacyAppConfigV8 old{};
+    if (!backend.read(&old, sizeof(old)) || old.schema_version != 8U) {
+        return LoadResult::DefaultsUsed;
+    }
+    AppConfig migrated = AppConfig::defaults();
+    migrated.data_source = old.data_source;
+    migrated.brightness_percent = old.brightness_percent;
+    migrated.can = old.can;
+    migrated.shift = old.shift;
+    migrated.units = old.units;
+    migrated.dash_tiles = old.dash_tiles;
+    migrated.track_tiles = old.track_tiles;
+    migrated.dash_layout = old.dash_layout;
+    migrated.track_layout = old.track_layout;
+    migrated.rpm_scale_max = old.rpm_scale_max;
+    migrated.dash_alternate_tiles = old.dash_alternate_tiles;
+    migrated.track_alternate_tiles = old.track_alternate_tiles;
+    migrated.warning_sound_enabled = old.warning_sound_enabled;
+    migrated.racechrono.enabled = false;
+    normalizeLegacyShiftRange(migrated.shift);
+    if (!migrated.validate().valid) {
+        return LoadResult::DefaultsUsed;
+    }
+    config = migrated;
+    return backend.write(&config, sizeof(config))
+               ? LoadResult::Migrated
+               : LoadResult::MigrationWriteFailed;
+}
+
 LoadResult migrateV7(ConfigBackend& backend, AppConfig& config) {
     LegacyAppConfigV7 old{};
     if (!backend.read(&old, sizeof(old)) || old.schema_version != 7U)
@@ -379,6 +426,10 @@ ConfigRepository::ConfigRepository(ConfigBackend& backend) : backend_(backend) {
 
 LoadResult ConfigRepository::load(AppConfig& config) {
     const std::size_t stored_size = backend_.storedSize();
+    if (stored_size == sizeof(LegacyAppConfigV8)) {
+        const auto migration = migrateV8(backend_, config);
+        if (migration != LoadResult::DefaultsUsed) return migration;
+    }
     if (stored_size == sizeof(LegacyAppConfigV7)) {
         const auto migration = migrateV7(backend_, config);
         if (migration != LoadResult::DefaultsUsed) return migration;

@@ -103,8 +103,12 @@ struct ValidationResult {
     bool shift_order_valid = true;
 };
 
+struct RaceChronoSettings {
+    bool enabled = false;
+};
+
 struct AppConfig {
-    static constexpr uint32_t kSchemaVersion = 8U;
+    static constexpr uint32_t kSchemaVersion = 9U;
     static constexpr std::size_t kDashTileCount = 14U;
     static constexpr std::size_t kTrackTileCount = 12U;
     static constexpr std::size_t kLayoutTileCapacity = 14U;
@@ -125,6 +129,7 @@ struct AppConfig {
     std::array<TileBank, 5> dash_alternate_tiles{};
     std::array<TileBank, 5> track_alternate_tiles{};
     bool warning_sound_enabled = true;
+    RaceChronoSettings racechrono{};
 
     static AppConfig defaults();
     ValidationResult validate();
