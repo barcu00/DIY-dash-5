@@ -19,6 +19,8 @@
 #include "ui/ui_update_policy.h"
 #include "ui/rpm_scale_view.h"
 #include "ui/numeric_entry_model.h"
+#include "ui/racechrono_settings_model.h"
+#include "racechrono/racechrono_session.h"
 struct UiRuntimeStatus {
     CanStatus can_status = CanStatus::Waiting;
     bool demo_active = false;
@@ -27,6 +29,9 @@ struct UiRuntimeStatus {
     std::size_t decoder_mappings = 0U;
     uint32_t received_frames = 0U;
     uint32_t rejected_frames = 0U;
+    RaceChronoConnectionState racechrono_connection =
+        RaceChronoConnectionState::Disabled;
+    RaceChronoRuntimeStatus racechrono{};
 };
 class Ui {
 public:
@@ -41,6 +46,7 @@ public:
     bool takeConfigCommit(ConfigCommitRequest& request);
     void completeConfigCommit(uint32_t revision, bool success);
     bool takeWarningTest();
+    bool takeRaceChronoRestart();
     static void spinDecreaseEvent(lv_event_t* event);
     static void spinIncreaseEvent(lv_event_t* event);
 private:
@@ -62,12 +68,16 @@ private:
     static void layoutSelectEvent(lv_event_t* event);
     static void settingsResetEvent(lv_event_t* event);
     static void settingsConfirmEvent(lv_event_t* event);
+    static void raceChronoEvent(lv_event_t* event);
+    static void raceChronoBackEvent(lv_event_t* event);
     void createDataPage(Page page, const AppConfig& config);
     void showSettings(SettingsCategory category);
     lv_obj_t* createSettingsPanel(const char* title);
     void createSettingsHome(lv_obj_t* panel);
     void createDisplaySettings(lv_obj_t* panel);
     void createDataCanSettings(lv_obj_t* panel);
+    void createRaceChronoSettings(lv_obj_t* panel);
+    void refreshRaceChronoSettings();
     void createShiftSettings(lv_obj_t* panel);
     void refreshShiftControls();
     void createUnitSettings(lv_obj_t* panel);
@@ -120,6 +130,7 @@ private:
     UiUpdatePolicy update_policy_{};
     VehicleState latest_state_{};
     RaceChronoTelemetry latest_racechrono_{};
+    UiRuntimeStatus latest_ui_status_{};
     uint32_t latest_state_ms_ = 0U;
     std::array<bool, AppConfig::kDashTileCount> dash_highlights_{};
     std::array<bool, AppConfig::kLayoutTileCapacity> track_highlights_{};
@@ -142,6 +153,21 @@ private:
     lv_obj_t* profile_recommendation_ = nullptr;
     lv_obj_t* bitrate_dropdown_ = nullptr;
     lv_obj_t* can_timeout_ = nullptr;
+    RaceChronoSettingsModel racechrono_settings_{};
+    bool racechrono_channels_tab_ = false;
+    bool racechrono_restart_requested_ = false;
+    lv_obj_t* racechrono_enabled_ = nullptr;
+    lv_obj_t* racechrono_connection_ = nullptr;
+    lv_obj_t* racechrono_last_data_ = nullptr;
+    lv_obj_t* racechrono_packets_ = nullptr;
+    lv_obj_t* racechrono_active_ = nullptr;
+    lv_obj_t* racechrono_satellites_ = nullptr;
+    lv_obj_t* racechrono_accuracy_ = nullptr;
+    lv_obj_t* racechrono_signal_ = nullptr;
+    std::array<lv_obj_t*, RaceChronoSettingsModel::kRowsPerPage>
+        racechrono_channel_states_{};
+    std::array<lv_obj_t*, RaceChronoSettingsModel::kRowsPerPage>
+        racechrono_channel_values_{};
     lv_obj_t* shift_start_ = nullptr;
     lv_obj_t* shift_red_ = nullptr;
     lv_obj_t* shift_flash_ = nullptr;

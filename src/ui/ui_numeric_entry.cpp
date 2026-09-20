@@ -98,7 +98,10 @@ void Ui::renderParameterPicker() {
     label(auxiliary_screen_,"SELECT PARAMETER",20,14,&lv_font_montserrat_24);
     label(auxiliary_screen_,active_source_==DataSource::Demo ? "Available in DEMO":active_profile_ ? active_profile_->id:"No CAN profile",470,22,&lv_font_montserrat_12,UiTheme::muted());
     const char* categories[]={"ENGINE","TEMPERATURE","PRESSURE","FLAGS","RACECHRONO"};
-    for(int i=0;i<5;i++)button(auxiliary_screen_,categories[i],20+i*152,58,142,48,pickerEvent,200+i,i==picker_category_);
+    constexpr int kCategoryX=20,kCategoryGap=8,kCategoryWidth=144;
+    for(int i=0;i<5;i++)button(auxiliary_screen_,categories[i],
+        kCategoryX+i*(kCategoryWidth+kCategoryGap),58,kCategoryWidth,48,
+        pickerEvent,200+i,i==picker_category_);
     auto options=ParameterOptions::build(active_source_,active_profile_,picker_selected_);
     size_t matched=0,shown=0;
     for(size_t i=0;i<options.count();i++) {

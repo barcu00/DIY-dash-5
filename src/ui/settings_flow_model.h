@@ -9,6 +9,7 @@ enum class SettingsCategory : uint8_t {
     Home,
     Display,
     DataCan,
+    RaceChrono,
     ShiftLight,
     Units,
     Layouts,

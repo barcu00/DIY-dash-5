@@ -139,6 +139,16 @@ void Ui::clearSettingsWidgets() {
     profile_recommendation_ = nullptr;
     bitrate_dropdown_ = nullptr;
     can_timeout_ = nullptr;
+    racechrono_enabled_ = nullptr;
+    racechrono_connection_ = nullptr;
+    racechrono_last_data_ = nullptr;
+    racechrono_packets_ = nullptr;
+    racechrono_active_ = nullptr;
+    racechrono_satellites_ = nullptr;
+    racechrono_accuracy_ = nullptr;
+    racechrono_signal_ = nullptr;
+    racechrono_channel_states_.fill(nullptr);
+    racechrono_channel_values_.fill(nullptr);
     shift_start_ = nullptr;
     shift_red_ = nullptr;
     shift_flash_ = nullptr;
@@ -186,16 +196,20 @@ void Ui::showSettings(SettingsCategory category) {
         category == SettingsCategory::Home ? "SETTINGS" :
         category == SettingsCategory::Display ? "DISPLAY" :
         category == SettingsCategory::DataCan ? "DATA & CAN" :
+        category == SettingsCategory::RaceChrono ? "RACECHRONO" :
         category == SettingsCategory::ShiftLight ? "RPM & SHIFT LIGHT" :
         category == SettingsCategory::Units ? "UNITS" :
         category == SettingsCategory::Layouts ? "LAYOUTS" : "SYSTEM");
     if (category != SettingsCategory::Home) {
         makeButton(settings_, "< BACK", 20, 18, 120, 38,
-                   settingsBackEvent);
+                   category == SettingsCategory::RaceChrono
+                       ? raceChronoBackEvent : settingsBackEvent);
     }
     if (category == SettingsCategory::Home) createSettingsHome(panel);
     if (category == SettingsCategory::Display) createDisplaySettings(panel);
     if (category == SettingsCategory::DataCan) createDataCanSettings(panel);
+    if (category == SettingsCategory::RaceChrono)
+        createRaceChronoSettings(panel);
     if (category == SettingsCategory::ShiftLight) createShiftSettings(panel);
     if (category == SettingsCategory::Units) createUnitSettings(panel);
     if (category == SettingsCategory::Layouts) createLayoutSettings(panel);
@@ -333,6 +347,13 @@ void Ui::createDataCanSettings(lv_obj_t* panel) {
                reinterpret_cast<void*>(TimeoutIncrease));
     settings_status_ = makeLabel(panel, "", 24, 174,
                                  &lv_font_montserrat_14, UiTheme::muted());
+    lv_obj_t* racechrono = makeButton(
+        panel, "RACECHRONO", 24, 246, 714, 56, settingsCategoryEvent,
+        reinterpret_cast<void*>(static_cast<intptr_t>(
+            SettingsCategory::RaceChrono)));
+    lv_obj_set_style_bg_color(racechrono, UiTheme::panel(), 0);
+    lv_obj_set_style_border_color(racechrono, UiTheme::border(), 0);
+    lv_obj_set_style_border_width(racechrono, 1, 0);
 }
 
 
@@ -457,6 +478,7 @@ void Ui::update(const CompositeTelemetryView& state,
                 TileWarningEngine& warnings) {
     latest_state_ = state.engineState();
     latest_racechrono_ = state.raceChronoState();
+    latest_ui_status_ = status;
     latest_state_ms_ = diagnostics.uptime_ms;
     for (std::size_t i=0; i<dash_highlights_.size(); ++i)
         dash_highlights_[i] = warnings.isHighlighted({PageId::Dash, static_cast<uint8_t>(i)});
@@ -511,6 +533,10 @@ void Ui::update(const CompositeTelemetryView& state,
                 static_cast<unsigned>(diagnostics.ui_updates));
             lv_label_set_text(settings_status_, buffer);
         }
+    }
+    if (settings_flow_.category() == SettingsCategory::RaceChrono &&
+        update_policy_.shouldUpdateSettingsStatus(diagnostics.uptime_ms)) {
+        refreshRaceChronoSettings();
     }
     if (commit_toast_ &&
         static_cast<int32_t>(lv_tick_get() - commit_toast_until_ms_) >= 0) {
