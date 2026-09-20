@@ -17,6 +17,11 @@ SETTINGS_PREVIEWS = (
     "ui-preview-settings-units.png",
     "ui-preview-settings-layouts.png",
     "ui-preview-settings-system.png",
+    "ui-preview-racechrono-connection-active.png",
+    "ui-preview-racechrono-connection-nodata.png",
+    "ui-preview-racechrono-channels.png",
+    "ui-preview-racechrono-channels-last.png",
+    "ui-preview-racechrono-picker.png",
 )
 
 
@@ -79,6 +84,16 @@ class PreviewContractTest(unittest.TestCase):
         self.assertNotIn('"ADVANCED: 12-LED FILL MAX"', shift_section)
         self.assertNotIn("makeSpinbox", shift_section)
         self.assertNotIn("ShiftStartDecrease", shift_section)
+
+    def test_racechrono_contract_uses_fixed_six_row_pages(self):
+        settings = render_ui_preview.CONTRACT["settings"]["racechrono"]
+
+        self.assertEqual(33, settings["channel_count"])
+        self.assertEqual(6, settings["rows_per_page"])
+        self.assertEqual(6, settings["page_count"])
+        self.assertFalse(settings["scrollable"])
+        self.assertEqual(["ALL", "ACTIVE", "NO DATA", "ERROR"],
+                         settings["filters"])
 
 
 if __name__ == "__main__":
