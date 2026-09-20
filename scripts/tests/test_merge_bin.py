@@ -60,6 +60,18 @@ class MergeFirmwareTests(unittest.TestCase):
         self.assertEqual(b"framework boot app",
                          (self.env.build / "boot_app0.bin").read_bytes())
 
+    def test_full_image_contract_keeps_all_boot_offsets(self):
+        self.env.action([], [], self.env)
+        manifest = json.loads((self.env.build / "flash-layout.json").read_text())
+
+        self.assertEqual("16MB", manifest["flash_size"])
+        self.assertEqual("DIY-Dash-ESP32-S3-Touch-LCD-5-full.bin",
+                         manifest["merged_image"])
+        self.assertEqual(
+            ["0x0000", "0x8000", "0xe000", "0x10000"],
+            [image["offset"] for image in manifest["images"]],
+        )
+
     def test_missing_input_stops_merge(self):
         self.env.boot_app.unlink()
         with self.assertRaisesRegex(RuntimeError, "image.*is missing"):

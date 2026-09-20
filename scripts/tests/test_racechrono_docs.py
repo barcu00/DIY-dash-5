@@ -20,6 +20,13 @@ REQUIRED_TEXT = (
     "CAN / DEMO remains active",
     "0x1FF8",
     "DIY-Dash-ESP32-S3-Touch-LCD-5-full.bin",
+    "dashcfg",
+    "512 KiB",
+    "flash at 0x0",
+    "clears existing settings",
+    "EXIT WITHOUT SAVE",
+    "BLE: WAITING FOR APP",
+    "GPS: NO FIX",
 )
 
 
