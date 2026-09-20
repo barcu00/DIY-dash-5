@@ -76,6 +76,7 @@ void Ui::styleScreen(lv_obj_t* screen) {
 }
 void Ui::begin(AppConfig& config, BoardDisplay& board) {
     instance_ = this; config_ = &config; board_ = &board;
+    settings_draft_ = config;
     createDataPage(Page::Dash, config); createDataPage(Page::Track, config);
     board.setSoftwareBrightness(config.brightness_percent);
     update_policy_.takeLayoutDirty();
@@ -132,6 +133,7 @@ void Ui::clearSettingsWidgets() {
     settings_status_ = nullptr;
     warning_sound_ = nullptr;
     settings_message_ = nullptr;
+    settings_back_ = nullptr;
     brightness_slider_ = nullptr;
     brightness_value_ = nullptr;
     source_dropdown_ = nullptr;
@@ -205,9 +207,10 @@ void Ui::showSettings(SettingsCategory category) {
         category == SettingsCategory::Units ? "UNITS" :
         category == SettingsCategory::Layouts ? "LAYOUTS" : "SYSTEM");
     if (category != SettingsCategory::Home) {
-        makeButton(settings_, "< BACK", 20, 18, 120, 38,
-                   category == SettingsCategory::RaceChrono
-                       ? raceChronoBackEvent : settingsBackEvent);
+        settings_back_ = makeButton(
+            settings_, "< BACK", 20, 18, 120, 38,
+            category == SettingsCategory::RaceChrono
+                ? raceChronoBackEvent : settingsBackEvent);
     }
     if (category == SettingsCategory::Home) createSettingsHome(panel);
     if (category == SettingsCategory::Display) createDisplaySettings(panel);
@@ -244,19 +247,20 @@ void Ui::createSettingsHome(lv_obj_t* panel) {
 }
 
 void Ui::createDisplaySettings(lv_obj_t* panel) {
+    const AppConfig& settings = settingsConfig();
     makeLabel(panel, "Brightness", 28, 40, &lv_font_montserrat_14,
               UiTheme::text());
     brightness_slider_ = lv_slider_create(panel);
     lv_obj_set_pos(brightness_slider_, 190, 50);
     lv_obj_set_size(brightness_slider_, 480, 20);
     lv_slider_set_range(brightness_slider_, 20, 100);
-    lv_slider_set_value(brightness_slider_, config_->brightness_percent,
+    lv_slider_set_value(brightness_slider_, settings.brightness_percent,
                         LV_ANIM_OFF);
     brightness_value_ = makeLabel(panel, "", 685, 42,
                                   &lv_font_montserrat_14, UiTheme::blue());
     char value[12];
     std::snprintf(value, sizeof(value), "%u%%",
-                  static_cast<unsigned>(config_->brightness_percent));
+                  static_cast<unsigned>(settings.brightness_percent));
     lv_label_set_text(brightness_value_, value);
     lv_obj_add_event_cb(brightness_slider_, settingsEvent,
                         LV_EVENT_VALUE_CHANGED,
@@ -272,6 +276,7 @@ void Ui::createDisplaySettings(lv_obj_t* panel) {
 }
 
 void Ui::createDataCanSettings(lv_obj_t* panel) {
+    const AppConfig& settings = settingsConfig();
     makeLabel(panel, "SOURCE", 24, 26, &lv_font_montserrat_12,
               UiTheme::muted());
     source_dropdown_ = lv_dropdown_create(panel);
@@ -279,7 +284,7 @@ void Ui::createDataCanSettings(lv_obj_t* panel) {
     lv_obj_set_size(source_dropdown_, 160, 44);
     lv_dropdown_set_options(source_dropdown_, "DEMO\nCAN");
     lv_dropdown_set_selected(source_dropdown_,
-                             config_->data_source == DataSource::Can ? 1 : 0);
+                             settings.data_source == DataSource::Can ? 1 : 0);
     lv_obj_add_event_cb(source_dropdown_, settingsEvent,
                         LV_EVENT_VALUE_CHANGED,
                         reinterpret_cast<void*>(SourceChanged));
@@ -303,7 +308,7 @@ void Ui::createDataCanSettings(lv_obj_t* panel) {
             break;
         }
         used += static_cast<std::size_t>(written);
-        if (std::strcmp(config_->can.profile_id.data(), profile->id) == 0) {
+        if (std::strcmp(settings.can.profile_id.data(), profile->id) == 0) {
             selected_profile = static_cast<uint16_t>(index + 1U);
         }
     }
@@ -332,9 +337,9 @@ void Ui::createDataCanSettings(lv_obj_t* panel) {
     lv_obj_set_size(bitrate_dropdown_, 180, 44);
     lv_dropdown_set_options(bitrate_dropdown_,
                             "125 kbit/s\n250 kbit/s\n500 kbit/s\n1000 kbit/s");
-    const uint16_t bitrate_index = config_->can.bitrate == 125000U ? 0U :
-        (config_->can.bitrate == 250000U ? 1U :
-        (config_->can.bitrate == 500000U ? 2U : 3U));
+    const uint16_t bitrate_index = settings.can.bitrate == 125000U ? 0U :
+        (settings.can.bitrate == 250000U ? 1U :
+        (settings.can.bitrate == 500000U ? 2U : 3U));
     lv_dropdown_set_selected(bitrate_dropdown_, bitrate_index);
     lv_obj_add_event_cb(bitrate_dropdown_, settingsEvent,
                         LV_EVENT_VALUE_CHANGED,
@@ -343,7 +348,7 @@ void Ui::createDataCanSettings(lv_obj_t* panel) {
     makeLabel(panel, "TIMEOUT MS", 598, 26, &lv_font_montserrat_12,
               UiTheme::muted());
     can_timeout_ = makeSpinbox(panel, 598, 48, 140, 100, 5000,
-                               config_->can.timeout_ms, 4);
+                               settings.can.timeout_ms, 4);
     lv_spinbox_set_step(can_timeout_, 100);
     makeButton(panel, "-", 598, 98, 64, 38, settingsEvent,
                reinterpret_cast<void*>(TimeoutDecrease));
@@ -362,6 +367,7 @@ void Ui::createDataCanSettings(lv_obj_t* panel) {
 
 
 void Ui::createUnitSettings(lv_obj_t* panel) {
+    const AppConfig& settings = settingsConfig();
     constexpr const char* labels[] = {"TEMPERATURE", "PRESSURE",
                                       "SPEED", "MIXTURE"};
     constexpr const char* options[] = {"Celsius\nFahrenheit", "bar\nkPa\npsi",
@@ -369,10 +375,10 @@ void Ui::createUnitSettings(lv_obj_t* panel) {
     lv_obj_t** dropdowns[] = {&temp_unit_, &pressure_unit_,
                               &speed_unit_, &mixture_unit_};
     const uint16_t selected[] = {
-        static_cast<uint16_t>(config_->units.temperature),
-        static_cast<uint16_t>(config_->units.pressure),
-        static_cast<uint16_t>(config_->units.speed),
-        static_cast<uint16_t>(config_->units.mixture)};
+        static_cast<uint16_t>(settings.units.temperature),
+        static_cast<uint16_t>(settings.units.pressure),
+        static_cast<uint16_t>(settings.units.speed),
+        static_cast<uint16_t>(settings.units.mixture)};
     for (int index = 0; index < 4; ++index) {
         const int x = 18 + index * 188;
         makeLabel(panel, labels[index], x, 56, &lv_font_montserrat_12,
@@ -391,6 +397,7 @@ void Ui::createUnitSettings(lv_obj_t* panel) {
 }
 
 void Ui::createLayoutSettings(lv_obj_t* panel) {
+    const AppConfig& settings = settingsConfig();
     constexpr const char* options = "CLASSIC DASH\nCLASSIC TRACK\nANALOG STYLE\nSIDE GEAR\nSTRIP STYLE\nMODERN MOTORSPORT";
     makeLabel(panel, "DASH", 12, 12, &lv_font_montserrat_12, UiTheme::text());
     makeLabel(panel, "TRACK", 392, 12, &lv_font_montserrat_12, UiTheme::text());
@@ -402,7 +409,7 @@ void Ui::createLayoutSettings(lv_obj_t* panel) {
         lv_obj_set_size(selectors[i], 298, 38);
         lv_dropdown_set_options(selectors[i], options);
         lv_dropdown_set_selected(selectors[i], static_cast<uint16_t>(
-            i == 0 ? config_->dash_layout : config_->track_layout));
+            i == 0 ? settings.dash_layout : settings.track_layout));
         lv_obj_add_event_cb(selectors[i], settingsEvent, LV_EVENT_VALUE_CHANGED,
             reinterpret_cast<void*>(LayoutPresetChanged));
     }
@@ -410,7 +417,7 @@ void Ui::createLayoutSettings(lv_obj_t* panel) {
                reinterpret_cast<void*>(static_cast<intptr_t>(PageId::Dash)));
     makeButton(panel, "TRACK TILES", 140, 44, 128, 36, layoutSelectEvent,
                reinterpret_cast<void*>(static_cast<intptr_t>(PageId::Track)));
-    const auto tiles = activeTiles(*config_, settings_flow_.layout());
+    const auto tiles = activeTiles(settings, settings_flow_.layout());
     const std::size_t count = tiles.size();
     settings_flow_.setLayoutTileCount(count);
     const std::size_t first = settings_flow_.firstSlot();
@@ -451,10 +458,11 @@ void Ui::createLayoutSettings(lv_obj_t* panel) {
 }
 
 void Ui::createSystemSettings(lv_obj_t* panel) {
+    const AppConfig& settings = settingsConfig();
     warning_sound_ = lv_checkbox_create(panel);
     lv_obj_set_pos(warning_sound_, 24, 174);
     lv_checkbox_set_text(warning_sound_, "WARNING SOUND");
-    if (config_->warning_sound_enabled)
+    if (settings.warning_sound_enabled)
         lv_obj_add_state(warning_sound_, LV_STATE_CHECKED);
     lv_obj_add_event_cb(warning_sound_, settingsEvent, LV_EVENT_VALUE_CHANGED,
                         reinterpret_cast<void*>(WarningSoundChanged));
@@ -574,7 +582,8 @@ void Ui::navEvent(lv_event_t* event) {
     const Page destination = static_cast<Page>(
         reinterpret_cast<intptr_t>(lv_event_get_user_data(event)));
     if (instance_->current_page_ == Page::Settings) {
-        instance_->queueSettingsOnExit();
+        instance_->requestSettingsExit(destination);
+        return;
     }
     instance_->load(destination);
 }
@@ -609,6 +618,9 @@ void Ui::prepareDataPage(Page page) {
     lv_obj_update_layout(page == Page::Dash ? dash_ : track_);
 }
 void Ui::load(Page page) {
+    if (page == Page::Settings && current_page_ != Page::Settings) {
+        beginSettingsSession();
+    }
     if (page != Page::Settings) prepareDataPage(page);
     current_page_ = page;
     update_policy_.activate(page == Page::Dash ? PageId::Dash :
@@ -634,6 +646,23 @@ void Ui::completeConfigCommit(uint32_t revision, bool success) {
             if (editor_message_) lv_label_set_text(editor_message_, "SAVE ERROR");
             if (editor_cancel_) lv_obj_clear_state(editor_cancel_, LV_STATE_DISABLED);
             if (editor_save_) lv_obj_clear_state(editor_save_, LV_STATE_DISABLED);
+        }
+        lv_obj_invalidate(lv_scr_act());
+        return;
+    }
+    if (pending_settings_exit_) {
+        if (commit_model_.busy()) return;
+        setSettingsCommitBlocked(false);
+        if (success) {
+            settings_draft_ = *config_;
+            update_policy_.markLayoutDirty();
+            finishSettingsExit();
+            showCommitFeedback("SAVED");
+        } else {
+            pending_settings_exit_ = false;
+            if (board_ && config_)
+                board_->setSoftwareBrightness(config_->brightness_percent);
+            showCommitFeedback("SAVE ERROR");
         }
         lv_obj_invalidate(lv_scr_act());
         return;
@@ -678,20 +707,94 @@ bool Ui::stageSettings(AppConfig candidate, bool reconfigure_runtime) {
             board_->setSoftwareBrightness(config_->brightness_percent);
         return false;
     }
-    if (std::memcmp(&candidate, config_, sizeof(candidate)) == 0) {
+    if (std::memcmp(&candidate, &settings_draft_, sizeof(candidate)) == 0) {
         return true;
     }
-    *config_ = candidate;
+    settings_draft_ = candidate;
+    settings_draft_active_ = true;
     commit_model_.markDirty(reconfigure_runtime);
-    if (board_) board_->setSoftwareBrightness(config_->brightness_percent);
+    if (board_) board_->setSoftwareBrightness(
+        settings_draft_.brightness_percent);
     settings_feedback_ = "UNSAVED";
     showSettingsMessage(settings_feedback_);
     return true;
 }
 
-void Ui::queueSettingsOnExit() {
-    if (!config_ || !commit_model_.queueOnExit(*config_)) return;
+bool Ui::queueSettingsOnExit() {
+    if (!config_ || !commit_model_.queueOnExit(settings_draft_)) return false;
     showCommitFeedback("SAVING");
+    return true;
+}
+
+const AppConfig& Ui::settingsConfig() const {
+    return settings_draft_active_ ? settings_draft_ : *config_;
+}
+
+void Ui::beginSettingsSession() {
+    if (!config_) return;
+    settings_draft_ = *config_;
+    settings_draft_active_ = true;
+    pending_settings_exit_ = false;
+}
+
+void Ui::setSettingsCommitBlocked(bool blocked) {
+    if (settings_back_) {
+        if (blocked) lv_obj_add_state(settings_back_, LV_STATE_DISABLED);
+        else lv_obj_clear_state(settings_back_, LV_STATE_DISABLED);
+    }
+    if (blocked && !settings_commit_blocker_) {
+        settings_commit_blocker_ = lv_obj_create(lv_layer_top());
+        lv_obj_set_pos(settings_commit_blocker_, 0, 0);
+        lv_obj_set_size(settings_commit_blocker_, 800, 480);
+        lv_obj_set_style_bg_opa(settings_commit_blocker_, LV_OPA_TRANSP, 0);
+        lv_obj_set_style_border_width(settings_commit_blocker_, 0, 0);
+        lv_obj_clear_flag(settings_commit_blocker_, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_add_flag(settings_commit_blocker_, LV_OBJ_FLAG_CLICKABLE);
+    } else if (!blocked && settings_commit_blocker_) {
+        lv_obj_del(settings_commit_blocker_);
+        settings_commit_blocker_ = nullptr;
+    }
+}
+
+void Ui::requestSettingsExit(Page destination) {
+    if (pending_settings_exit_) return;
+    if (!commit_model_.dirty()) {
+        settings_draft_active_ = false;
+        load(destination);
+        return;
+    }
+    if (!queueSettingsOnExit()) return;
+    pending_settings_exit_ = true;
+    pending_settings_exit_to_page_ = true;
+    pending_settings_page_ = destination;
+    setSettingsCommitBlocked(true);
+}
+
+void Ui::requestSettingsExit(SettingsCategory destination) {
+    if (pending_settings_exit_) return;
+    if (!commit_model_.dirty()) {
+        showSettings(destination);
+        return;
+    }
+    if (!queueSettingsOnExit()) return;
+    pending_settings_exit_ = true;
+    pending_settings_exit_to_page_ = false;
+    pending_settings_category_ = destination;
+    setSettingsCommitBlocked(true);
+}
+
+void Ui::finishSettingsExit() {
+    const bool to_page = pending_settings_exit_to_page_;
+    const Page page = pending_settings_page_;
+    const SettingsCategory category = pending_settings_category_;
+    pending_settings_exit_ = false;
+    if (to_page) {
+        settings_draft_active_ = false;
+        load(page);
+    } else {
+        settings_flow_.open(category);
+        showSettings(category);
+    }
 }
 
 void Ui::openResetConfirmation(SettingsResetTarget target) {
@@ -779,7 +882,7 @@ void Ui::editorEvent(lv_event_t* event) {
 void Ui::settingsEvent(lv_event_t* event) {
     if (!instance_ || !instance_->config_) return;
     const intptr_t action = reinterpret_cast<intptr_t>(lv_event_get_user_data(event));
-    AppConfig candidate = *instance_->config_;
+    AppConfig candidate = instance_->settings_draft_;
 
     if (action == LayoutPresetChanged) {
         auto* dropdown = lv_event_get_target(event);
@@ -937,9 +1040,8 @@ void Ui::settingsConfirmEvent(lv_event_t* event) {
 
 void Ui::settingsBackEvent(lv_event_t*) {
     if (!instance_) return;
-    instance_->queueSettingsOnExit();
-    instance_->settings_flow_.backToHome();
-    instance_->showSettings(SettingsCategory::Home);
+    if (instance_->pending_settings_exit_) return;
+    instance_->requestSettingsExit(SettingsCategory::Home);
 }
 
 void Ui::layoutPageEvent(lv_event_t* event) {

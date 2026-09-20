@@ -153,7 +153,8 @@ int main(int argc,char** argv) {
         auto* enabled=find(lv_scr_act(),&lv_checkbox_class);assert(enabled);
         lv_obj_add_state(enabled,LV_STATE_CHECKED);
         lv_event_send(enabled,LV_EVENT_VALUE_CHANGED,nullptr);
-        assert(config.racechrono.enabled);
+        assert(!config.racechrono.enabled &&
+               "RaceChrono edit leaked into live configuration before BACK");
         click("RESTART BLE");
         assert(ui.takeRaceChronoRestart());
         assert(!ui.takeRaceChronoRestart());
@@ -245,10 +246,13 @@ int main(int argc,char** argv) {
         assert(find(lv_scr_act(),&lv_label_class,"Colors follow YELLOW / RED thresholds; 12 LEDs retain 4/4/4 zones"));
         screenshot("rpm");
         click("8000 RPM");click("9");click("0");click("0");click("0");click("APPLY");
-        assert(config.shift.max_rpm==9000);
+        assert(config.shift.max_rpm==8000);
         click("10000 RPM");click("8");click("0");click("0");click("0");click("APPLY");
-        assert(config.rpm_scale_max==8000 && config.shift.flash_rpm==7500);
-        click("TRACK");assert(ui.takeConfigCommit(request));assert(request.candidate.rpm_scale_max==8000 && request.candidate.shift.max_rpm==9000);
+        assert(config.rpm_scale_max==10000 && config.shift.flash_rpm==7500);
+        click("TRACK");assert(lv_scr_act()!=dash);assert(ui.takeConfigCommit(request));
+        assert(request.candidate.rpm_scale_max==8000 && request.candidate.shift.max_rpm==9000);
+        config=request.candidate;ui.completeConfigCommit(request.revision,true);
+        assert(lv_scr_act()==dash);
         std::puts("Tabbed editor cancel and unified RPM navigation passed");
     } else if(argc==1 || track) {
         if(track) { click("TRACK");dash=lv_scr_act(); }
@@ -262,7 +266,10 @@ int main(int argc,char** argv) {
             }
         }
         lv_dropdown_set_selected(dropdown,4);lv_event_send(dropdown,LV_EVENT_VALUE_CHANGED,nullptr);
-        click(track ? "TRACK":"DASH");assert(lv_scr_act()==dash);
+        click(track ? "TRACK":"DASH");assert(lv_scr_act()!=dash);
+        ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
+        config=request.candidate;ui.completeConfigCommit(request.revision,true);
+        assert(lv_scr_act()==dash);
         // Assert before any scheduled Ui::update: the first visible screen must be Strip.
         assert(lv_obj_get_width(lv_obj_get_child(dash,1))==784 && "First visible frame still uses the old layout");
         assert(find(dash,&lv_label_class,"6840") && "RPM missing from first frame");

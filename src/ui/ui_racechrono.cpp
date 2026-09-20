@@ -78,6 +78,7 @@ void addSeparator(lv_obj_t* parent, int y, int width) {
 }  // namespace
 
 void Ui::createRaceChronoSettings(lv_obj_t* root) {
+    const AppConfig& settings = settingsConfig();
     racechrono_settings_.setChannelCount(raceChronoChannelCount());
     for (std::size_t index = 0U; index < raceChronoChannelCount(); ++index) {
         racechrono_settings_.setChannelState(
@@ -110,7 +111,7 @@ void Ui::createRaceChronoSettings(lv_obj_t* root) {
         lv_obj_set_pos(racechrono_enabled_, 684, 9);
         lv_checkbox_set_text(racechrono_enabled_, "");
         darkCheckbox(racechrono_enabled_);
-        if (config_->racechrono.enabled)
+        if (settings.racechrono.enabled)
             lv_obj_add_state(racechrono_enabled_, LV_STATE_CHECKED);
         lv_obj_add_event_cb(racechrono_enabled_, raceChronoEvent,
                             LV_EVENT_VALUE_CHANGED,
@@ -299,7 +300,7 @@ void Ui::refreshRaceChronoSettings() {
             continue;
         }
         const PresentedValue value = UnitPresenter::present(
-            id, signal.value, config_->units);
+            id, signal.value, settingsConfig().units);
         const unsigned decimals = parameterDescriptor(id).default_decimals;
         std::snprintf(text, sizeof(text), "%.*f %s",
                       static_cast<int>(decimals),
@@ -338,7 +339,7 @@ void Ui::raceChronoEvent(lv_event_t* event) {
         return;
     }
     if (action == ToggleEnabled) {
-        AppConfig candidate = *self->config_;
+        AppConfig candidate = self->settings_draft_;
         candidate.racechrono.enabled = lv_obj_has_state(
             self->racechrono_enabled_, LV_STATE_CHECKED);
         self->stageSettings(candidate, true);
@@ -363,8 +364,7 @@ void Ui::raceChronoEvent(lv_event_t* event) {
 
 void Ui::raceChronoBackEvent(lv_event_t*) {
     if (!instance_) return;
-    instance_->queueSettingsOnExit();
-    instance_->showSettings(SettingsCategory::DataCan);
+    instance_->requestSettingsExit(SettingsCategory::DataCan);
 }
 
 bool Ui::takeRaceChronoRestart() {
