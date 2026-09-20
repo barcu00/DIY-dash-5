@@ -123,7 +123,11 @@ bool RaceChronoBleTransport::begin() {
     impl_->values->setCallbacks(&impl_->values_callbacks);
     if (!service->start()) return false;
     NimBLEAdvertising* advertising = NimBLEDevice::getAdvertising();
-    advertising->addServiceUUID(kServiceUuid);
+    if (!advertising ||
+        !advertising->addServiceUUID(kServiceUuid) ||
+        !advertising->setName(kDeviceName)) {
+        return false;
+    }
     impl_->initialized = true;
     return true;
 }
