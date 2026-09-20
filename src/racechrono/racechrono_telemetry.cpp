@@ -25,9 +25,7 @@ bool RaceChronoTelemetry::acceptRaw(uint8_t monitor_id, int32_t raw,
     }
 
     const std::size_t index = indexOf(descriptor->parameter);
-    if (descriptor->encoding ==
-            RaceChronoValueEncoding::CoordinateDegreesTimes6000000 &&
-        raw == std::numeric_limits<int32_t>::max()) {
+    if (raw == std::numeric_limits<int32_t>::max()) {
         values_[index].valid = false;
         states_[index] = RaceChronoChannelState::NoData;
         return false;
