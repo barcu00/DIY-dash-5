@@ -159,10 +159,12 @@ int main(int argc,char** argv) {
         assert(ui.takeRaceChronoRestart());
         assert(!ui.takeRaceChronoRestart());
         click("< BACK");
-        assert(find(lv_scr_act(),&lv_label_class,"DATA & CAN"));
+        assert(find(lv_scr_act(),&lv_label_class,"RACECHRONO") &&
+               "RaceChrono BACK changed screens before persistence");
         ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
         assert(request.candidate.racechrono.enabled);
         config=request.candidate;ui.completeConfigCommit(request.revision,true);
+        assert(find(lv_scr_act(),&lv_label_class,"DATA & CAN"));
 
         click("DASH");dash=lv_scr_act();
         auto* tile=lv_obj_get_child(dash,2);
@@ -252,7 +254,7 @@ int main(int argc,char** argv) {
         click("TRACK");assert(lv_scr_act()!=dash);assert(ui.takeConfigCommit(request));
         assert(request.candidate.rpm_scale_max==8000 && request.candidate.shift.max_rpm==9000);
         config=request.candidate;ui.completeConfigCommit(request.revision,true);
-        assert(lv_scr_act()==dash);
+        assert(lv_scr_act()!=dash && find(lv_scr_act(),&lv_label_class,"TRACK"));
         std::puts("Tabbed editor cancel and unified RPM navigation passed");
     } else if(argc==1 || track) {
         if(track) { click("TRACK");dash=lv_scr_act(); }
