@@ -54,6 +54,9 @@ jobs:
           grep -F 'h2zero/NimBLE-Arduino@2.5.1' platformio.ini
           pio run -e waveshare_5
 
+      - name: Verify firmware partition table
+        run: python scripts/validate_partition_bin.py .pio/build/waveshare_5/partitions.bin
+
       - name: Render 800x480 UI previews
         run: python scripts/ui_preview/render_ui_preview.py --output ui-previews
 
