@@ -238,6 +238,7 @@ int main(int argc,char** argv) {
         assert(button(lv_scr_act(),"CONNECTION"));
         assert(button(lv_scr_act(),"CHANNELS"));
         auto* enabled=find(lv_scr_act(),&lv_switch_class);assert(enabled);
+        lv_obj_update_layout(enabled);
         assert(lv_obj_get_width(enabled)>=64 && lv_obj_get_height(enabled)>=32);
         assert(find(lv_scr_act(),&lv_label_class,"BLE DISABLED"));
         assert(find(lv_scr_act(),&lv_label_class,"DATA: DISABLED"));
