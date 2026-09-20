@@ -16,6 +16,11 @@ EXPECTED_PREVIEWS = (
     "ui-preview-settings-units.png",
     "ui-preview-settings-layouts.png",
     "ui-preview-settings-system.png",
+    "ui-preview-racechrono-connection-active.png",
+    "ui-preview-racechrono-connection-nodata.png",
+    "ui-preview-racechrono-channels.png",
+    "ui-preview-racechrono-channels-last.png",
+    "ui-preview-racechrono-picker.png",
     "ui-preview-tile-editor.png",
     "ui-preview-flag-tiles.png",
     "ui-preview-flag-editor.png",
@@ -287,6 +292,116 @@ def settings_can_page():
     return image
 
 
+def _racechrono_shell(selected):
+    image, draw = settings_shell("RACECHRONO")
+    for index, title in enumerate(("CONNECTION", "CHANNELS")):
+        x1 = 24 + index * 382
+        active = title == selected
+        draw.rounded_rectangle((x1, 72, x1 + 370, 112), 5,
+                               fill="#173F5B" if active else C["panel"],
+                               outline=C["blue"] if active else C["border"])
+        draw.text((x1 + 185, 92), title,
+                  fill=C["text"] if active else C["muted"],
+                  font=F14, anchor="mm")
+    draw.rounded_rectangle((24, 122, 776, 408), 7, fill="#10151B",
+                           outline=C["border"])
+    return image, draw
+
+
+def racechrono_connection_page(active=True):
+    image, draw = _racechrono_shell("CONNECTION")
+    state = "ACTIVE" if active else "NO DATA"
+    state_color = C["green"] if active else C["muted"]
+    rows = (("ENABLED", "ON"), ("CONNECTION", state),
+            ("BLE DEVICE", "DIY DASH RC"),
+            ("LAST DATA", "12 ms" if active else "---"))
+    for index, (name, value) in enumerate(rows):
+        y = 123 + index * 42
+        draw.text((42, y + 21), name, fill=C["muted"], font=F12,
+                  anchor="lm")
+        draw.text((754, y + 21), value,
+                  fill=state_color if name == "CONNECTION" else C["text"],
+                  font=F14, anchor="rm")
+        draw.line((24, y + 41, 776, y + 41), fill="#283139")
+    summary = (("BLE PACKETS", "1942" if active else "0"),
+               ("ACTIVE CHANNELS", "24 / 33" if active else "0 / 33"),
+               ("SATELLITES", "15" if active else "0"),
+               ("GPS ACCURACY", "0.8 m" if active else "---"))
+    for index, (name, value) in enumerate(summary):
+        col, row = index % 2, index // 2
+        x, y = 42 + col * 370, 305 + row * 26
+        draw.text((x, y), name, fill=C["muted"], font=F12)
+        draw.text((x + 330, y), value, fill=C["text"], font=F12,
+                  anchor="ra")
+    draw.text((42, 384), "GOOD · 3D FIX" if active else "WAITING · NO FIX",
+              fill=state_color, font=F12, anchor="lm")
+    draw.rounded_rectangle((592, 367, 758, 400), 5, fill=C["panel"],
+                           outline=C["border"])
+    draw.text((675, 383), "RESTART BLE", fill=C["text"], font=F12,
+              anchor="mm")
+    return image
+
+
+def racechrono_channels_page(last=False):
+    image, draw = _racechrono_shell("CHANNELS")
+    draw.text((42, 143), "CHANNEL FILTER", fill=C["muted"], font=F12,
+              anchor="lm")
+    draw.rounded_rectangle((522, 128, 758, 160), 5, fill=C["panel"],
+                           outline=C["border"])
+    draw.text((640, 144), "ALL · 33", fill=C["text"], font=F12,
+              anchor="mm")
+    first = (("CURRENT LAP TIME", "ACTIVE", "88.450 s"),
+             ("LIVE DELTA", "ACTIVE", "-0.320 s"),
+             ("COMPARISON LAP TIME", "ACTIVE", "86.880 s"),
+             ("CURRENT SECTOR TIME", "NO DATA", "---"),
+             ("SATELLITES", "ACTIVE", "15"),
+             ("GPS ACCURACY", "ACTIVE", "0.8 m"))
+    final = (("LATERAL ACCELERATION", "ACTIVE", "0.82 g"),
+             ("COMBINED ACCELERATION", "ACTIVE", "1.04 g"),
+             ("LEAN ANGLE", "NO DATA", "---"))
+    entries = final if last else first
+    for index, (name, state, value) in enumerate(entries):
+        y = 163 + index * 32
+        draw.text((42, y + 16), name, fill=C["text"], font=F12,
+                  anchor="lm")
+        draw.text((382, y + 16), state,
+                  fill=C["green"] if state == "ACTIVE" else C["muted"],
+                  font=F12, anchor="lm")
+        draw.text((754, y + 16), value, fill=C["text"], font=F12,
+                  anchor="rm")
+        draw.line((24, y + 31, 776, y + 31), fill="#283139")
+    page = 6 if last else 1
+    draw.text((400, 390), f"PAGE {page} / 6", fill=C["muted"],
+              font=F12, anchor="mm")
+    return image
+
+
+def racechrono_picker_page():
+    image = base()
+    draw = ImageDraw.Draw(image)
+    draw.text((20, 18), "SELECT PARAMETER", fill=C["text"], font=F24)
+    categories = ("ENGINE", "TEMPERATURE", "PRESSURE", "FLAGS", "RACECHRONO")
+    for index, title in enumerate(categories):
+        x = 20 + index * 152
+        selected = title == "RACECHRONO"
+        draw.rounded_rectangle((x, 58, x + 144, 106), 5,
+                               fill=C["blue"] if selected else C["panel"],
+                               outline=C["border"])
+        draw.text((x + 72, 82), title,
+                  fill=C["background"] if selected else C["text"],
+                  font=F12, anchor="mm")
+    for index, title in enumerate(("CURRENT LAP TIME", "LIVE DELTA",
+                                   "SATELLITES", "GPS ACCURACY")):
+        y = 120 + index * 58
+        draw.rounded_rectangle((20, y, 780, y + 50), 5, fill=C["panel"],
+                               outline=C["border"])
+        draw.text((38, y + 25), title, fill=C["text"], font=F14,
+                  anchor="lm")
+    draw.text((400, 382), "1 / 9", fill=C["muted"], font=F12,
+              anchor="mm")
+    return image
+
+
 def settings_shift_page():
     image, draw = settings_shell("SHIFT LIGHT")
     values = (("RPM SCALE MAX", "10000 RPM", 1.00),
@@ -535,6 +650,9 @@ def render_all(output):
         data_page(False), data_page(True), settings_home_page(),
         settings_display_page(), settings_can_page(), settings_shift_page(),
         settings_units_page(), settings_layouts_page(), settings_system_page(),
+        racechrono_connection_page(True), racechrono_connection_page(False),
+        racechrono_channels_page(False), racechrono_channels_page(True),
+        racechrono_picker_page(),
         editor_page(), flag_tiles_page(), flag_editor_page(), warning_page(),
         preset_page("analog"), preset_page("side"), preset_page("strip"),
     )

@@ -32,7 +32,14 @@
     "temperature_bar_defaults": [40.0, 75.0, 115.0, 130.0],
     "alarm_minimum": 0.0,
     "alarm_maximum": 999.0,
-    "alarm_decimals": 1
+    "alarm_decimals": 1,
+    "racechrono": {
+      "channel_count": 33,
+      "rows_per_page": 6,
+      "page_count": 6,
+      "scrollable": false,
+      "filters": ["ALL", "ACTIVE", "NO DATA", "ERROR"]
+    }
   },
   "colors": {
     "background": "#07090D",

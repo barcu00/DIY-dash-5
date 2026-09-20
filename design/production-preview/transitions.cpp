@@ -104,11 +104,12 @@ int main(int argc,char** argv) {
         screenshot("racechrono-connection");
 
         click("CHANNELS");
-        assert(find(lv_scr_act(),&lv_label_class,"CHANNEL FILTER"));
-        assert(find(lv_scr_act(),&lv_label_class,"PAGE 1 / 6"));
+        assert(find(lv_scr_act(),&lv_dropdown_class) &&
+               "RaceChrono channel filter is missing");
+        assert(findContaining(lv_scr_act(),"PAGE 1 / 6"));
         screenshot("racechrono-channels");
         click("NEXT >");
-        assert(find(lv_scr_act(),&lv_label_class,"PAGE 2 / 6"));
+        assert(findContaining(lv_scr_act(),"PAGE 2 / 6"));
         click("CONNECTION");
 
         auto* enabled=find(lv_scr_act(),&lv_checkbox_class);assert(enabled);
