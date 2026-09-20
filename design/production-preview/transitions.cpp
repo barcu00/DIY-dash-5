@@ -70,6 +70,7 @@ int main(int argc,char** argv) {
     const bool psi=argc>1 && !std::strcmp(argv[1],"--psi");
     const bool tempunits=argc>1 && !std::strcmp(argv[1],"--tempunits");
     const bool racechrono_mode=argc>1 && !std::strcmp(argv[1],"--racechrono");
+    const bool settings_save=argc>1 && !std::strcmp(argv[1],"--settings-save");
     const bool units=argc>1 && (!std::strcmp(argv[1],"--units") || psi || tempunits);
     if(units) {
         config.units.pressure=psi ? PressureUnit::Psi:PressureUnit::Kpa;
@@ -92,7 +93,33 @@ int main(int argc,char** argv) {
     RuntimeDiagnostics diagnostics{};UiRuntimeStatus status{};TileWarningEngine warnings;
     ui.update(telemetry,diagnostics,status,config,warnings);ui.updateShiftLight(state,0,config.shift);
     auto* dash=lv_scr_act();
-    if(racechrono_mode) {
+    if(settings_save) {
+        click("SETTINGS");click("RPM & SHIFT LIGHT");
+        auto* settings_page=lv_scr_act();
+        auto* scale=find(settings_page,&lv_slider_class);assert(scale);
+        lv_slider_set_value(scale,9000,LV_ANIM_OFF);
+        lv_event_send(scale,LV_EVENT_VALUE_CHANGED,nullptr);
+        assert(config.rpm_scale_max==10000 &&
+               "Settings edit leaked into live configuration before BACK");
+
+        click("< BACK");
+        assert(lv_scr_act()==settings_page &&
+               "BACK rebuilt the Settings screen before persistence completed");
+        auto* back=button(settings_page,"< BACK");assert(back);
+        assert(lv_obj_has_state(back,LV_STATE_DISABLED));
+        ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
+        assert(request.candidate.rpm_scale_max==9000);
+        ui.completeConfigCommit(request.revision,false);
+        assert(lv_scr_act()==settings_page && config.rpm_scale_max==10000);
+        assert(!lv_obj_has_state(back,LV_STATE_DISABLED));
+
+        click("< BACK");assert(ui.takeConfigCommit(request));
+        config=request.candidate;ui.completeConfigCommit(request.revision,true);
+        assert(lv_scr_act()!=settings_page);
+        assert(find(lv_scr_act(),&lv_label_class,"SETTINGS"));
+        assert(config.rpm_scale_max==9000);
+        std::puts("Settings BACK waits for persistence and retries safely");
+    } else if(racechrono_mode) {
         click("SETTINGS");click("DATA & CAN");
         assert(button(lv_scr_act(),"RACECHRONO") && "DATA & CAN entry is missing");
         click("RACECHRONO");

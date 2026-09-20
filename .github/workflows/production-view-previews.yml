@@ -54,6 +54,9 @@ jobs:
       - name: Check failed tile save retry
         if: success() || failure()
         run: /tmp/ui-transitions --retry
+      - name: Check Settings BACK persistence and retry
+        if: success() || failure()
+        run: /tmp/ui-transitions --settings-save
       - name: Check TRACK first visible frame after layout selection
         if: success() || failure()
         run: /tmp/ui-transitions --track

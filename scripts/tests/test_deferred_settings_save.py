@@ -24,11 +24,16 @@ class DeferredSettingsSaveContractTests(unittest.TestCase):
         self.assertIn("config_repository_.saveCandidate", source)
         self.assertIn("ui_.completeConfigCommit", source)
 
-    def test_every_settings_exit_can_queue_dirty_values(self):
+    def test_settings_back_waits_for_commit_completion_before_rebuilding(self):
         source = (ROOT / "src/ui/ui.cpp").read_text(encoding="utf-8")
+        back = source.split("void Ui::settingsBackEvent", 1)[1]
+        back = back.split("void Ui::layoutPageEvent", 1)[0]
+        completion = source.split("void Ui::completeConfigCommit", 1)[1]
+        completion = completion.split("void Ui::showSettingsMessage", 1)[0]
 
-        self.assertIn("queueSettingsOnExit", source)
-        self.assertGreaterEqual(source.count("queueSettingsOnExit()"), 3)
+        self.assertIn("pending_settings_exit_", back)
+        self.assertNotIn("showSettings(", back)
+        self.assertIn("pending_settings_exit_", completion)
 
     def test_settings_home_navigation_can_retry_a_failed_commit(self):
         source = (ROOT / "src/ui/ui.cpp").read_text(encoding="utf-8")
