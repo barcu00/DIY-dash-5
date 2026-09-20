@@ -87,8 +87,10 @@ int main(int argc,char** argv) {
     VehicleState state;state.reset(DataSource::Demo);state.set(ParameterId::Rpm,6840,0);
     state.set(ParameterId::Speed,137,0);
     state.set(ParameterId::OilTemperature,108,0);
+    RaceChronoTelemetry racechrono;
+    CompositeTelemetryView telemetry(state,racechrono);
     RuntimeDiagnostics diagnostics{};UiRuntimeStatus status{};TileWarningEngine warnings;
-    ui.update(state,diagnostics,status,config,warnings);ui.updateShiftLight(state,0,config.shift);
+    ui.update(telemetry,diagnostics,status,config,warnings);ui.updateShiftLight(state,0,config.shift);
     auto* dash=lv_scr_act();
     if(racechrono) {
         click("SETTINGS");click("DATA & CAN");
@@ -178,7 +180,7 @@ int main(int argc,char** argv) {
         ConfigCommitRequest request;assert(!ui.takeConfigCommit(request));
         click("SETTINGS");click("RPM & SHIFT LIGHT");
         assert(find(lv_scr_act(),&lv_label_class,"RPM SCALE MAX"));
-        ui.update(state,diagnostics,status,config,warnings);
+        ui.update(telemetry,diagnostics,status,config,warnings);
         assert(find(lv_scr_act(),&lv_label_class,"FLASH ENABLED") && "Flash enable switch is missing");
         assert(find(lv_scr_act(),&lv_label_class,"12-LED FILL MAX") && "12-LED fill maximum slider is missing");
         assert(countType(lv_scr_act(),&lv_slider_class)==5 && "RPM settings must expose five sliders");

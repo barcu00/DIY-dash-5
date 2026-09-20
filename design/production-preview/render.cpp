@@ -83,6 +83,8 @@ int main(int argc,char** argv) {
     for(unsigned i=0;i<tiles.size();++i)tiles[i].create(screen,{PageId::Dash,static_cast<uint8_t>(i)},emptyEvent);
     const auto navigation_index=lv_obj_get_child_cnt(screen);
     VehicleState state; state.reset(DataSource::Demo);
+    RaceChronoTelemetry racechrono;
+    CompositeTelemetryView telemetry(state,racechrono);
     state.set(ParameterId::Rpm,6840,0); state.set(ParameterId::Speed,137,0);
     state.set(ParameterId::Gear,3,0); state.set(ParameterId::OilPressure,4.8,0);
     state.set(ParameterId::OilTemperature,108,0); state.set(ParameterId::Clt,91,0);
@@ -132,7 +134,7 @@ int main(int argc,char** argv) {
         for(unsigned i=0;i<placements.count;++i) {
             const auto slot=placements.items[i].address.slot;
             const bool supported=!(scenario==12 && slot==1) && !(scenario==13 && slot==0) && !(scenario==20 && slot==1);
-            tiles[slot].update(bank[slot],config.units,state,supported,(scenario==6 || scenario==22) && slot==1,now);
+            tiles[slot].update(bank[slot],config.units,telemetry,supported,(scenario==6 || scenario==22) && slot==1,now);
         }
         rpm.update(state.get(ParameterId::Rpm),now,config.shift);
         shift.update(static_cast<uint16_t>(state.get(ParameterId::Rpm).value),true,now,config.shift);
@@ -168,7 +170,7 @@ int main(int argc,char** argv) {
             rpm.apply(config.dash_layout,config.rpm_scale_max);
             for(unsigned i=0;i<placements.count;++i)if(placements.items[i].address.slot==6) {
                 tiles[6].apply(bank[6],placements.items[i].geometry);
-                tiles[6].update(bank[6],config.units,state,true,false,0);
+                tiles[6].update(bank[6],config.units,telemetry,true,false,0);
             }
             rpm.update(state.get(ParameterId::Rpm),0,config.shift);
             lv_refr_now(nullptr);
