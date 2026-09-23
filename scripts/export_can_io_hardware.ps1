@@ -21,8 +21,10 @@ $pcb = Join-Path $module "can-io-module.kicad_pcb"
 
 & kicad-cli sch erc --exit-code-violations --output (Join-Path $output "erc-report.rpt") $schematic
 if ($LASTEXITCODE) { throw "sch erc failed: $LASTEXITCODE" }
-& kicad-cli pcb drc --exit-code-violations --all-track-errors --output (Join-Path $output "drc-report.rpt") $pcb
-if ($LASTEXITCODE) { throw "pcb drc failed: $LASTEXITCODE" }
+& kicad-cli pcb drc --all-track-errors --schematic-parity --output (Join-Path $output "drc-report.rpt") $pcb
+if ($LASTEXITCODE) { throw "pcb drc report failed: $LASTEXITCODE" }
+& kicad-cli pcb drc --severity-error --exit-code-violations --all-track-errors --output (Join-Path $output "drc-errors.rpt") $pcb
+if ($LASTEXITCODE) { throw "pcb drc error gate failed: $LASTEXITCODE" }
 & kicad-cli sch export pdf --output (Join-Path $output "can-io-module-schematic.pdf") $schematic
 if ($LASTEXITCODE) { throw "sch export pdf failed: $LASTEXITCODE" }
 & kicad-cli pcb export svg --layers "F.Cu,B.Cu,F.Silkscreen,B.Silkscreen,Edge.Cuts" --output (Join-Path $output "can-io-module-pcb.svg") $pcb

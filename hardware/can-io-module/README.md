@@ -22,3 +22,7 @@ The analog outputs are only for ECU/logger inputs of at least 10 kOhm. Relay out
 GitHub Actions installs KiCad 9, runs the Python design contract, ERC, DRC with schematic parity, schematic PDF and PCB SVG exports, position export, and Gerber/drill generation. The canonical commands are in `.github/workflows/can-io-hardware.yml`; `scripts/export_can_io_hardware.ps1` mirrors them for a workstation with KiCad 9.
 
 Fabrication outputs are prototypes only. Do not order a production batch until the exact purchased connector and enclosure have passed the mechanical fit gate described in `manufacturing/prototype-fabrication-notice.txt`.
+
+## Current design maturity
+
+Revision A is an engineering architecture and placement prototype. KiCad 9 parses it, ERC is clean, and the board has a closed outline, fixed connector mapping, functional placement zones, keep-outs, a ground plane, and an auditable BOM. Major electronic footprints are presently placement blocks and the schematic sheets document the circuit architecture rather than a production netlist. Therefore this revision is **not electrically fabrication-ready** and must not be described as a fully routed production PCB. The complete symbol-level circuit, real package footprints, routed nets, thermal review, enclosure measurements, and bench validation remain release gates.

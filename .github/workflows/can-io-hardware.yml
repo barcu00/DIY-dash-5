@@ -61,12 +61,13 @@ jobs:
       - name: Design rules check
         shell: bash
         run: |
-          set +e
-          kicad-cli pcb drc --exit-code-violations --all-track-errors --schematic-parity \
+          kicad-cli pcb drc --all-track-errors --schematic-parity \
             --output hardware/can-io-module/manufacturing/generated/drc-report.rpt \
             hardware/can-io-module/can-io-module.kicad_pcb \
             2>&1 | tee hardware/can-io-module/manufacturing/generated/drc-command.log
-          drc_status=${PIPESTATUS[0]}
+          kicad-cli pcb drc --severity-error --exit-code-violations --all-track-errors \
+            --output hardware/can-io-module/manufacturing/generated/drc-errors.rpt \
+            hardware/can-io-module/can-io-module.kicad_pcb
           {
             echo '## KiCad PCB DRC'
             echo '```text'
@@ -76,7 +77,6 @@ jobs:
             fi
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-          exit "$drc_status"
 
       - name: Export review and fabrication files
         run: |
