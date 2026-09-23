@@ -80,6 +80,8 @@ class CanIoHardwareContractTest(unittest.TestCase):
         self.assertIn("BuildConnectivity", bridge)
         self.assertIn("ZONE_FILLER", bridge)
         self.assertIn("Fill(board.Zones())", bridge)
+        self.assertIn("clear_zones_for_router(board)", bridge)
+        self.assertLess(bridge.index("SaveBoard(str(clean_board)"), bridge.index("clear_zones_for_router(board)"))
 
     def test_bringup_and_exports_cover_all_release_gates(self):
         root = Path(__file__).resolve().parents[2]

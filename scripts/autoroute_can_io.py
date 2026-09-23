@@ -11,6 +11,12 @@ def clear_tracks(board: pcbnew.BOARD) -> None:
         board.Remove(item)
 
 
+def clear_zones_for_router(board: pcbnew.BOARD) -> None:
+    """Force the router to complete GND as copper tracks, not zone assumptions."""
+    for zone in list(board.Zones()):
+        board.Remove(zone)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("mode", choices=("export", "import"))
@@ -22,6 +28,7 @@ def main() -> None:
     if args.mode == "export":
         clean_board = args.exchange.with_suffix(".unrouted.kicad_pcb")
         pcbnew.SaveBoard(str(clean_board), board)
+        clear_zones_for_router(board)
         if not pcbnew.ExportSpecctraDSN(board, str(args.exchange)):
             raise SystemExit("Specctra DSN export failed")
     else:
