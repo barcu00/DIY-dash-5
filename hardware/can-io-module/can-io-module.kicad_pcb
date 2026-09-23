@@ -1,6 +1,6 @@
 (kicad_pcb (version 20221018) (generator pcbnew)
   (general (thickness 1.6)) (paper "A4")
-  (layers (0 "F.Cu" signal) (31 "B.Cu" signal) (36 "B.SilkS" user "b.Silkscreen") (37 "F.SilkS" user "f.Silkscreen") (44 "Edge.Cuts" user) (46 "B.CrtYd" user "b.Courtyard") (47 "F.CrtYd" user "f.Courtyard") (48 "B.Fab" user) (49 "F.Fab" user) (Dwgs.User user "User.Drawings") (Cmts.User user "User.Comments"))
+  (layers (0 "F.Cu" signal) (31 "B.Cu" signal) (36 "B.SilkS" user "B.Silkscreen") (37 "F.SilkS" user "F.Silkscreen") (40 "Dwgs.User" user "User.Drawings") (41 "Cmts.User" user "User.Comments") (44 "Edge.Cuts" user) (46 "B.CrtYd" user "B.Courtyard") (47 "F.CrtYd" user "F.Courtyard") (48 "B.Fab" user) (49 "F.Fab" user))
   (setup (pad_to_mask_clearance 0))
   (net 0 "")
   (net 1 "VBAT")
