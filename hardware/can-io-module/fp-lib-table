@@ -1,0 +1,5 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "DIY_DASH")(type "KiCad")(uri "${KIPRJMOD}/lib/diy_dash_can_io.pretty")(options "")(descr "DIY Dash CAN IO footprints"))
+)
+

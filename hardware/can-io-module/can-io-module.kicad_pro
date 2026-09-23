@@ -1,0 +1,8 @@
+{
+  "board": {}, "boards": [], "cvpcb": {}, "erc": {}, "libraries": {},
+  "meta": {"filename": "can-io-module.kicad_pro", "version": 1},
+  "net_settings": {"classes": [], "meta": {"version": 3}},
+  "pcbnew": {}, "schematic": {},
+  "text_variables": {"PROJECT_STATUS": "PROTOTYPE - PHYSICAL FIT GATE REQUIRED"}
+}
+

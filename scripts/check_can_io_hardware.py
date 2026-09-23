@@ -91,7 +91,7 @@ def validate_project(root: Path) -> list[str]:
         for net in sorted(REQUIRED_NETS):
             if f'"{net}"' not in text:
                 errors.append(f"missing PCB net: {net}")
-        if text.count("Edge.Cuts") < 4:
+        if '(gr_rect' not in text or '(layer "Edge.Cuts")' not in text:
             errors.append("board outline is incomplete")
 
     bom = root / "hardware/can-io-module/bom/can-io-module-bom.csv"

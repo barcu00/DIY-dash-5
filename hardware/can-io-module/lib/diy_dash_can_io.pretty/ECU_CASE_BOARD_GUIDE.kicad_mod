@@ -1,0 +1,7 @@
+(footprint "ECU_CASE_BOARD_GUIDE" (version 20240108) (generator diy_dash_generator)
+  (layer "F.Cu") (descr "Mechanical enclosure guide; provisional") (attr exclude_from_pos_files exclude_from_bom)
+  (fp_rect (start -48 -43) (end 48 43) (stroke (width 0.15) (type dash)) (fill none) (layer "Dwgs.User"))
+  (fp_text reference "REF**" (at 0 -44) (layer "Dwgs.User") hide (effects (font (size 1 1))))
+  (fp_text value "MEASURE_PHYSICAL_ENCLOSURE" (at 0 44) (layer "Dwgs.User") (effects (font (size 1 1) (thickness 0.15))))
+)
+
