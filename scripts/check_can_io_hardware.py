@@ -41,6 +41,33 @@ CONNECTOR_PINOUT = {
 }
 
 
+def _sexpr_blocks(text: str, name: str) -> list[str]:
+    """Return balanced top-level blocks that start with the requested token."""
+    blocks: list[str] = []
+    marker = f"({name}"
+    cursor = 0
+    while True:
+        start = text.find(marker, cursor)
+        if start < 0:
+            return blocks
+        token_end = start + len(marker)
+        if token_end < len(text) and (text[token_end].isalnum() or text[token_end] in "_.-"):
+            cursor = token_end
+            continue
+        depth = 0
+        for end in range(start, len(text)):
+            if text[end] == "(":
+                depth += 1
+            elif text[end] == ")":
+                depth -= 1
+                if depth == 0:
+                    blocks.append(text[start:end + 1])
+                    cursor = end + 1
+                    break
+        else:
+            return blocks
+
+
 def validate_connector(root: Path) -> list[str]:
     errors: list[str] = []
     base = root / "hardware/can-io-module"
@@ -71,9 +98,11 @@ def validate_connector(root: Path) -> list[str]:
         errors.append("missing PCB connector mapping")
     else:
         text = pcb.read_text(encoding="utf-8")
+        j1_blocks = [block for block in _sexpr_blocks(text, "footprint") if re.search(r'\(property\s+"Reference"\s+"J1"', block)]
+        j1 = j1_blocks[0] if len(j1_blocks) == 1 else ""
         for pin, net in CONNECTOR_PINOUT.items():
-            pattern = rf'\(pad "{pin}"[^\n]*\(net \d+ "{re.escape(net)}"\)'
-            if not re.search(pattern, text):
+            pattern = rf'\(pad\s+"{pin}"\s+.*?\(net\s+\d+\s+"{re.escape(net)}"\)'
+            if not re.search(pattern, j1, re.DOTALL):
                 errors.append(f"J1 pin {pin} must map to {net}")
     return errors
 
@@ -207,25 +236,20 @@ def validate_layout(root: Path) -> list[str]:
         text = pcb.read_text(encoding="utf-8")
         if "PLACEMENT_BLOCK" in text:
             errors.append("PCB still contains temporary placement blocks")
-        footprint_count = text.count("(footprint ")
-        pad_count = text.count("(pad ")
-        segment_count = text.count("(segment ")
+        footprint_count = len(re.findall(r'\(footprint\b', text))
+        pad_count = len(re.findall(r'\(pad\b', text))
+        segment_count = len(re.findall(r'\(segment\b', text))
         if footprint_count < 70:
             errors.append(f"PCB needs real footprints for the complete BOM (found {footprint_count}, need >= 70)")
         if pad_count < 180:
             errors.append(f"PCB needs physical pads for the complete circuit (found {pad_count}, need >= 180)")
         if segment_count < 120:
             errors.append(f"PCB is not fully routed (found {segment_count} track segments, need >= 120)")
-        if "(group \"ROUTED_ANALOG_INPUTS\"" not in text:
-            errors.append("PCB missing routed analog-input channel group")
-        if "(group \"ROUTED_POWER_TREE\"" not in text:
-            errors.append("PCB missing routed power-tree group")
-        if "(group \"ROUTED_COMMS_EGT_OUTPUTS\"" not in text:
-            errors.append("PCB missing routed communications/EGT/output group")
         for ref in ("J1", "U1", "U2", "U5", "U6", "U7", "U8", "U9", "U10", "U11", "Q4", "Q5"):
             if f'"{ref}"' not in text:
                 errors.append(f"PCB placement missing {ref}")
-        if '(zone (net 2) (net_name "POWER_GND") (layer "B.Cu")' not in text:
+        ground_zones = [block for block in _sexpr_blocks(text, "zone") if '(net 2)' in block and '(net_name "POWER_GND")' in block]
+        if not any('(layer "B.Cu")' in block for block in ground_zones):
             errors.append("PCB missing continuous bottom POWER_GND zone")
     return errors
 

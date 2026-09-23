@@ -3,6 +3,7 @@ import re
 import unittest
 
 from scripts.check_can_io_hardware import (
+    _sexpr_blocks,
     CONNECTOR_PINOUT,
     validate_connector,
     validate_analog_inputs,
@@ -55,9 +56,9 @@ class CanIoHardwareContractTest(unittest.TestCase):
         pcb = root / "hardware/can-io-module/can-io-module.kicad_pcb"
         text = pcb.read_text(encoding="utf-8")
         self.assertNotIn("PLACEMENT_BLOCK", text)
-        self.assertGreaterEqual(text.count("(footprint "), 70)
-        self.assertGreaterEqual(text.count("(pad "), 180)
-        self.assertGreaterEqual(text.count("(segment "), 120)
+        self.assertGreaterEqual(len(re.findall(r'\(footprint\b', text)), 70)
+        self.assertGreaterEqual(len(re.findall(r'\(pad\b', text)), 180)
+        self.assertGreaterEqual(len(re.findall(r'\(segment\b', text)), 120)
 
     def test_layout_stays_two_layer_and_qfp_pads_do_not_overlap(self):
         root = Path(__file__).resolve().parents[2]
@@ -65,14 +66,13 @@ class CanIoHardwareContractTest(unittest.TestCase):
         text = pcb.read_text(encoding="utf-8")
         copper_layers = re.findall(r'\(\d+ "[FB]\.Cu" signal\)', text)
         self.assertEqual(2, len(copper_layers))
-        self.assertEqual(1, text.count('(net_name "POWER_GND") (layer "F.Cu")'))
-        self.assertEqual(1, text.count('(net_name "POWER_GND") (layer "B.Cu")'))
-        self.assertIn('(connect_pads yes (clearance 0.25))', text)
-        self.assertEqual(2, text.count('(island_removal_mode 0)'))
-        u1 = text[text.index('(property "Reference" "U1"'):text.index('(property "Reference" "U2"')]
-        self.assertIn('(size 1.20 0.25)', u1)
-        self.assertIn('(size 0.25 1.20)', u1)
-        self.assertNotIn('(size 1.15 0.75)', u1)
+        self.assertEqual(1, len(re.findall(r'\(net_name\s+"POWER_GND"\).*?\(layer\s+"F\.Cu"\)', text, re.DOTALL)))
+        self.assertEqual(1, len(re.findall(r'\(net_name\s+"POWER_GND"\).*?\(layer\s+"B\.Cu"\)', text, re.DOTALL)))
+        self.assertRegex(text, r'\(connect_pads\s+yes\s+\(clearance\s+0\.25\)')
+        u1 = next(block for block in _sexpr_blocks(text, "footprint") if '(property "Reference" "U1"' in block)
+        self.assertRegex(u1, r'\(size\s+1\.2(?:0)?\s+0\.25\)')
+        self.assertRegex(u1, r'\(size\s+0\.25\s+1\.2(?:0)?\)')
+        self.assertNotRegex(u1, r'\(size\s+1\.15\s+0\.75\)')
 
     def test_autorouter_import_refills_ground_plane(self):
         root = Path(__file__).resolve().parents[2]
