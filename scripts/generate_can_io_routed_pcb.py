@@ -221,6 +221,7 @@ def main() -> None:
         f'  (group "ROUTED_ANALOG_INPUTS" (id {uid("group-analog")}) (members))',
         f'  (group "ROUTED_POWER_TREE" (id {uid("group-power")}) (members))',
         f'  (group "ROUTED_COMMS_EGT_OUTPUTS" (id {uid("group-comms")}) (members))',
+        f'  (zone (net {NET_ID["POWER_GND"]}) (net_name "POWER_GND") (layer "F.Cu") (tstamp {uid("gnd-zone-top")}) (hatch edge 0.5) (connect_pads (clearance 0.25)) (min_thickness 0.25) (fill yes (thermal_gap 0.3) (thermal_bridge_width 0.3)) (polygon (pts (xy 20.5 20.5) (xy 115.5 20.5) (xy 115.5 105.5) (xy 20.5 105.5))))',
         f'  (zone (net {NET_ID["POWER_GND"]}) (net_name "POWER_GND") (layer "B.Cu") (tstamp {uid("gnd-zone")}) (hatch edge 0.5) (connect_pads (clearance 0.25)) (min_thickness 0.25) (fill yes (thermal_gap 0.3) (thermal_bridge_width 0.3)) (polygon (pts (xy 20.5 20.5) (xy 115.5 20.5) (xy 115.5 105.5) (xy 20.5 105.5))))',
         f'  (gr_rect (start 20 20) (end 116 106) (stroke (width 0.25) (type default)) (fill none) (layer "Edge.Cuts") (tstamp {uid("outline")}))',
         ')',

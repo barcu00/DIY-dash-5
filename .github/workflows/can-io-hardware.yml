@@ -82,6 +82,7 @@ jobs:
           timeout 15m java -jar "$out/freerouting-2.4.1.jar" \
             --gui.enabled=false \
             -mp 15 \
+            -mt 0 \
             -is random \
             -de "$out/can-io-module.dsn" \
             -do "$out/can-io-module.ses"

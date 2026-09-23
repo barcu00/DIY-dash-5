@@ -65,6 +65,8 @@ class CanIoHardwareContractTest(unittest.TestCase):
         text = pcb.read_text(encoding="utf-8")
         copper_layers = re.findall(r'\(\d+ "[FB]\.Cu" signal\)', text)
         self.assertEqual(2, len(copper_layers))
+        self.assertEqual(1, text.count('(net_name "POWER_GND") (layer "F.Cu")'))
+        self.assertEqual(1, text.count('(net_name "POWER_GND") (layer "B.Cu")'))
         u1 = text[text.index('(property "Reference" "U1"'):text.index('(property "Reference" "U2"')]
         self.assertIn('(size 1.20 0.25)', u1)
         self.assertIn('(size 0.25 1.20)', u1)
