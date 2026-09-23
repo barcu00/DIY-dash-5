@@ -213,6 +213,24 @@ def validate_layout(root: Path) -> list[str]:
     return errors
 
 
+def validate_documentation(root: Path) -> list[str]:
+    checklist = root / "hardware/can-io-module/bringup-checklist.md"
+    manufacturing = root / "hardware/can-io-module/manufacturing/README.md"
+    export = root / "scripts/export_can_io_hardware.ps1"
+    workflow = root / ".github/workflows/can-io-hardware.yml"
+    tokens = (
+        "current-limited first power", "5 V rail", "3.3 V rail", "SWD access",
+        "mux reset safety", "CAN silent", "K-line high-impedance",
+        "analog calibration", "thermocouple simulator", "output safe state",
+        "relay dummy load", "physical enclosure fit gate",
+    )
+    errors = _require_tokens(checklist, tokens, "bring-up checklist")
+    errors += _require_tokens(manufacturing, ("PROTOTYPE ONLY", "1:1", "Gerber", "drill", "position"), "manufacturing guide")
+    errors += _require_tokens(export, ("sch erc", "pcb drc", "sch export pdf", "pcb export svg", "pcb export gerbers", "pcb export drill", "pcb export pos"), "export script")
+    errors += _require_tokens(workflow, ("if: always()", "erc-report.rpt", "drc-report.rpt", "upload-artifact@v4"), "hardware workflow")
+    return errors
+
+
 def validate_project(root: Path) -> list[str]:
     errors: list[str] = []
     for relative in REQUIRED_FILES:
@@ -225,6 +243,7 @@ def validate_project(root: Path) -> list[str]:
     errors.extend(validate_outputs(root))
     errors.extend(validate_bom(root))
     errors.extend(validate_layout(root))
+    errors.extend(validate_documentation(root))
 
     pcb = root / "hardware/can-io-module/can-io-module.kicad_pcb"
     if pcb.is_file():
