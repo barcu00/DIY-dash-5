@@ -60,33 +60,12 @@ jobs:
           --output hardware/can-io-module/manufacturing/generated/erc-report.rpt
           hardware/can-io-module/can-io-module.kicad_sch
 
-      - name: Install pinned FreeRouting runtime
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "25"
-
-      - name: Autoroute electrical netlist
+      - name: Stage checked-in routed PCB
         shell: bash
         run: |
           set -euo pipefail
           board=hardware/can-io-module/can-io-module.kicad_pcb
           out=hardware/can-io-module/manufacturing/generated
-          python3 scripts/autoroute_can_io.py export "$board" "$out/can-io-module.dsn"
-          kicad-cli pcb drc --all-track-errors \
-            --output "$out/placement-drc.rpt" \
-            "$out/can-io-module.unrouted.kicad_pcb" || true
-          curl --fail --location --retry 3 \
-            --output "$out/freerouting-2.4.1.jar" \
-            https://github.com/freerouting/freerouting/releases/download/v2.4.1/freerouting-2.4.1.jar
-          timeout 15m java -jar "$out/freerouting-2.4.1.jar" \
-            --gui.enabled=false \
-            -mp 15 \
-            -mt 0 \
-            -is random \
-            -de "$out/can-io-module.dsn" \
-            -do "$out/can-io-module.ses"
-          python3 scripts/autoroute_can_io.py import "$board" "$out/can-io-module.ses"
           cp "$board" "$out/can-io-module-routed.kicad_pcb"
 
       - name: Design rules check
