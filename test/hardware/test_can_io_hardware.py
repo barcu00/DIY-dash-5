@@ -67,6 +67,8 @@ class CanIoHardwareContractTest(unittest.TestCase):
         self.assertEqual(2, len(copper_layers))
         self.assertEqual(1, text.count('(net_name "POWER_GND") (layer "F.Cu")'))
         self.assertEqual(1, text.count('(net_name "POWER_GND") (layer "B.Cu")'))
+        self.assertIn('(connect_pads full (clearance 0.25))', text)
+        self.assertEqual(2, text.count('(island_removal_mode 0)'))
         u1 = text[text.index('(property "Reference" "U1"'):text.index('(property "Reference" "U2"')]
         self.assertIn('(size 1.20 0.25)', u1)
         self.assertIn('(size 0.25 1.20)', u1)
