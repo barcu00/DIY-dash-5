@@ -49,6 +49,15 @@ class CanIoHardwareContractTest(unittest.TestCase):
         root = Path(__file__).resolve().parents[2]
         self.assertEqual([], validate_layout(root))
 
+    def test_layout_is_a_real_routed_board_not_a_placement_mockup(self):
+        root = Path(__file__).resolve().parents[2]
+        pcb = root / "hardware/can-io-module/can-io-module.kicad_pcb"
+        text = pcb.read_text(encoding="utf-8")
+        self.assertNotIn("PLACEMENT_BLOCK", text)
+        self.assertGreaterEqual(text.count("(footprint "), 70)
+        self.assertGreaterEqual(text.count("(pad "), 180)
+        self.assertGreaterEqual(text.count("(segment "), 120)
+
     def test_bringup_and_exports_cover_all_release_gates(self):
         root = Path(__file__).resolve().parents[2]
         self.assertEqual([], validate_documentation(root))

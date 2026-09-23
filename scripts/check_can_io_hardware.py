@@ -198,13 +198,30 @@ def validate_layout(root: Path) -> list[str]:
         "NETCLASS POWER WIDTH 0.60MM", "NETCLASS CAN DIFF 0.25MM GAP 0.20MM",
         "NETCLASS EGT WIDTH 0.20MM NO VIAS", "NETCLASS ANALOG WIDTH 0.20MM",
         "NETCLASS RELAY WIDTH 0.60MM", "BOTTOM POWER_GND PLANE",
-        "EGT COPPER KEEPOUT", "BUCK SWITCH NODE KEEPOUT", "PROTOTYPE REV A",
+        "EGT COPPER KEEPOUT", "BUCK SWITCH NODE KEEPOUT", "PROTOTYPE REV",
         "PIN 1 VBAT", "CAN TERM DEFAULT OPEN", "SWDIO", "SWCLK",
         "ZONE_POWER", "ZONE_MCU_COMMS", "ZONE_ANALOG", "ZONE_EGT", "ZONE_OUTPUTS",
     )
     errors = _require_tokens(pcb, tokens, "PCB layout")
     if pcb.is_file():
         text = pcb.read_text(encoding="utf-8")
+        if "PLACEMENT_BLOCK" in text:
+            errors.append("PCB still contains temporary placement blocks")
+        footprint_count = text.count("(footprint ")
+        pad_count = text.count("(pad ")
+        segment_count = text.count("(segment ")
+        if footprint_count < 70:
+            errors.append(f"PCB needs real footprints for the complete BOM (found {footprint_count}, need >= 70)")
+        if pad_count < 180:
+            errors.append(f"PCB needs physical pads for the complete circuit (found {pad_count}, need >= 180)")
+        if segment_count < 120:
+            errors.append(f"PCB is not fully routed (found {segment_count} track segments, need >= 120)")
+        if "(group \"ROUTED_ANALOG_INPUTS\"" not in text:
+            errors.append("PCB missing routed analog-input channel group")
+        if "(group \"ROUTED_POWER_TREE\"" not in text:
+            errors.append("PCB missing routed power-tree group")
+        if "(group \"ROUTED_COMMS_EGT_OUTPUTS\"" not in text:
+            errors.append("PCB missing routed communications/EGT/output group")
         for ref in ("J1", "U1", "U2", "U5", "U6", "U7", "U8", "U9", "U10", "U11", "Q4", "Q5"):
             if f'"{ref}"' not in text:
                 errors.append(f"PCB placement missing {ref}")
