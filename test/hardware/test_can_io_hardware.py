@@ -1,7 +1,12 @@
 from pathlib import Path
 import unittest
 
-from scripts.check_can_io_hardware import CONNECTOR_PINOUT, validate_connector, validate_project
+from scripts.check_can_io_hardware import (
+    CONNECTOR_PINOUT,
+    validate_connector,
+    validate_power_and_mcu,
+    validate_project,
+)
 
 
 class CanIoHardwareContractTest(unittest.TestCase):
@@ -13,6 +18,10 @@ class CanIoHardwareContractTest(unittest.TestCase):
         root = Path(__file__).resolve().parents[2]
         self.assertEqual([], validate_connector(root))
         self.assertEqual(list(range(1, 25)), sorted(CONNECTOR_PINOUT))
+
+    def test_power_and_mcu_have_protected_chain_and_service_access(self):
+        root = Path(__file__).resolve().parents[2]
+        self.assertEqual([], validate_power_and_mcu(root))
 
 
 if __name__ == "__main__":
