@@ -11,10 +11,26 @@ def clear_tracks(board: pcbnew.BOARD) -> None:
         board.Remove(item)
 
 
-def clear_zones_for_router(board: pcbnew.BOARD) -> None:
-    """Force the router to complete GND as copper tracks, not zone assumptions."""
-    for zone in list(board.Zones()):
-        board.Remove(zone)
+def remove_router_planes(dsn_path: Path, net_name: str) -> None:
+    """Strip DSN plane expressions so the router completes the net as tracks."""
+    text = dsn_path.read_text(encoding="utf-8")
+    marker = f"(plane {net_name} "
+    while marker in text:
+        start = text.index(marker)
+        depth = 0
+        end = start
+        for end in range(start, len(text)):
+            if text[end] == "(":
+                depth += 1
+            elif text[end] == ")":
+                depth -= 1
+                if depth == 0:
+                    end += 1
+                    break
+        else:
+            raise ValueError(f"unterminated DSN plane for {net_name}")
+        text = text[:start] + text[end:]
+    dsn_path.write_text(text, encoding="utf-8")
 
 
 def main() -> None:
@@ -28,9 +44,9 @@ def main() -> None:
     if args.mode == "export":
         clean_board = args.exchange.with_suffix(".unrouted.kicad_pcb")
         pcbnew.SaveBoard(str(clean_board), board)
-        clear_zones_for_router(board)
         if not pcbnew.ExportSpecctraDSN(board, str(args.exchange)):
             raise SystemExit("Specctra DSN export failed")
+        remove_router_planes(args.exchange, "POWER_GND")
     else:
         if not pcbnew.ImportSpecctraSES(board, str(args.exchange)):
             raise SystemExit("Specctra SES import failed")
