@@ -192,6 +192,27 @@ def validate_bom(root: Path) -> list[str]:
     return errors
 
 
+def validate_layout(root: Path) -> list[str]:
+    pcb = root / "hardware/can-io-module/can-io-module.kicad_pcb"
+    tokens = (
+        "NETCLASS POWER WIDTH 0.60MM", "NETCLASS CAN DIFF 0.25MM GAP 0.20MM",
+        "NETCLASS EGT WIDTH 0.20MM NO VIAS", "NETCLASS ANALOG WIDTH 0.20MM",
+        "NETCLASS RELAY WIDTH 0.60MM", "BOTTOM POWER_GND PLANE",
+        "EGT COPPER KEEPOUT", "BUCK SWITCH NODE KEEPOUT", "PROTOTYPE REV A",
+        "PIN 1 VBAT", "CAN TERM DEFAULT OPEN", "SWDIO", "SWCLK",
+        "ZONE_POWER", "ZONE_MCU_COMMS", "ZONE_ANALOG", "ZONE_EGT", "ZONE_OUTPUTS",
+    )
+    errors = _require_tokens(pcb, tokens, "PCB layout")
+    if pcb.is_file():
+        text = pcb.read_text(encoding="utf-8")
+        for ref in ("J1", "U1", "U2", "U5", "U6", "U7", "U8", "U9", "U10", "U11", "Q4", "Q5"):
+            if f'"{ref}"' not in text:
+                errors.append(f"PCB placement missing {ref}")
+        if '(zone (net 2) (net_name "POWER_GND") (layer "B.Cu")' not in text:
+            errors.append("PCB missing continuous bottom POWER_GND zone")
+    return errors
+
+
 def validate_project(root: Path) -> list[str]:
     errors: list[str] = []
     for relative in REQUIRED_FILES:
@@ -203,6 +224,7 @@ def validate_project(root: Path) -> list[str]:
     errors.extend(validate_communications(root))
     errors.extend(validate_outputs(root))
     errors.extend(validate_bom(root))
+    errors.extend(validate_layout(root))
 
     pcb = root / "hardware/can-io-module/can-io-module.kicad_pcb"
     if pcb.is_file():

@@ -8,6 +8,7 @@ from scripts.check_can_io_hardware import (
     validate_communications,
     validate_outputs,
     validate_bom,
+    validate_layout,
     validate_power_and_mcu,
     validate_project,
 )
@@ -42,6 +43,10 @@ class CanIoHardwareContractTest(unittest.TestCase):
     def test_bom_is_complete_and_has_verified_constraints(self):
         root = Path(__file__).resolve().parents[2]
         self.assertEqual([], validate_bom(root))
+
+    def test_layout_contains_required_zones_classes_and_safe_separation(self):
+        root = Path(__file__).resolve().parents[2]
+        self.assertEqual([], validate_layout(root))
 
 
 if __name__ == "__main__":
