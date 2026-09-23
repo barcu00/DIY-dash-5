@@ -1,0 +1,81 @@
+Reference,Quantity,Value,Manufacturer,MPN,Package,Populate,Notes
+J1,1,"ECU_FCI_24P_RightAngle","Generic",SOURCE_WITH_ENCLOSURE,Custom THT 3x8,YES,"Physical sample and 1:1 fit check mandatory"
+U1,1,STM32G0B1CBT6,"STMicroelectronics",STM32G0B1CBT6,LQFP-48 7x7mm,YES,"Industrial -40..85C selected low-cost MCU"
+U2,1,LMR16006Y-Q1,"Texas Instruments",LMR16006YQDDCRQ1,SOT-23-THN-6 DDC,YES,60V 600mA automotive buck
+U3,1,3V3 LDO 300mA,"Texas Instruments",TPS7A2033PDBVR,SOT-23-5,YES,"Low-noise 3.3V rail"
+U4,1,SENSOR_5V load switch,"Texas Instruments",TPS22945DCKR,SC70-6,YES,"Current-limited external sensor rail"
+U5,1,"74HCT4051 1K excitation","Texas Instruments",CD74HCT4051M96,SOIC-16,YES,TTL thresholds accept 3.3V MCU at 5V supply
+U6,1,"74HCT4051 4K7 excitation","Texas Instruments",CD74HCT4051M96,SOIC-16,YES,TTL thresholds accept 3.3V MCU at 5V supply
+U7,1,L9613,"STMicroelectronics",L9613B013TR,SO-8,YES,"Fixed K-line transceiver; stock 9.6k and patched up to 125k"
+U8,1,TJA1051T/3,NXP,TJA1051T/3/1J,SO-8 SOT96-1,YES,"VIO supports direct 3.3V MCU interface"
+U9,1,TLV9002-Q1,"Texas Instruments",TLV9002QDRQ1,SOIC-8,YES,5V RRIO dual op amp
+U10,1,MAX31855KASA+,"Analog Devices",MAX31855KASA+,"SOIC-8 narrow",YES,"Type-K -200C..1350C converter"
+U11,1,"Schmitt Flex front end",Nexperia,"74LVC1G17GW,125",SOT-353,YES,"5V tolerant Schmitt input at 3.3V"
+Q1,1,"60V P-channel reverse polarity",Vishay,SQJ461EP-T1_GE3,PowerPAK SO-8,YES,"Verify footprint thermal pad before order"
+Q4,1,60V logic N-MOS RELAY1,Nexperia,"BUK9Y12-60E,115",LFPAK56,YES,Low-side 500mA maximum
+Q5,1,60V logic N-MOS RELAY2,Nexperia,"BUK9Y12-60E,115",LFPAK56,YES,Low-side 500mA maximum
+D1,1,SMBJ33A,"Diodes Incorporated",SMBJ33A-13-F,SMB DO-214AA,YES,"VBAT load-dump clamp; validate transient energy"
+D2,1,Buck catch diode 60V,"Diodes Incorporated",B360A-13-F,SMA DO-214AC,YES,3A Schottky
+D3,1,CAN TVS,Nexperia,PESD2CANFD24V-T,SOT23,YES,"Two-line automotive CAN protection"
+D4,1,"K-line TVS 24V","Diodes Incorporated",SMAJ24CA-13-F,SMA DO-214AC,YES,"Bidirectional connector-side protection"
+D5,1,Flex TVS 5V,Nexperia,"PESD5V0U1BA,115",SOD323,YES,"Low-capacitance connector protection"
+D6,1,AOUT1 ESD,Nexperia,"PESD5V0U1BA,115",SOD323,YES,"Connector-side ESD"
+D7,1,AOUT2 ESD,Nexperia,"PESD5V0U1BA,115",SOD323,YES,"Connector-side ESD"
+JP1,1,"120R CAN termination",Yageo,RC0603FR-07120RL,0603,DNP,"Default open; populate only at bus end"
+L1,1,"22uH buck inductor",Coilcraft,XAL5030-223MEB,5.5x5.5mm,YES,">=1.2A saturation and automotive temperature"
+L2,1,"CAN common-mode choke",TDK,ACT45B-510-2P-TL003,"1812 common-mode",DNP,"Optional after EMC test; bypass links fitted"
+R1,1,"1.00k 1% excitation",Yageo,RC0603FR-071KL,0603,YES,"0.1% preferred for resistance accuracy"
+R2,1,"4.70k 1% excitation",Yageo,RC0603FR-074K7L,0603,YES,0.1% preferred for NTC accuracy
+R3,1,"100k mux enable safe-state",Yageo,RC0603FR-07100KL,0603,YES,U5 reset disable pull-up to 5V
+R4,1,"100k mux enable safe-state",Yageo,RC0603FR-07100KL,0603,YES,U6 reset disable pull-up to 5V
+R5,1,"100k relay gate pull-down",Yageo,RC0603FR-07100KL,0603,YES,Relay 1 reset off
+R6,1,"100k relay gate pull-down",Yageo,RC0603FR-07100KL,0603,YES,Relay 2 reset off
+R7,1,"220R AOUT1 isolation",Yageo,RC0603FR-07220RL,0603,YES,"Short-current isolation"
+R8,1,"220R AOUT2 isolation",Yageo,RC0603FR-07220RL,0603,YES,"Short-current isolation"
+R9,1,10k NRST pull-up,Yageo,RC0603FR-0710KL,0603,YES,MCU reset
+R10,1,"100k BOOT0 pull-down",Yageo,RC0603FR-07100KL,0603,YES,Normal boot default
+C1,1,"10uF 50V input",Murata,GRM32ER71H106KA12L,1210,YES,"VBAT protected input bulk"
+C2,1,22uF 10V buck output,Murata,GRM31CR61A226ME15L,1206,YES,5V rail
+C3,1,4.7uF 10V 3V3 bulk,Murata,GRM21BR61A475KA73L,0805,YES,3V3 rail
+C4,1,"100nF U1 VDD1",Murata,GRM188R71C104KA01D,0603,YES,"Place at pin"
+C5,1,"100nF U1 VDD2",Murata,GRM188R71C104KA01D,0603,YES,"Place at pin"
+C6,1,"100nF U1 VDDA",Murata,GRM188R71C104KA01D,0603,YES,"Place at pin"
+FB1,1,600R ferrite VDDA,Murata,BLM18PG601SN1D,0603,YES,"Analog rail filtering"
+F1,1,"1A input fuse",Littelfuse,0451001.MRL,NANO2 2410,YES,"PCB protection; harness fuse still required"
+F2,1,"250mA resettable sensor fuse",Littelfuse,1206L025YR,1206,YES,SENSOR_5V limit backup
+TP1,1,SWDIO,"Keystone",5015,Test pad,YES,"Unpopulated service pad"
+TP2,1,SWCLK,"Keystone",5015,Test pad,YES,"Unpopulated service pad"
+TP3,1,NRST,"Keystone",5015,Test pad,YES,"Unpopulated service pad"
+TVS11,1,AIN1 low-leakage ESD,Nexperia,"PESD3V3L1BA,115",SOD323,YES,"At connector"
+R101,1,10.0k 1% AIN series,Yageo,RC0603FR-0710KL,0603,YES,AIN1 divider upper
+R111,1,15.0k 1% AIN lower,Yageo,RC0603FR-0715KL,0603,YES,AIN1 divider lower
+C101,1,"100nF ADC filter",Murata,GRM188R71C104KA01D,0603,YES,ADC_IN1 filter
+TVS12,1,AIN2 low-leakage ESD,Nexperia,"PESD3V3L1BA,115",SOD323,YES,"At connector"
+R102,1,10.0k 1% AIN series,Yageo,RC0603FR-0710KL,0603,YES,AIN2 divider upper
+R112,1,15.0k 1% AIN lower,Yageo,RC0603FR-0715KL,0603,YES,AIN2 divider lower
+C102,1,"100nF ADC filter",Murata,GRM188R71C104KA01D,0603,YES,ADC_IN2 filter
+TVS13,1,AIN3 low-leakage ESD,Nexperia,"PESD3V3L1BA,115",SOD323,YES,"At connector"
+R103,1,10.0k 1% AIN series,Yageo,RC0603FR-0710KL,0603,YES,AIN3 divider upper
+R113,1,15.0k 1% AIN lower,Yageo,RC0603FR-0715KL,0603,YES,AIN3 divider lower
+C103,1,"100nF ADC filter",Murata,GRM188R71C104KA01D,0603,YES,ADC_IN3 filter
+TVS14,1,AIN4 low-leakage ESD,Nexperia,"PESD3V3L1BA,115",SOD323,YES,"At connector"
+R104,1,10.0k 1% AIN series,Yageo,RC0603FR-0710KL,0603,YES,AIN4 divider upper
+R114,1,15.0k 1% AIN lower,Yageo,RC0603FR-0715KL,0603,YES,AIN4 divider lower
+C104,1,"100nF ADC filter",Murata,GRM188R71C104KA01D,0603,YES,ADC_IN4 filter
+TVS15,1,AIN5 low-leakage ESD,Nexperia,"PESD3V3L1BA,115",SOD323,YES,"At connector"
+R105,1,10.0k 1% AIN series,Yageo,RC0603FR-0710KL,0603,YES,AIN5 divider upper
+R115,1,15.0k 1% AIN lower,Yageo,RC0603FR-0715KL,0603,YES,AIN5 divider lower
+C105,1,"100nF ADC filter",Murata,GRM188R71C104KA01D,0603,YES,ADC_IN5 filter
+TVS16,1,AIN6 low-leakage ESD,Nexperia,"PESD3V3L1BA,115",SOD323,YES,"At connector"
+R106,1,10.0k 1% AIN series,Yageo,RC0603FR-0710KL,0603,YES,AIN6 divider upper
+R116,1,15.0k 1% AIN lower,Yageo,RC0603FR-0715KL,0603,YES,AIN6 divider lower
+C106,1,"100nF ADC filter",Murata,GRM188R71C104KA01D,0603,YES,ADC_IN6 filter
+TVS17,1,AIN7 low-leakage ESD,Nexperia,"PESD3V3L1BA,115",SOD323,YES,"At connector"
+R107,1,10.0k 1% AIN series,Yageo,RC0603FR-0710KL,0603,YES,AIN7 divider upper
+R117,1,15.0k 1% AIN lower,Yageo,RC0603FR-0715KL,0603,YES,AIN7 divider lower
+C107,1,"100nF ADC filter",Murata,GRM188R71C104KA01D,0603,YES,ADC_IN7 filter
+TVS18,1,AIN8 low-leakage ESD,Nexperia,"PESD3V3L1BA,115",SOD323,YES,"At connector"
+R108,1,10.0k 1% AIN series,Yageo,RC0603FR-0710KL,0603,YES,AIN8 divider upper
+R118,1,15.0k 1% AIN lower,Yageo,RC0603FR-0715KL,0603,YES,AIN8 divider lower
+C108,1,"100nF ADC filter",Murata,GRM188R71C104KA01D,0603,YES,ADC_IN8 filter
+

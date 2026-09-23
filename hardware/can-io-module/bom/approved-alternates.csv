@@ -1,0 +1,9 @@
+Function,PrimaryMPN,ApprovedAlternate,MinimumVoltage,TemperatureRange,Bandwidth,MaxLeakage,Package,PinCompatible,Status,Notes
+MCU,STM32G0B1CBT6,,3.6V supply;-0.3V I/O limits,-40..85C,FDCAN plus dual DAC,N/A,LQFP-48 7x7,Required,NO ALTERNATE APPROVED,Must retain exact ADC DAC timer and flash resources
+Buck,LMR16006YQDDCRQ1,,60V input,-40..125C,2.1MHz,N/A,DDC-6,Required,NO ALTERNATE APPROVED,Recalculate inductor compensation and thermals before substitution
+K-line,L9613B013TR,,36V continuous 40V transient,-40..125C,>=130kbit/s,High impedance off,SO-8,Required,NO ALTERNATE APPROVED,L9637 explicitly not allowed in this revision
+CAN,TJA1051T/3/1J,,58V bus fault,-40..125C,5Mbit/s,Passive when unpowered,SO-8 SOT96-1,Required,NO ALTERNATE APPROVED,VIO pin must accept 3.3V
+EGT,MAX31855KASA+,,3.6V supply,-40..125C,Type-K conversion,Input bias per datasheet,SOIC-8 narrow,Required,NO ALTERNATE APPROVED,Must be K-type -200..1350C version
+OpAmp,TLV9002QDRQ1,,5.5V supply,-40..125C,>=1MHz,Input bias <=10pA,SOIC-8,Required,NO ALTERNATE APPROVED,RRIO and output swing must support calibrated 0..5V
+AIN ESD,PESD3V3L1BA-115,,5.5V standoff,-40..125C,Low capacitance,<=100nA,SOD323,No,CONSTRAINT ONLY,Verify clamp curve and leakage before approval
+
