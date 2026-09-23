@@ -1,0 +1,67 @@
+name: CAN IO hardware
+
+on:
+  push:
+    paths:
+      - "hardware/can-io-module/**"
+      - "scripts/check_can_io_hardware.py"
+      - "scripts/export_can_io_hardware.ps1"
+      - "test/hardware/**"
+      - ".github/workflows/can-io-hardware.yml"
+  pull_request:
+    paths:
+      - "hardware/can-io-module/**"
+      - "scripts/check_can_io_hardware.py"
+      - "scripts/export_can_io_hardware.ps1"
+      - "test/hardware/**"
+      - ".github/workflows/can-io-hardware.yml"
+  workflow_dispatch:
+
+jobs:
+  can-io-hardware:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install KiCad 9
+        run: |
+          sudo add-apt-repository --yes ppa:kicad/kicad-9.0-releases
+          sudo apt-get update
+          sudo apt-get install --yes kicad
+          kicad-cli version
+
+      - name: Validate checked-in hardware contract
+        run: python3 -m unittest test.hardware.test_can_io_hardware -v
+
+      - name: Prepare export directory
+        run: mkdir -p hardware/can-io-module/manufacturing/generated/{gerbers,drill,position}
+
+      - name: Electrical rules check
+        run: >-
+          kicad-cli sch erc --exit-code-violations
+          --output hardware/can-io-module/manufacturing/generated/erc-report.rpt
+          hardware/can-io-module/can-io-module.kicad_sch
+
+      - name: Design rules check
+        run: >-
+          kicad-cli pcb drc --exit-code-violations --all-track-errors --schematic-parity
+          --output hardware/can-io-module/manufacturing/generated/drc-report.rpt
+          hardware/can-io-module/can-io-module.kicad_pcb
+
+      - name: Export review and fabrication files
+        run: |
+          kicad-cli sch export pdf --output hardware/can-io-module/manufacturing/generated/can-io-module-schematic.pdf hardware/can-io-module/can-io-module.kicad_sch
+          kicad-cli pcb export svg --layers F.Cu,B.Cu,F.Silkscreen,B.Silkscreen,Edge.Cuts --output hardware/can-io-module/manufacturing/generated/can-io-module-pcb.svg hardware/can-io-module/can-io-module.kicad_pcb
+          kicad-cli pcb export gerbers --output hardware/can-io-module/manufacturing/generated/gerbers/ hardware/can-io-module/can-io-module.kicad_pcb
+          kicad-cli pcb export drill --output hardware/can-io-module/manufacturing/generated/drill/ hardware/can-io-module/can-io-module.kicad_pcb
+          kicad-cli pcb export pos --format csv --units mm --output hardware/can-io-module/manufacturing/generated/position/can-io-module-top-pos.csv hardware/can-io-module/can-io-module.kicad_pcb
+          cp hardware/can-io-module/bom/*.csv hardware/can-io-module/manufacturing/generated/
+
+      - name: Upload reports and prototype package
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: can-io-hardware-prototype
+          path: hardware/can-io-module/manufacturing/generated
+          if-no-files-found: warn

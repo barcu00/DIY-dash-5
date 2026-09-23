@@ -1,0 +1,11 @@
+PROTOTYPE FABRICATION ONLY
+
+The connector footprint and board outline are based on seller drawings and are not production-approved.
+Before ordering assembled or production boards:
+1. Measure one physical enclosure and mating 24-pin connector.
+2. Print the board and connector footprint at 1:1 scale.
+3. Verify PCB guides, header alignment, latches, seals, lid clearance, and mounting holes.
+4. Update the KiCad geometry with measured tolerances.
+5. Re-run GitHub ERC/DRC and regenerate all manufacturing outputs.
+
+Gerbers generated before this gate are suitable only for a mechanical/electrical prototype at the builder's risk.
