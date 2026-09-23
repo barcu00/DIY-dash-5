@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 from pathlib import Path
+import re
 
 
 REQUIRED_FILES = (
@@ -31,12 +32,58 @@ REQUIRED_REFS = {
     "U10": "MAX31855KASA+",
 }
 
+CONNECTOR_PINOUT = {
+    1: "VBAT", 2: "POWER_GND", 3: "IGN", 4: "CAN_H", 5: "CAN_L", 6: "K_LINE",
+    7: "SENSOR_5V", 8: "SENSOR_GND", 9: "AIN1", 10: "AIN2", 11: "AIN3",
+    12: "AIN4", 13: "AIN5", 14: "AIN6", 15: "AIN7", 16: "AIN8",
+    17: "EGT_K_POS", 18: "EGT_K_NEG", 19: "RELAY_OUT1", 20: "RELAY_OUT2",
+    21: "FLEX_IN", 22: "AOUT1", 23: "AOUT2", 24: "SERVICE",
+}
+
+
+def validate_connector(root: Path) -> list[str]:
+    errors: list[str] = []
+    base = root / "hardware/can-io-module"
+    symbol = base / "lib/diy_dash_can_io.kicad_sym"
+    footprint = base / "lib/diy_dash_can_io.pretty/ECU_FCI_24P_RightAngle.kicad_mod"
+    pcb = base / "can-io-module.kicad_pcb"
+
+    if not symbol.is_file():
+        errors.append("missing connector symbol")
+    else:
+        text = symbol.read_text(encoding="utf-8")
+        pins = [int(value) for value in re.findall(r'\(number "(\d+)"', text)]
+        if sorted(pins) != list(range(1, 25)):
+            errors.append("connector symbol must contain pins 1..24 exactly once")
+
+    if not footprint.is_file():
+        errors.append("missing connector footprint")
+    else:
+        text = footprint.read_text(encoding="utf-8")
+        pads = [int(value) for value in re.findall(r'\(pad "(\d+)"', text)]
+        if sorted(pads) != list(range(1, 25)):
+            errors.append("connector footprint must contain pads 1..24 exactly once")
+        for marker in ("F.Fab", "F.CrtYd", "PIN 1", "MECHANICAL SAMPLE REQUIRED"):
+            if marker not in text:
+                errors.append(f"connector footprint missing {marker}")
+
+    if not pcb.is_file():
+        errors.append("missing PCB connector mapping")
+    else:
+        text = pcb.read_text(encoding="utf-8")
+        for pin, net in CONNECTOR_PINOUT.items():
+            pattern = rf'\(pad "{pin}"[^\n]*\(net \d+ "{re.escape(net)}"\)'
+            if not re.search(pattern, text):
+                errors.append(f"J1 pin {pin} must map to {net}")
+    return errors
+
 
 def validate_project(root: Path) -> list[str]:
     errors: list[str] = []
     for relative in REQUIRED_FILES:
         if not (root / relative).is_file():
             errors.append(f"missing file: {relative}")
+    errors.extend(validate_connector(root))
 
     pcb = root / "hardware/can-io-module/can-io-module.kicad_pcb"
     if pcb.is_file():
