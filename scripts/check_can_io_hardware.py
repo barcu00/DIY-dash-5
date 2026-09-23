@@ -92,6 +92,26 @@ def validate_power_and_mcu(root: Path) -> list[str]:
         "U2 LMR16006-Q1", "U3 3V3 LDO 300mA", "SENSOR_5V 250mA CURRENT LIMIT",
         "VBAT_MON", "VREF_MON", "3V3_MON", "IGN_SCHMITT", "VBAT_PROTECTED",
     )
+
+
+def validate_analog_inputs(root: Path) -> list[str]:
+    path = root / "hardware/can-io-module/sheets/analog-inputs.kicad_sch"
+    tokens = [
+        "U5 74HCT4051 1K EXCITATION MUX", "U6 74HCT4051 4K7 EXCITATION MUX",
+        "PULL_1K_EN_N 100k PULLUP TO +5V", "PULL_4K7_EN_N 100k PULLUP TO +5V",
+        "5.0 * 15000 / (10000 + 15000) = 3.000V",
+    ]
+    for channel in range(1, 9):
+        tokens.extend((
+            f"AIN{channel} CONNECTOR ESD", f"AIN{channel} SERIES 10.0k 1%",
+            f"AIN{channel} LOWER 15.0k 1%", f"ADC_IN{channel} FILTER 100nF",
+            f"ADC_IN{channel} LOW-LEAKAGE CLAMP", f"AIN{channel} -> U5.Y{channel - 1}",
+            f"AIN{channel} -> U6.Y{channel - 1}",
+        ))
+    errors = _require_tokens(path, tuple(tokens), "analog input sheet")
+    if 5.0 * 15000 / (10000 + 15000) > 3.1:
+        errors.append("5V analog divider exceeds 3.1V ADC limit")
+    return errors
     mcu_tokens = (
         "U1 STM32G0B1CBT6", "NRST 10k PULLUP", "BOOT0 100k PULLDOWN",
         "SWDIO", "SWCLK", "TP_NRST", "VDDA FILTER", "C_VDD1 100nF",
@@ -110,6 +130,7 @@ def validate_project(root: Path) -> list[str]:
             errors.append(f"missing file: {relative}")
     errors.extend(validate_connector(root))
     errors.extend(validate_power_and_mcu(root))
+    errors.extend(validate_analog_inputs(root))
 
     pcb = root / "hardware/can-io-module/can-io-module.kicad_pcb"
     if pcb.is_file():
