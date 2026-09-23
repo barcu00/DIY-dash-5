@@ -227,7 +227,7 @@ def validate_documentation(root: Path) -> list[str]:
     errors = _require_tokens(checklist, tokens, "bring-up checklist")
     errors += _require_tokens(manufacturing, ("PROTOTYPE ONLY", "1:1", "Gerber", "drill", "position"), "manufacturing guide")
     errors += _require_tokens(export, ("sch erc", "pcb drc", "sch export pdf", "pcb export svg", "pcb export gerbers", "pcb export drill", "pcb export pos"), "export script")
-    errors += _require_tokens(workflow, ("if: always()", "erc-report.rpt", "drc-report.rpt", "upload-artifact@v4"), "hardware workflow")
+    errors += _require_tokens(workflow, ("if: always()", "erc-report.rpt", "drc-report.rpt", "upload-artifact@v6"), "hardware workflow")
     return errors
 
 

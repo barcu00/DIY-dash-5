@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install KiCad 9
         run: |
@@ -31,11 +31,24 @@ jobs:
           sudo apt-get install --yes kicad
           kicad-cli version
 
-      - name: Validate checked-in hardware contract
-        run: python3 -m unittest test.hardware.test_can_io_hardware -v
-
       - name: Prepare export directory
         run: mkdir -p hardware/can-io-module/manufacturing/generated/{gerbers,drill,position}
+
+      - name: Validate checked-in hardware contract
+        shell: bash
+        run: |
+          set +e
+          python3 scripts/check_can_io_hardware.py 2>&1 | tee hardware/can-io-module/manufacturing/generated/contract-report.txt
+          validator_status=${PIPESTATUS[0]}
+          python3 -m unittest test.hardware.test_can_io_hardware -v 2>&1 | tee -a hardware/can-io-module/manufacturing/generated/contract-report.txt
+          test_status=${PIPESTATUS[0]}
+          {
+            echo '## CAN I/O hardware contract'
+            echo '```text'
+            cat hardware/can-io-module/manufacturing/generated/contract-report.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if (( validator_status != 0 || test_status != 0 )); then exit 1; fi
 
       - name: Electrical rules check
         run: >-
@@ -60,7 +73,7 @@ jobs:
 
       - name: Upload reports and prototype package
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: can-io-hardware-prototype
           path: hardware/can-io-module/manufacturing/generated
