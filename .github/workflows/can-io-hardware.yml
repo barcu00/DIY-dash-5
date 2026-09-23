@@ -5,6 +5,7 @@ on:
     paths:
       - "hardware/can-io-module/**"
       - "scripts/check_can_io_hardware.py"
+      - "scripts/autoroute_can_io.py"
       - "scripts/export_can_io_hardware.ps1"
       - "test/hardware/**"
       - "test/__init__.py"
@@ -13,6 +14,7 @@ on:
     paths:
       - "hardware/can-io-module/**"
       - "scripts/check_can_io_hardware.py"
+      - "scripts/autoroute_can_io.py"
       - "scripts/export_can_io_hardware.ps1"
       - "test/hardware/**"
       - "test/__init__.py"
@@ -57,6 +59,31 @@ jobs:
           kicad-cli sch erc --exit-code-violations
           --output hardware/can-io-module/manufacturing/generated/erc-report.rpt
           hardware/can-io-module/can-io-module.kicad_sch
+
+      - name: Install pinned FreeRouting runtime
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Autoroute electrical netlist
+        shell: bash
+        run: |
+          set -euo pipefail
+          board=hardware/can-io-module/can-io-module.kicad_pcb
+          out=hardware/can-io-module/manufacturing/generated
+          python3 scripts/autoroute_can_io.py export "$board" "$out/can-io-module.dsn"
+          curl --fail --location --retry 3 \
+            --output "$out/freerouting-2.4.1.jar" \
+            https://github.com/freerouting/freerouting/releases/download/v2.4.1/freerouting-2.4.1.jar
+          timeout 12m java -jar "$out/freerouting-2.4.1.jar" \
+            --gui.enabled=false \
+            --router.max_passes=30 \
+            --router.threads=4 \
+            -de "$out/can-io-module.dsn" \
+            -do "$out/can-io-module.ses"
+          python3 scripts/autoroute_can_io.py import "$board" "$out/can-io-module.ses"
+          cp "$board" "$out/can-io-module-routed.kicad_pcb"
 
       - name: Design rules check
         shell: bash
