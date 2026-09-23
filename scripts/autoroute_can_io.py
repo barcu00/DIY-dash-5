@@ -27,6 +27,9 @@ def main() -> None:
     else:
         if not pcbnew.ImportSpecctraSES(board, str(args.exchange)):
             raise SystemExit("Specctra SES import failed")
+        board.BuildConnectivity()
+        if not pcbnew.ZONE_FILLER(board).Fill(board.Zones()):
+            raise SystemExit("Copper zone fill failed")
         pcbnew.SaveBoard(str(args.board), board)
 
 

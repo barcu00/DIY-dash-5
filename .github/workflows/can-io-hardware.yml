@@ -81,7 +81,8 @@ jobs:
             https://github.com/freerouting/freerouting/releases/download/v2.4.1/freerouting-2.4.1.jar
           timeout 15m java -jar "$out/freerouting-2.4.1.jar" \
             --gui.enabled=false \
-            -mp 7 \
+            -mp 15 \
+            -is random \
             -de "$out/can-io-module.dsn" \
             -do "$out/can-io-module.ses"
           python3 scripts/autoroute_can_io.py import "$board" "$out/can-io-module.ses"

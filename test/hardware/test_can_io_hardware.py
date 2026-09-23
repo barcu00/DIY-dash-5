@@ -70,6 +70,13 @@ class CanIoHardwareContractTest(unittest.TestCase):
         self.assertIn('(size 0.25 1.20)', u1)
         self.assertNotIn('(size 1.15 0.75)', u1)
 
+    def test_autorouter_import_refills_ground_plane(self):
+        root = Path(__file__).resolve().parents[2]
+        bridge = (root / "scripts/autoroute_can_io.py").read_text(encoding="utf-8")
+        self.assertIn("BuildConnectivity", bridge)
+        self.assertIn("ZONE_FILLER", bridge)
+        self.assertIn("Fill(board.Zones())", bridge)
+
     def test_bringup_and_exports_cover_all_release_gates(self):
         root = Path(__file__).resolve().parents[2]
         self.assertEqual([], validate_documentation(root))
