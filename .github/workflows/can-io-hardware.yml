@@ -7,6 +7,7 @@ on:
       - "scripts/check_can_io_hardware.py"
       - "scripts/export_can_io_hardware.ps1"
       - "test/hardware/**"
+      - "test/__init__.py"
       - ".github/workflows/can-io-hardware.yml"
   pull_request:
     paths:
@@ -14,6 +15,7 @@ on:
       - "scripts/check_can_io_hardware.py"
       - "scripts/export_can_io_hardware.ps1"
       - "test/hardware/**"
+      - "test/__init__.py"
       - ".github/workflows/can-io-hardware.yml"
   workflow_dispatch:
 
