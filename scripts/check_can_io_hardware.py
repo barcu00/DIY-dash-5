@@ -92,6 +92,15 @@ def validate_power_and_mcu(root: Path) -> list[str]:
         "U2 LMR16006-Q1", "U3 3V3 LDO 300mA", "SENSOR_5V 250mA CURRENT LIMIT",
         "VBAT_MON", "VREF_MON", "3V3_MON", "IGN_SCHMITT", "VBAT_PROTECTED",
     )
+    mcu_tokens = (
+        "U1 STM32G0B1CBT6", "NRST 10k PULLUP", "BOOT0 100k PULLDOWN",
+        "SWDIO", "SWCLK", "TP_NRST", "VDDA FILTER", "C_VDD1 100nF",
+        "C_VDD2 100nF", "C_VDDA 100nF", "DAC1_RAW", "DAC2_RAW",
+    )
+    return (
+        _require_tokens(sheets / "power.kicad_sch", power_tokens, "power sheet")
+        + _require_tokens(sheets / "mcu.kicad_sch", mcu_tokens, "MCU sheet")
+    )
 
 
 def validate_analog_inputs(root: Path) -> list[str]:
@@ -181,15 +190,6 @@ def validate_bom(root: Path) -> list[str]:
             if token not in text:
                 errors.append(f"alternates missing {token}")
     return errors
-    mcu_tokens = (
-        "U1 STM32G0B1CBT6", "NRST 10k PULLUP", "BOOT0 100k PULLDOWN",
-        "SWDIO", "SWCLK", "TP_NRST", "VDDA FILTER", "C_VDD1 100nF",
-        "C_VDD2 100nF", "C_VDDA 100nF", "DAC1_RAW", "DAC2_RAW",
-    )
-    return (
-        _require_tokens(sheets / "power.kicad_sch", power_tokens, "power sheet")
-        + _require_tokens(sheets / "mcu.kicad_sch", mcu_tokens, "MCU sheet")
-    )
 
 
 def validate_project(root: Path) -> list[str]:
