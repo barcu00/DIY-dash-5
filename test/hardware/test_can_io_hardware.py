@@ -7,6 +7,7 @@ from scripts.check_can_io_hardware import (
     validate_analog_inputs,
     validate_communications,
     validate_outputs,
+    validate_bom,
     validate_power_and_mcu,
     validate_project,
 )
@@ -37,6 +38,10 @@ class CanIoHardwareContractTest(unittest.TestCase):
     def test_outputs_default_safe_and_are_current_limited(self):
         root = Path(__file__).resolve().parents[2]
         self.assertEqual([], validate_outputs(root))
+
+    def test_bom_is_complete_and_has_verified_constraints(self):
+        root = Path(__file__).resolve().parents[2]
+        self.assertEqual([], validate_bom(root))
 
 
 if __name__ == "__main__":

@@ -143,6 +143,44 @@ def validate_outputs(root: Path) -> list[str]:
         "RELAY CURRENT <= 500mA", "OUTPUTS OFF DURING RESET",
     )
     return _require_tokens(path, tokens, "outputs sheet")
+
+
+def validate_bom(root: Path) -> list[str]:
+    bom = root / "hardware/can-io-module/bom/can-io-module-bom.csv"
+    alternates = root / "hardware/can-io-module/bom/approved-alternates.csv"
+    errors: list[str] = []
+    if not bom.is_file():
+        errors.append("missing CAN IO BOM")
+        return errors
+    required_columns = ("Reference", "Quantity", "Value", "Manufacturer", "MPN", "Package", "Populate", "Notes")
+    with bom.open(newline="", encoding="utf-8") as handle:
+        reader = csv.DictReader(handle)
+        if tuple(reader.fieldnames or ()) != required_columns:
+            errors.append("BOM columns do not match contract")
+        rows = list(reader)
+    refs = [row["Reference"] for row in rows]
+    if len(refs) != len(set(refs)):
+        errors.append("BOM contains duplicate references")
+    for required in ("U1", "U2", "U3", "U5", "U6", "U7", "U8", "U9", "U10", "U11", "D1", "JP1"):
+        if required not in refs:
+            errors.append(f"BOM missing {required}")
+    values = " ".join(row["Value"] for row in rows)
+    if "L9613" not in values or "L9637" in values:
+        errors.append("BOM must contain L9613 and reject L9637")
+    for row in rows:
+        if row["Reference"].startswith(("U", "D", "Q", "TVS")) and (not row["MPN"] or not row["Package"]):
+            errors.append(f"{row['Reference']} lacks MPN or package")
+    jp1 = next((row for row in rows if row["Reference"] == "JP1"), {})
+    if jp1.get("Populate") != "DNP":
+        errors.append("JP1 CAN termination must default DNP")
+    if not alternates.is_file():
+        errors.append("missing approved alternates table")
+    else:
+        text = alternates.read_text(encoding="utf-8")
+        for token in ("MinimumVoltage", "TemperatureRange", "Bandwidth", "MaxLeakage", "Package", "PinCompatible"):
+            if token not in text:
+                errors.append(f"alternates missing {token}")
+    return errors
     mcu_tokens = (
         "U1 STM32G0B1CBT6", "NRST 10k PULLUP", "BOOT0 100k PULLDOWN",
         "SWDIO", "SWCLK", "TP_NRST", "VDDA FILTER", "C_VDD1 100nF",
@@ -164,6 +202,7 @@ def validate_project(root: Path) -> list[str]:
     errors.extend(validate_analog_inputs(root))
     errors.extend(validate_communications(root))
     errors.extend(validate_outputs(root))
+    errors.extend(validate_bom(root))
 
     pcb = root / "hardware/can-io-module/can-io-module.kicad_pcb"
     if pcb.is_file():
