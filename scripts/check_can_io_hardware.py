@@ -112,6 +112,23 @@ def validate_analog_inputs(root: Path) -> list[str]:
     if 5.0 * 15000 / (10000 + 15000) > 3.1:
         errors.append("5V analog divider exceeds 3.1V ADC limit")
     return errors
+
+
+def validate_communications(root: Path) -> list[str]:
+    path = root / "hardware/can-io-module/sheets/communications-egt.kicad_sch"
+    tokens = (
+        "U8 TJA1051T/3", "CAN TVS", "CAN COMMON-MODE CHOKE BYPASS",
+        "JP1 120R TERMINATION DEFAULT OPEN", "U7 L9613", "L9637 FORBIDDEN",
+        "K-LINE TVS", "KTX 3V3-TO-5V LEVEL SHIFT", "KRX 5V-TO-3V3 LEVEL SHIFT",
+        "KLINE_OFF HIGH IMPEDANCE", "U10 MAX31855KASA+", "EGT_K_POS MATCHED RC",
+        "EGT_K_NEG MATCHED RC", "EGT NO VIAS", "U11 SCHMITT FLEX FRONT END",
+        "FLEX_IN 5V PULLUP", "FLEX_CAPTURE", "TP_CAN_TX", "TP_CAN_RX",
+        "TP_KTX", "TP_KRX", "TP_EGT_SCK", "TP_FLEX_CAPTURE",
+    )
+    errors = _require_tokens(path, tokens, "communications/EGT sheet")
+    if path.is_file() and "L9637" in path.read_text(encoding="utf-8").replace("L9637 FORBIDDEN", ""):
+        errors.append("L9637 must not be used; L9613 is fixed")
+    return errors
     mcu_tokens = (
         "U1 STM32G0B1CBT6", "NRST 10k PULLUP", "BOOT0 100k PULLDOWN",
         "SWDIO", "SWCLK", "TP_NRST", "VDDA FILTER", "C_VDD1 100nF",
@@ -131,6 +148,7 @@ def validate_project(root: Path) -> list[str]:
     errors.extend(validate_connector(root))
     errors.extend(validate_power_and_mcu(root))
     errors.extend(validate_analog_inputs(root))
+    errors.extend(validate_communications(root))
 
     pcb = root / "hardware/can-io-module/can-io-module.kicad_pcb"
     if pcb.is_file():

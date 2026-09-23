@@ -5,6 +5,7 @@ from scripts.check_can_io_hardware import (
     CONNECTOR_PINOUT,
     validate_connector,
     validate_analog_inputs,
+    validate_communications,
     validate_power_and_mcu,
     validate_project,
 )
@@ -27,6 +28,10 @@ class CanIoHardwareContractTest(unittest.TestCase):
     def test_all_analog_channels_are_symmetric_and_reset_safe(self):
         root = Path(__file__).resolve().parents[2]
         self.assertEqual([], validate_analog_inputs(root))
+
+    def test_communications_egt_and_flex_are_protected(self):
+        root = Path(__file__).resolve().parents[2]
+        self.assertEqual([], validate_communications(root))
 
 
 if __name__ == "__main__":
