@@ -20,6 +20,8 @@ def main() -> None:
     board = pcbnew.LoadBoard(str(args.board))
     clear_tracks(board)
     if args.mode == "export":
+        clean_board = args.exchange.with_suffix(".unrouted.kicad_pcb")
+        pcbnew.SaveBoard(str(clean_board), board)
         if not pcbnew.ExportSpecctraDSN(board, str(args.exchange)):
             raise SystemExit("Specctra DSN export failed")
     else:

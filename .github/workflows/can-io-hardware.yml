@@ -73,15 +73,18 @@ jobs:
           board=hardware/can-io-module/can-io-module.kicad_pcb
           out=hardware/can-io-module/manufacturing/generated
           python3 scripts/autoroute_can_io.py export "$board" "$out/can-io-module.dsn"
+          kicad-cli pcb drc --all-track-errors \
+            --output "$out/placement-drc.rpt" \
+            "$out/can-io-module.unrouted.kicad_pcb" || true
           curl --fail --location --retry 3 \
             --output "$out/freerouting-2.4.1.jar" \
             https://github.com/freerouting/freerouting/releases/download/v2.4.1/freerouting-2.4.1.jar
-          timeout 12m java -jar "$out/freerouting-2.4.1.jar" \
+          timeout 15m java -jar "$out/freerouting-2.4.1.jar" \
             --gui.enabled=false \
-            --router.max_passes=30 \
-            --router.threads=4 \
+            -mp 7 \
             -de "$out/can-io-module.dsn" \
-            -do "$out/can-io-module.ses"
+            -do "$out/can-io-module.ses" \
+            -drc "$out/freerouting-drc.json"
           python3 scripts/autoroute_can_io.py import "$board" "$out/can-io-module.ses"
           cp "$board" "$out/can-io-module-routed.kicad_pcb"
 
