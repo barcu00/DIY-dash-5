@@ -40,6 +40,7 @@ def net_clause(name: str | None) -> str:
 def footprint(ref: str, value: str, x: float, y: float, pads: list[str | None], package: str) -> tuple[str, list[tuple[str, float, float]]]:
     count = len(pads)
     coords: list[tuple[float, float]] = []
+    sizes: list[tuple[float, float]] = []
     if count == 1:
         coords = [(0, 0)]
     elif count == 2:
@@ -59,6 +60,10 @@ def footprint(ref: str, value: str, x: float, y: float, pads: list[str | None], 
         for i in range(side): coords.append(((i - (side - 1) / 2) * pitch, 4.4))
         for i in range(side): coords.append((4.4, ((side - 1) / 2 - i) * pitch))
         for i in range(count - 3 * side): coords.append((((side - 1) / 2 - i) * pitch, -4.4))
+        sizes = [(1.20, 0.25)] * side + [(0.25, 1.20)] * side
+        sizes += [(1.20, 0.25)] * side + [(0.25, 1.20)] * (count - 3 * side)
+    if not sizes:
+        sizes = [(1.15, 0.75)] * count
     body_x = 5.8 if count <= 16 else 9.0
     body_y = max(3.2, (max((abs(c[1]) for c in coords), default=0) * 2 + 2)) if count <= 16 else 9.0
     lines = [
@@ -69,9 +74,9 @@ def footprint(ref: str, value: str, x: float, y: float, pads: list[str | None], 
         f'    (fp_rect (start {-body_x/2:.2f} {-body_y/2:.2f}) (end {body_x/2:.2f} {body_y/2:.2f}) (stroke (width 0.15) (type default)) (fill none) (layer "F.SilkS") (tstamp {uid(ref+"-body")}))',
     ]
     connected: list[tuple[str, float, float]] = []
-    for index, ((dx, dy), net) in enumerate(zip(coords, pads), 1):
+    for index, ((dx, dy), (sx, sy), net) in enumerate(zip(coords, sizes, pads), 1):
         shape = "roundrect" if index == 1 else "rect"
-        lines.append(f'    (pad "{index}" smd {shape} (at {dx:.2f} {dy:.2f}) (size 1.15 0.75) (layers "F.Cu" "F.Paste" "F.Mask"){net_clause(net)} (roundrect_rratio 0.2) (tstamp {uid(ref+"-"+str(index))}))')
+        lines.append(f'    (pad "{index}" smd {shape} (at {dx:.2f} {dy:.2f}) (size {sx:.2f} {sy:.2f}) (layers "F.Cu" "F.Paste" "F.Mask"){net_clause(net)} (roundrect_rratio 0.2) (tstamp {uid(ref+"-"+str(index))}))')
         if net: connected.append((net, x + dx, y + dy))
     lines.append("  )")
     return "\n".join(lines), connected
@@ -139,18 +144,35 @@ def main() -> None:
     rows = list(csv.DictReader(BOM.open(encoding="utf-8", newline="")))
     maps = mappings()
     positions = {
-        "U1": (67, 67), "U2": (29, 47), "U3": (38, 48), "U4": (45, 48), "U5": (52, 82), "U6": (68, 82),
-        "U7": (51, 48), "U8": (61, 48), "U9": (92, 81), "U10": (99, 47), "U11": (91, 59),
-        "Q1": (25, 35), "Q4": (108, 70), "Q5": (108, 86),
+        # Power tree, kept left and away from the sensor front end.
+        "Q1": (25, 29), "F1": (32, 29), "D1": (39, 29), "C1": (46, 29),
+        "U2": (25, 41), "D2": (32, 41), "L1": (39, 41), "C2": (32, 48),
+        "U3": (25, 53), "C3": (25, 59), "U4": (32, 58), "F2": (35, 64),
+        # MCU, pull-up multiplexers and their local support parts.
+        "U5": (46, 68), "U6": (58, 68), "U1": (68, 84),
+        "R1": (43, 76), "R2": (49, 76), "R3": (55, 76), "R4": (61, 76),
+        "C4": (58, 94), "C5": (64, 94), "C6": (70, 94), "FB1": (76, 94),
+        "R9": (58, 101), "R10": (64, 101), "TP1": (83, 82), "TP2": (83, 88), "TP3": (83, 94),
+        # Vehicle communications and thermocouple interface.
+        "U8": (91, 29), "L2": (100, 29), "D3": (108, 29), "JP1": (108, 35),
+        "U7": (101, 40), "D4": (109, 40), "U10": (101, 50), "U11": (109, 55), "D5": (109, 62),
+        # Analog and relay outputs stay together at the right edge.
+        "U9": (101, 67), "R7": (97, 74), "R8": (105, 74), "D6": (97, 79), "D7": (105, 79),
+        "Q4": (95, 90), "Q5": (108, 90), "R5": (95, 101), "R6": (108, 101),
     }
+    for channel in range(1, 9):
+        x = 43.0 + (channel - 1) * 6.5
+        positions[f"TVS{10 + channel}"] = (x, 42)
+        positions[f"R{100 + channel}"] = (x, 47)
+        positions[f"R{110 + channel}"] = (x, 52)
+        positions[f"C{100 + channel}"] = (x, 57)
     footprints: list[str] = []
     points: dict[str, list[tuple[float, float]]] = {}
     j_text, j_points = j1(); footprints.append(j_text)
     for net, x, y in j_points: points.setdefault(net, []).append((x, y))
-    minor = [r for r in rows if r["Reference"] != "J1" and r["Reference"] not in positions]
-    for index, row in enumerate(minor):
-        ref = row["Reference"]
-        positions[ref] = (24 + (index % 15) * 6.1, 95 - (index // 15) * 7.0)
+    missing = [r["Reference"] for r in rows if r["Reference"] != "J1" and r["Reference"] not in positions]
+    if missing:
+        raise RuntimeError(f"missing explicit placement for: {', '.join(missing)}")
     for row in rows:
         ref = row["Reference"]
         if ref == "J1": continue

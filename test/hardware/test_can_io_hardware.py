@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 import unittest
 
 from scripts.check_can_io_hardware import (
@@ -57,6 +58,17 @@ class CanIoHardwareContractTest(unittest.TestCase):
         self.assertGreaterEqual(text.count("(footprint "), 70)
         self.assertGreaterEqual(text.count("(pad "), 180)
         self.assertGreaterEqual(text.count("(segment "), 120)
+
+    def test_layout_stays_two_layer_and_qfp_pads_do_not_overlap(self):
+        root = Path(__file__).resolve().parents[2]
+        pcb = root / "hardware/can-io-module/can-io-module.kicad_pcb"
+        text = pcb.read_text(encoding="utf-8")
+        copper_layers = re.findall(r'\(\d+ "[FB]\.Cu" signal\)', text)
+        self.assertEqual(2, len(copper_layers))
+        u1 = text[text.index('(property "Reference" "U1"'):text.index('(property "Reference" "U2"')]
+        self.assertIn('(size 1.20 0.25)', u1)
+        self.assertIn('(size 0.25 1.20)', u1)
+        self.assertNotIn('(size 1.15 0.75)', u1)
 
     def test_bringup_and_exports_cover_all_release_gates(self):
         root = Path(__file__).resolve().parents[2]

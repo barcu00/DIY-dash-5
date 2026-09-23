@@ -83,8 +83,7 @@ jobs:
             --gui.enabled=false \
             -mp 7 \
             -de "$out/can-io-module.dsn" \
-            -do "$out/can-io-module.ses" \
-            -drc "$out/freerouting-drc.json"
+            -do "$out/can-io-module.ses"
           python3 scripts/autoroute_can_io.py import "$board" "$out/can-io-module.ses"
           cp "$board" "$out/can-io-module-routed.kicad_pcb"
 
