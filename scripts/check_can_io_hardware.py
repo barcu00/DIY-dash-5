@@ -129,6 +129,20 @@ def validate_communications(root: Path) -> list[str]:
     if path.is_file() and "L9637" in path.read_text(encoding="utf-8").replace("L9637 FORBIDDEN", ""):
         errors.append("L9637 must not be used; L9613 is fixed")
     return errors
+
+
+def validate_outputs(root: Path) -> list[str]:
+    path = root / "hardware/can-io-module/sheets/outputs.kicad_sch"
+    tokens = (
+        "U9 TLV9002-Q1", "AOUT1 NON-INVERTING GAIN 1.55", "AOUT2 NON-INVERTING GAIN 1.55",
+        "AOUT1 220R ISOLATION", "AOUT2 220R ISOLATION", "AOUT1 RC FILTER + ESD",
+        "AOUT2 RC FILTER + ESD", "AOUT LOAD >= 10k", "AOUT STARTUP 0V",
+        "Q4 60V LOGIC N-MOS RELAY1", "Q5 60V LOGIC N-MOS RELAY2",
+        "RELAY1 GATE 100k PULLDOWN", "RELAY2 GATE 100k PULLDOWN",
+        "RELAY1 FLYBACK TO VBAT_PROTECTED", "RELAY2 FLYBACK TO VBAT_PROTECTED",
+        "RELAY CURRENT <= 500mA", "OUTPUTS OFF DURING RESET",
+    )
+    return _require_tokens(path, tokens, "outputs sheet")
     mcu_tokens = (
         "U1 STM32G0B1CBT6", "NRST 10k PULLUP", "BOOT0 100k PULLDOWN",
         "SWDIO", "SWCLK", "TP_NRST", "VDDA FILTER", "C_VDD1 100nF",
@@ -149,6 +163,7 @@ def validate_project(root: Path) -> list[str]:
     errors.extend(validate_power_and_mcu(root))
     errors.extend(validate_analog_inputs(root))
     errors.extend(validate_communications(root))
+    errors.extend(validate_outputs(root))
 
     pcb = root / "hardware/can-io-module/can-io-module.kicad_pcb"
     if pcb.is_file():
