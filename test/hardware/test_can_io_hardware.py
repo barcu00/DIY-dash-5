@@ -18,6 +18,59 @@ from scripts.check_can_io_hardware import (
 
 
 class CanIoHardwareContractTest(unittest.TestCase):
+    def test_schematics_are_electrical_not_text_only(self):
+        root = Path(__file__).resolve().parents[2]
+        schematic_root = root / "hardware/can-io-module"
+        paths = [schematic_root / "can-io-module.kicad_sch"] + sorted(
+            (schematic_root / "sheets").glob("*.kicad_sch")
+        )
+        texts = [path.read_text(encoding="utf-8") for path in paths]
+        instance_count = sum(len(re.findall(r'\n\s*\(symbol\s*\n\s*\(lib_id\s+', text)) for text in texts)
+        wire_count = sum(len(re.findall(r'\n\s*\(wire\s*\n', text)) for text in texts)
+        label_count = sum(len(re.findall(r'\n\s*\((?:global_label|hierarchical_label|label)\s+', text)) for text in texts)
+        self.assertGreaterEqual(instance_count, 70, "schematics must contain real component instances")
+        self.assertGreaterEqual(wire_count, 80, "schematics must contain real electrical wires")
+        self.assertGreaterEqual(label_count, 40, "schematics must contain real electrical labels")
+
+    def test_schematic_and_pcb_references_have_functional_parity(self):
+        root = Path(__file__).resolve().parents[2]
+        base = root / "hardware/can-io-module"
+        schematic_text = "\n".join(
+            path.read_text(encoding="utf-8")
+            for path in [base / "can-io-module.kicad_sch", *sorted((base / "sheets").glob("*.kicad_sch"))]
+        )
+        pcb_text = (base / "can-io-module.kicad_pcb").read_text(encoding="utf-8")
+        schematic_refs = set(re.findall(r'\(property\s+"Reference"\s+"([A-Z]+\d+)"', schematic_text))
+        pcb_refs = set(re.findall(r'\(property\s+"Reference"\s+"([A-Z]+\d+)"', pcb_text))
+        ignored = {"H1", "H2", "H3", "H4"}
+        self.assertGreaterEqual(len(schematic_refs), 70)
+        self.assertEqual(schematic_refs, pcb_refs - ignored)
+
+    def test_can_common_mode_choke_is_four_terminal_or_bypassed(self):
+        root = Path(__file__).resolve().parents[2]
+        pcb = (root / "hardware/can-io-module/can-io-module.kicad_pcb").read_text(encoding="utf-8")
+        l2 = next(block for block in _sexpr_blocks(pcb, "footprint") if '(property "Reference" "L2"' in block)
+        pads = re.findall(r'\(pad\s+"(\d+)"', l2)
+        self.assertEqual(["1", "2", "3", "4"], sorted(pads))
+        for net in ("CAN_H_PROTECTED", "CAN_L_PROTECTED", "CAN_H", "CAN_L"):
+            self.assertIn(f'"{net}"', l2)
+
+    def test_swd_header_is_1x5_254mm_with_exact_pinout(self):
+        root = Path(__file__).resolve().parents[2]
+        pcb = (root / "hardware/can-io-module/can-io-module.kicad_pcb").read_text(encoding="utf-8")
+        j2 = next(block for block in _sexpr_blocks(pcb, "footprint") if '(property "Reference" "J2"' in block)
+        expected = {
+            1: "+3V3",
+            2: "SWDIO",
+            3: "SWCLK",
+            4: "NRST",
+            5: "POWER_GND",
+        }
+        for pin, net in expected.items():
+            self.assertRegex(j2, rf'\(pad\s+"{pin}"\s+.*?\(net\s+\d+\s+"{re.escape(net)}"\)')
+        self.assertIn("2.54", j2)
+        self.assertIn("PIN 1", j2)
+
     def test_complete_project_contract(self):
         root = Path(__file__).resolve().parents[2]
         self.assertEqual([], validate_project(root))
