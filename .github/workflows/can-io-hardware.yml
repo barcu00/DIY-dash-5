@@ -59,7 +59,7 @@ jobs:
           if (( validator_status != 0 || test_status != 0 )); then
             while IFS= read -r report_line; do
               echo "::error title=CAN IO contract::${report_line}"
-            done < hardware/can-io-module/manufacturing/generated/contract-report.txt
+            done < <(tail -n 30 hardware/can-io-module/manufacturing/generated/contract-report.txt)
             exit 1
           fi
 
