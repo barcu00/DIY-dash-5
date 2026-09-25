@@ -64,10 +64,24 @@ jobs:
           fi
 
       - name: Electrical rules check
-        run: >-
-          kicad-cli sch erc --exit-code-violations
-          --output hardware/can-io-module/manufacturing/generated/erc-report.rpt
-          hardware/can-io-module/can-io-module.kicad_sch
+        shell: bash
+        run: |
+          set +e
+          kicad-cli sch erc --exit-code-violations \
+            --output hardware/can-io-module/manufacturing/generated/erc-report.rpt \
+            hardware/can-io-module/can-io-module.kicad_sch \
+            2>&1 | tee hardware/can-io-module/manufacturing/generated/erc-command.log
+          erc_status=${PIPESTATUS[0]}
+          if (( erc_status != 0 )); then
+            {
+              cat hardware/can-io-module/manufacturing/generated/erc-command.log
+              test ! -f hardware/can-io-module/manufacturing/generated/erc-report.rpt || \
+                cat hardware/can-io-module/manufacturing/generated/erc-report.rpt
+            } | tail -n 20 | tac | while IFS= read -r report_line; do
+              echo "::error title=CAN IO ERC::${report_line}"
+            done
+            exit "$erc_status"
+          fi
 
       - name: Stage checked-in routed PCB
         shell: bash
