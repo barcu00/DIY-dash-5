@@ -109,12 +109,14 @@ def main() -> None:
         )
         for pin_number, net in enumerate(pins, 1):
             pin = str(pin_number)
+            position = component.get_pin_position(pin)
+            if position is None:
+                raise RuntimeError(f"cannot locate {reference} pin {pin}")
             if net:
-                schematic.add_label(str(net), pin=(reference, pin), size=0.9)
+                label_position = (position.x - 2.54, position.y)
+                schematic.add_wire(position, label_position)
+                schematic.add_label(str(net), position=label_position, rotation=0, size=0.9)
             else:
-                position = component.get_pin_position(pin)
-                if position is None:
-                    raise RuntimeError(f"cannot locate {reference} pin {pin}")
                 schematic.no_connects.add(position)
         schematic.add_text(
             f"{reference} / {package}",
