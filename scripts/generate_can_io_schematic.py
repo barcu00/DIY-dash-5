@@ -90,6 +90,7 @@ def main() -> None:
     )
 
     components = build_components()
+    net_pins: dict[str, list[tuple[str, str]]] = {}
     columns = [70, 215, 360, 505, 650]
     next_y = [45.0] * len(columns)
     for index, item in enumerate(components):
@@ -113,14 +114,8 @@ def main() -> None:
             if position is None:
                 raise RuntimeError(f"cannot locate {reference} pin {pin}")
             if net:
-                label_position = (position.x - 2.54, position.y)
-                schematic.add_wire(position, label_position)
-                schematic.add_global_label(
-                    str(net),
-                    position=label_position,
-                    shape="bidirectional",
-                    effects={"size": 0.9},
-                )
+                schematic.add_label(str(net), pin=(reference, pin), size=0.9)
+                net_pins.setdefault(str(net), []).append((reference, pin))
             else:
                 schematic.no_connects.add(position)
         schematic.add_text(
@@ -130,6 +125,13 @@ def main() -> None:
             bold=True,
         )
         next_y[column] = y + max(15.0, len(pins) * 1.27 + 10.0)
+
+    # Explicit physical connectivity is retained in addition to the pin labels.
+    # Chaining pins of each net gives ERC real endpoints on both sides of every
+    # wire and prevents a label-only schematic from passing structural review.
+    for pins in net_pins.values():
+        for first, second in zip(pins, pins[1:]):
+            schematic.add_wire_between_pins(first[0], first[1], second[0], second[1])
 
     schematic.save(OUTPUT, preserve_format=False)
     print(
