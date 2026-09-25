@@ -56,7 +56,12 @@ jobs:
             cat hardware/can-io-module/manufacturing/generated/contract-report.txt
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-          if (( validator_status != 0 || test_status != 0 )); then exit 1; fi
+          if (( validator_status != 0 || test_status != 0 )); then
+            while IFS= read -r report_line; do
+              echo "::error title=CAN IO contract::${report_line}"
+            done < hardware/can-io-module/manufacturing/generated/contract-report.txt
+            exit 1
+          fi
 
       - name: Electrical rules check
         run: >-
