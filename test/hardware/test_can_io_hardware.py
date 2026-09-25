@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 import re
 import unittest
 
@@ -70,6 +71,55 @@ class CanIoHardwareContractTest(unittest.TestCase):
             self.assertRegex(j2, rf'\(pad\s+"{pin}"\s+.*?\(net\s+\d+\s+"{re.escape(net)}"\)')
         self.assertIn("2.54", j2)
         self.assertIn("PIN 1", j2)
+
+    def test_critical_pin_map_is_complete_and_datasheet_traceable(self):
+        root = Path(__file__).resolve().parents[2]
+        manifest_path = root / "hardware/can-io-module/electrical-pin-map.json"
+        self.assertTrue(manifest_path.is_file(), "missing machine-readable electrical pin map")
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        for component in ("U1", "U2", "U3", "U4", "U5", "U6", "U7", "U8", "U9", "U10", "U11", "U12"):
+            self.assertIn(component, manifest["components"])
+            self.assertRegex(manifest["components"][component]["datasheet"], r"^https://")
+            self.assertTrue(manifest["components"][component]["pins"])
+
+        mcu = manifest["components"]["U1"]
+        self.assertEqual("STM32G0B1CBT6", mcu["part"])
+        self.assertEqual("VBAT", mcu["pins"]["4"])
+        self.assertEqual("VREF+", mcu["pins"]["5"])
+        self.assertEqual("VDD/VDDA", mcu["pins"]["6"])
+        self.assertEqual("VSS/VSSA", mcu["pins"]["7"])
+        self.assertEqual("PF2-NRST", mcu["pins"]["10"])
+        self.assertEqual("PA13-SWDIO", mcu["pins"]["35"])
+        self.assertEqual("PA14-SWCLK", mcu["pins"]["36"])
+        self.assertEqual(set(map(str, range(1, 49))), set(mcu["pins"]))
+
+        assignments = manifest["mcu_assignments"]
+        used_pins = [entry["pin"] for entry in assignments.values()]
+        self.assertEqual(len(used_pins), len(set(used_pins)), "MCU assignments must not reuse a physical pin")
+        for signal in (
+            "ADC_IN1", "ADC_IN2", "ADC_IN3", "ADC_IN4", "ADC_IN5", "ADC_IN6", "ADC_IN7", "ADC_IN8",
+            "DAC1_RAW", "DAC2_RAW", "CAN_RX", "CAN_TX", "KTX", "KRX", "EGT_SCK", "EGT_CS", "EGT_SO",
+            "FLEX_CAPTURE", "SWDIO", "SWCLK", "NRST", "RAIL_MON_ADC",
+        ):
+            self.assertIn(signal, assignments)
+
+        self.assertEqual(
+            {"1": "+3V3", "2": "SWDIO", "3": "SWCLK", "4": "NRST", "5": "POWER_GND"},
+            manifest["connectors"]["J2"]["pins"],
+        )
+
+        self.assertEqual(
+            {"1": "RX", "2": "LO", "3": "VCC", "4": "TX", "5": "GND", "6": "K", "7": "VS", "8": "LI"},
+            manifest["components"]["U7"]["pins"],
+        )
+        self.assertEqual(
+            {"1": "TXD", "2": "GND", "3": "VCC", "4": "RXD", "5": "VIO", "6": "CANL", "7": "CANH", "8": "S"},
+            manifest["components"]["U8"]["pins"],
+        )
+        self.assertEqual(
+            {"1": "GND", "2": "T-", "3": "T+", "4": "VCC", "5": "SCK", "6": "CS", "7": "SO", "8": "NC"},
+            manifest["components"]["U10"]["pins"],
+        )
 
     def test_complete_project_contract(self):
         root = Path(__file__).resolve().parents[2]
