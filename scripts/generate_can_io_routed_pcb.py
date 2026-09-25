@@ -25,6 +25,8 @@ NETS = CONNECTOR + [
     "KTX", "KRX", "EGT_SCK", "EGT_CS", "EGT_SO", "FLEX_CAPTURE", "DAC1_RAW", "DAC2_RAW",
     "RELAY1_GATE", "RELAY2_GATE", "PULL_A0", "PULL_A1", "PULL_A2", "PULL_1K_EN_N",
     "PULL_4K7_EN_N", "EXC_1K", "EXC_4K7", "AOUT1_OP", "AOUT2_OP",
+    "VBAT_MON", "V5_MON", "V3V3_MON", "SENSOR_5V_EN", "SENSOR_5V_OC", "SENSOR_5V_SW",
+    "IGN_SENSE", "KLINE_ENABLE", "CAN_H_PROTECTED", "CAN_L_PROTECTED",
 ] + [f"ADC_IN{i}" for i in range(1, 9)]
 NET_ID = {name: index + 1 for index, name in enumerate(NETS)}
 
@@ -102,25 +104,55 @@ def j1() -> tuple[str, list[tuple[str, float, float]]]:
     return "\n".join(lines), connected
 
 
+def j2() -> tuple[str, list[tuple[str, float, float]]]:
+    """Unpopulated standard-pitch SWD service header."""
+    x, y = 86.0, 92.0
+    nets = ["+3V3", "SWDIO", "SWCLK", "NRST", "POWER_GND"]
+    lines = [
+        f'  (footprint "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical" (layer "F.Cu") (tstamp {uid("J2")})',
+        f'    (at {x} {y})',
+        '    (property "Reference" "J2" (at 0 -2.33) (layer "F.SilkS") (effects (font (size 0.8 0.8) (thickness 0.12))))',
+        '    (property "Value" "SWD_1x05_P2.54mm_DNP" (at 0 12.49) (layer "F.Fab") (effects (font (size 0.7 0.7) (thickness 0.10))))',
+        f'    (fp_rect (start -1.3 -1.3) (end 1.3 11.46) (stroke (width 0.15) (type default)) (fill none) (layer "F.SilkS") (tstamp {uid("J2-body")}))',
+        f'    (fp_text user "PIN 1" (at 2.8 0) (layer "F.SilkS") (effects (font (size 0.8 0.8) (thickness 0.12))) (tstamp {uid("J2-pin1")}))',
+    ]
+    connected: list[tuple[str, float, float]] = []
+    for index, net in enumerate(nets, 1):
+        dy = (index - 1) * 2.54
+        shape = "rect" if index == 1 else "circle"
+        lines.append(f'    (pad "{index}" thru_hole {shape} (at 0 {dy:.2f}) (size 1.7 1.7) (drill 1.0) (layers "*.Cu" "*.Mask"){net_clause(net)} (pinfunction "{net}") (pintype "passive") (tstamp {uid("J2-"+str(index))}))')
+        connected.append((net, x, y + dy))
+    lines.append("  )")
+    return "\n".join(lines), connected
+
+
 def mappings() -> dict[str, list[str | None]]:
     m: dict[str, list[str | None]] = {}
-    m["U1"] = [None, None, None, "+3V3", "VDDA", "+3V3", "POWER_GND", None, None, "NRST"] + [f"ADC_IN{i}" for i in range(1, 9)] + ["DAC1_RAW", "DAC2_RAW", "CAN_TX", "CAN_RX", "KTX", "KRX", "EGT_SCK", "EGT_CS", "EGT_SO", "FLEX_CAPTURE", "PULL_A0", "PULL_A1", "PULL_A2", "PULL_1K_EN_N", "PULL_4K7_EN_N", "RELAY1_GATE", "RELAY2_GATE", "CAN_SILENT", "SWDIO", "SWCLK", "BOOT0"] + [None] * 10
-    m["U1"] = m["U1"][:48]
+    # STM32G0B1CBT6 physical LQFP-48 order, verified against DS13560.
+    m["U1"] = [
+        None, None, None, "+3V3", "VDDA", "+3V3", "POWER_GND", None, None, "NRST",
+        "ADC_IN1", "ADC_IN2", "ADC_IN3", "ADC_IN4", "DAC1_RAW", "DAC2_RAW",
+        "ADC_IN5", "ADC_IN6", "ADC_IN7", "ADC_IN8", "BOOT0", "VBAT_MON", "V5_MON",
+        "V3V3_MON", "RELAY2_GATE", "CAN_SILENT", "SENSOR_5V_EN", "FLEX_CAPTURE",
+        "IGN_SENSE", "PULL_4K7_EN_N", "RELAY1_GATE", "SERVICE", "CAN_RX", "CAN_TX",
+        "SWDIO", "SWCLK", "KLINE_ENABLE", "PULL_A0", "PULL_A1", "PULL_A2",
+        "PULL_1K_EN_N", "EGT_SCK", "EGT_SO", "EGT_CS", "KTX", "KRX", None, None,
+    ]
     m["U2"] = ["BUCK_BOOT", "POWER_GND", "BUCK_FB", "IGN", "VBAT_PROTECTED", "BUCK_SW"]
     m["U3"] = ["+5V", "POWER_GND", "+5V", None, "+3V3"]
-    m["U4"] = ["+3V3", "+5V", "POWER_GND", "POWER_GND", "SENSOR_5V", None]
+    m["U4"] = ["SENSOR_5V_SW", "POWER_GND", "SENSOR_5V_OC", "SENSOR_5V_EN", "+5V"]
     y4051 = ["AIN5", "AIN7", None, "AIN8", "AIN6", None, "POWER_GND", "POWER_GND", "PULL_A2", "PULL_A1", "PULL_A0", "AIN4", "AIN1", "AIN2", "AIN3", "+5V"]
     m["U5"] = y4051.copy(); m["U5"][2] = "EXC_1K"; m["U5"][5] = "PULL_1K_EN_N"
     m["U6"] = y4051.copy(); m["U6"][2] = "EXC_4K7"; m["U6"][5] = "PULL_4K7_EN_N"
     m["U7"] = ["KRX", None, "+5V", "KTX", "POWER_GND", "K_LINE", "VBAT_PROTECTED", None]
-    m["U8"] = ["CAN_TX", "POWER_GND", "+5V", "CAN_RX", "+3V3", "CAN_L", "CAN_H", "CAN_SILENT"]
+    m["U8"] = ["CAN_TX", "POWER_GND", "+5V", "CAN_RX", "+3V3", "CAN_L_PROTECTED", "CAN_H_PROTECTED", "CAN_SILENT"]
     m["U9"] = ["DAC1_RAW", "AOUT1_OP", "AOUT1_OP", "POWER_GND", "DAC2_RAW", "AOUT2_OP", "AOUT2_OP", "+5V"]
     m["U10"] = ["POWER_GND", "EGT_K_POS", "EGT_K_NEG", "+3V3", "EGT_SCK", "EGT_CS", "EGT_SO", None]
     m["U11"] = [None, "FLEX_IN", "POWER_GND", "FLEX_CAPTURE", "+3V3"]
     m["F1"] = ["VBAT", "VBAT_FUSED"]; m["Q1"] = ["IGN", "VBAT_PROTECTED", "VBAT_FUSED", "VBAT_FUSED"]
     m["D1"] = ["VBAT_PROTECTED", "POWER_GND"]; m["C1"] = ["VBAT_PROTECTED", "POWER_GND"]
     m["D2"] = ["POWER_GND", "BUCK_SW"]; m["L1"] = ["BUCK_SW", "+5V"]; m["C2"] = ["+5V", "POWER_GND"]; m["C3"] = ["+3V3", "POWER_GND"]
-    m["F2"] = ["SENSOR_5V", "SENSOR_5V"]; m["FB1"] = ["+3V3", "VDDA"]
+    m["F2"] = ["SENSOR_5V_SW", "SENSOR_5V"]; m["FB1"] = ["+3V3", "VDDA"]
     m["R1"] = ["+5V", "EXC_1K"]; m["R2"] = ["+5V", "EXC_4K7"]
     m["R3"] = ["+5V", "PULL_1K_EN_N"]; m["R4"] = ["+5V", "PULL_4K7_EN_N"]
     m["R5"] = ["RELAY1_GATE", "POWER_GND"]; m["R6"] = ["RELAY2_GATE", "POWER_GND"]
@@ -130,6 +162,7 @@ def mappings() -> dict[str, list[str | None]]:
     m["TP1"] = ["SWDIO"]; m["TP2"] = ["SWCLK"]; m["TP3"] = ["NRST"]
     m["D3"] = ["CAN_H", "CAN_L"]; m["D4"] = ["K_LINE", "POWER_GND"]; m["D5"] = ["FLEX_IN", "POWER_GND"]
     m["D6"] = ["AOUT1", "POWER_GND"]; m["D7"] = ["AOUT2", "POWER_GND"]; m["JP1"] = ["CAN_H", "CAN_L"]
+    m["L2"] = ["CAN_H_PROTECTED", "CAN_L_PROTECTED", "CAN_H", "CAN_L"]
     m["Q4"] = ["RELAY1_GATE", "RELAY_OUT1", "POWER_GND", "RELAY_OUT1", "RELAY_OUT1", "RELAY_OUT1", "RELAY_OUT1", "RELAY_OUT1"]
     m["Q5"] = ["RELAY2_GATE", "RELAY_OUT2", "POWER_GND", "RELAY_OUT2", "RELAY_OUT2", "RELAY_OUT2", "RELAY_OUT2", "RELAY_OUT2"]
     for i in range(1, 9):
@@ -170,12 +203,14 @@ def main() -> None:
     points: dict[str, list[tuple[float, float]]] = {}
     j_text, j_points = j1(); footprints.append(j_text)
     for net, x, y in j_points: points.setdefault(net, []).append((x, y))
-    missing = [r["Reference"] for r in rows if r["Reference"] != "J1" and r["Reference"] not in positions]
+    j2_text, j2_points = j2(); footprints.append(j2_text)
+    for net, x, y in j2_points: points.setdefault(net, []).append((x, y))
+    missing = [r["Reference"] for r in rows if r["Reference"] not in {"J1", "J2"} and r["Reference"] not in positions]
     if missing:
         raise RuntimeError(f"missing explicit placement for: {', '.join(missing)}")
     for row in rows:
         ref = row["Reference"]
-        if ref == "J1": continue
+        if ref in {"J1", "J2"}: continue
         pad_nets = maps.get(ref)
         if pad_nets is None:
             pad_nets = [None] if ref.startswith("TP") else [None, None]

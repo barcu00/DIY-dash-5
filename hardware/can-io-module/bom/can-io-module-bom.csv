@@ -1,9 +1,10 @@
 Reference,Quantity,Value,Manufacturer,MPN,Package,Populate,Notes
 J1,1,"ECU_FCI_24P_RightAngle","Generic",SOURCE_WITH_ENCLOSURE,Custom THT 3x8,YES,"Physical sample and 1:1 fit check mandatory"
+J2,1,SWD_1x05_P2.54mm_DNP,Generic,61300511121,PinHeader_1x05_P2.54mm_Vertical,DNP,"Standard 2.54mm SWD service header; pin 1 marked"
 U1,1,STM32G0B1CBT6,"STMicroelectronics",STM32G0B1CBT6,LQFP-48 7x7mm,YES,"Industrial -40..85C selected low-cost MCU"
 U2,1,LMR16006Y-Q1,"Texas Instruments",LMR16006YQDDCRQ1,SOT-23-THN-6 DDC,YES,60V 600mA automotive buck
 U3,1,3V3 LDO 300mA,"Texas Instruments",TPS7A2033PDBVR,SOT-23-5,YES,"Low-noise 3.3V rail"
-U4,1,SENSOR_5V load switch,"Texas Instruments",TPS22945DCKR,SC70-6,YES,"Current-limited external sensor rail"
+U4,1,SENSOR_5V load switch,"Texas Instruments",TPS22945DCKR,SC70-5,YES,"Current-limited external sensor rail"
 U5,1,"74HCT4051 1K excitation","Texas Instruments",CD74HCT4051M96,SOIC-16,YES,TTL thresholds accept 3.3V MCU at 5V supply
 U6,1,"74HCT4051 4K7 excitation","Texas Instruments",CD74HCT4051M96,SOIC-16,YES,TTL thresholds accept 3.3V MCU at 5V supply
 U7,1,L9613,"STMicroelectronics",L9613B013TR,SO-8,YES,"Fixed K-line transceiver; stock 9.6k and patched up to 125k"
@@ -78,4 +79,3 @@ TVS18,1,AIN8 low-leakage ESD,Nexperia,"PESD3V3L1BA,115",SOD323,YES,"At connector
 R108,1,10.0k 1% AIN series,Yageo,RC0603FR-0710KL,0603,YES,AIN8 divider upper
 R118,1,15.0k 1% AIN lower,Yageo,RC0603FR-0715KL,0603,YES,AIN8 divider lower
 C108,1,"100nF ADC filter",Murata,GRM188R71C104KA01D,0603,YES,ADC_IN8 filter
-
