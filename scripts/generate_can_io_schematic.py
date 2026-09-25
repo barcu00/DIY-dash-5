@@ -32,7 +32,7 @@ def footprint_for(reference: str, package: str) -> str:
     if reference == "J1":
         return "DIY_DASH:ECU_FCI_24P_RightAngle"
     if reference == "J2":
-        return "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical"
+        return "DIY_DASH:SWD_1x05_P2.54mm_Vertical"
     return f'DIY_DASH:{package.replace(" ", "_")}'
 
 

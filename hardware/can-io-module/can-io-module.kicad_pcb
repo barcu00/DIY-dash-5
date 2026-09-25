@@ -111,7 +111,7 @@
     (pad "23" thru_hole oval (at 19.98 8.30) (size 2.3 2.3) (drill 1.2) (layers "*.Cu" "*.Mask") (net 23 "AOUT2") (pinfunction "AOUT2") (pintype "passive") (tstamp e251aa2b-8006-500d-8e82-8920f91649bf))
     (pad "24" thru_hole oval (at 23.31 8.30) (size 2.3 2.3) (drill 1.2) (layers "*.Cu" "*.Mask") (net 24 "SERVICE") (pinfunction "SERVICE") (pintype "passive") (tstamp f13df6c3-91e4-5212-b2b4-d4805d999cc9))
   )
-  (footprint "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical" (layer "F.Cu") (tstamp 77b8226c-4d8c-5699-b28b-aa26c6e645f4)
+  (footprint "DIY_DASH:SWD_1x05_P2.54mm_Vertical" (layer "F.Cu") (tstamp 77b8226c-4d8c-5699-b28b-aa26c6e645f4)
     (at 86.0 92.0)
     (property "Reference" "J2" (at 0 -2.33) (layer "F.SilkS") (effects (font (size 0.8 0.8) (thickness 0.12))))
     (property "Value" "SWD_1x05_P2.54mm_DNP" (at 0 12.49) (layer "F.Fab") (effects (font (size 0.7 0.7) (thickness 0.10))))

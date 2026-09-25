@@ -109,7 +109,7 @@ def j2() -> tuple[str, list[tuple[str, float, float]]]:
     x, y = 86.0, 92.0
     nets = ["+3V3", "SWDIO", "SWCLK", "NRST", "POWER_GND"]
     lines = [
-        f'  (footprint "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical" (layer "F.Cu") (tstamp {uid("J2")})',
+        f'  (footprint "DIY_DASH:SWD_1x05_P2.54mm_Vertical" (layer "F.Cu") (tstamp {uid("J2")})',
         f'    (at {x} {y})',
         '    (property "Reference" "J2" (at 0 -2.33) (layer "F.SilkS") (effects (font (size 0.8 0.8) (thickness 0.12))))',
         '    (property "Value" "SWD_1x05_P2.54mm_DNP" (at 0 12.49) (layer "F.Fab") (effects (font (size 0.7 0.7) (thickness 0.10))))',

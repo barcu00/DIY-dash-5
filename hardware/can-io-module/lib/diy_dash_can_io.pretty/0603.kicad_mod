@@ -1,0 +1,10 @@
+(footprint "0603"
+  (version 20240108)
+  (generator pcbnew)
+  (layer "F.Cu")
+  (fp_rect (start -2.90 -1.60) (end 2.90 1.60) (stroke (width 0.15) (type default)) (fill none) (layer "F.SilkS"))
+  (fp_text reference "REF**" (at 0 -5) (layer "F.SilkS") (effects (font (size 0.8 0.8) (thickness 0.12))))
+  (fp_text value "VAL**" (at 0 5) (layer "F.Fab") (effects (font (size 0.7 0.7) (thickness 0.1))))
+  (pad "1" smd rect (at -1.00 0.00) (size 1.15 0.75) (layers "F.Cu" "F.Paste" "F.Mask"))
+  (pad "2" smd roundrect (at 1.00 0.00) (size 1.15 0.75) (layers "F.Cu" "F.Paste" "F.Mask") (roundrect_rratio 0.2))
+)
