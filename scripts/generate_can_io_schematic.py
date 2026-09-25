@@ -115,7 +115,7 @@ def main() -> None:
             if net:
                 label_position = (position.x - 2.54, position.y)
                 schematic.add_wire(position, label_position)
-                schematic.add_label(str(net), position=label_position, rotation=0, size=0.9)
+                schematic.add_label(str(net), position=label_position, rotation=180, size=0.9)
             else:
                 schematic.no_connects.add(position)
         schematic.add_text(
