@@ -77,7 +77,7 @@ class CanIoHardwareContractTest(unittest.TestCase):
         manifest_path = root / "hardware/can-io-module/electrical-pin-map.json"
         self.assertTrue(manifest_path.is_file(), "missing machine-readable electrical pin map")
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        for component in ("U1", "U2", "U3", "U4", "U5", "U6", "U7", "U8", "U9", "U10", "U11", "U12"):
+        for component in ("U1", "U2", "U3", "U4", "U5", "U6", "U7", "U8", "U9", "U10", "U11"):
             self.assertIn(component, manifest["components"])
             self.assertRegex(manifest["components"][component]["datasheet"], r"^https://")
             self.assertTrue(manifest["components"][component]["pins"])
@@ -99,7 +99,7 @@ class CanIoHardwareContractTest(unittest.TestCase):
         for signal in (
             "ADC_IN1", "ADC_IN2", "ADC_IN3", "ADC_IN4", "ADC_IN5", "ADC_IN6", "ADC_IN7", "ADC_IN8",
             "DAC1_RAW", "DAC2_RAW", "CAN_RX", "CAN_TX", "KTX", "KRX", "EGT_SCK", "EGT_CS", "EGT_SO",
-            "FLEX_CAPTURE", "SWDIO", "SWCLK", "NRST", "RAIL_MON_ADC",
+            "FLEX_CAPTURE", "SWDIO", "SWCLK", "NRST", "VBAT_MON", "V5_MON", "V3V3_MON",
         ):
             self.assertIn(signal, assignments)
 

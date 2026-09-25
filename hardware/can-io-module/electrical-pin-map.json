@@ -1,0 +1,128 @@
+{
+  "schema_version": 1,
+  "components": {
+    "U1": {
+      "part": "STM32G0B1CBT6",
+      "package": "LQFP-48",
+      "datasheet": "https://www.st.com/resource/en/datasheet/stm32g0b1cb.pdf",
+      "pins": {
+        "1": "PC13", "2": "PC14-OSC32_IN", "3": "PC15-OSC32_OUT", "4": "VBAT",
+        "5": "VREF+", "6": "VDD/VDDA", "7": "VSS/VSSA", "8": "PF0-OSC_IN",
+        "9": "PF1-OSC_OUT", "10": "PF2-NRST", "11": "PA0", "12": "PA1",
+        "13": "PA2", "14": "PA3", "15": "PA4", "16": "PA5", "17": "PA6",
+        "18": "PA7", "19": "PB0", "20": "PB1", "21": "PB2", "22": "PB10",
+        "23": "PB11", "24": "PB12", "25": "PB13", "26": "PB14", "27": "PB15",
+        "28": "PA8", "29": "PA9/UCPD1_DBCC1", "30": "PC6", "31": "PC7",
+        "32": "PA10/UCPD1_DBCC2", "33": "PA9/PA11", "34": "PA10/PA12",
+        "35": "PA13-SWDIO", "36": "PA14-SWCLK", "37": "PA15", "38": "PD0",
+        "39": "PD1", "40": "PD2", "41": "PD3", "42": "PB3", "43": "PB4",
+        "44": "PB5", "45": "PB6", "46": "PB7", "47": "PB8", "48": "PB9"
+      }
+    },
+    "U2": {
+      "part": "LMR16006Y-Q1",
+      "package": "SOT-23-THN-6 DDC",
+      "datasheet": "https://www.ti.com/lit/ds/symlink/lmr16006y-q1.pdf",
+      "pins": {"1": "CB", "2": "GND", "3": "FB", "4": "SHDN", "5": "VIN", "6": "SW"}
+    },
+    "U3": {
+      "part": "TPS7A2033PDBVR",
+      "package": "SOT-23-5 DBV",
+      "datasheet": "https://www.ti.com/lit/ds/symlink/tps7a20.pdf",
+      "pins": {"1": "IN", "2": "GND", "3": "EN", "4": "NC", "5": "OUT"}
+    },
+    "U4": {
+      "part": "TPS22945DCKR",
+      "package": "SC70-5 DCK",
+      "datasheet": "https://www.ti.com/lit/ds/symlink/tps22945.pdf",
+      "pins": {"1": "VOUT", "2": "GND", "3": "OC", "4": "ON", "5": "VIN"}
+    },
+    "U5": {
+      "part": "CD74HCT4051M96",
+      "package": "SOIC-16 D",
+      "datasheet": "https://www.ti.com/lit/ds/symlink/cd74hc4051.pdf",
+      "pins": {"1": "Y4", "2": "Y6", "3": "Z", "4": "Y7", "5": "Y5", "6": "E_N", "7": "VEE", "8": "GND", "9": "S2", "10": "S1", "11": "S0", "12": "Y3", "13": "Y0", "14": "Y1", "15": "Y2", "16": "VCC"}
+    },
+    "U6": {
+      "part": "CD74HCT4051M96",
+      "package": "SOIC-16 D",
+      "datasheet": "https://www.ti.com/lit/ds/symlink/cd74hc4051.pdf",
+      "pins": {"1": "Y4", "2": "Y6", "3": "Z", "4": "Y7", "5": "Y5", "6": "E_N", "7": "VEE", "8": "GND", "9": "S2", "10": "S1", "11": "S0", "12": "Y3", "13": "Y0", "14": "Y1", "15": "Y2", "16": "VCC"}
+    },
+    "U7": {
+      "part": "L9613B013TR",
+      "package": "SO-8",
+      "datasheet": "https://www.st.com/resource/en/datasheet/l9613.pdf",
+      "pins": {"1": "RX", "2": "LO", "3": "VCC", "4": "TX", "5": "GND", "6": "K", "7": "VS", "8": "LI"}
+    },
+    "U8": {
+      "part": "TJA1051T/3",
+      "package": "SO-8 SOT96-1",
+      "datasheet": "https://www.nxp.com/docs/en/data-sheet/TJA1051.pdf",
+      "pins": {"1": "TXD", "2": "GND", "3": "VCC", "4": "RXD", "5": "VIO", "6": "CANL", "7": "CANH", "8": "S"}
+    },
+    "U9": {
+      "part": "TLV9002QDRQ1",
+      "package": "SOIC-8 D",
+      "datasheet": "https://www.ti.com/lit/ds/symlink/tlv9002-q1.pdf",
+      "pins": {"1": "OUT1", "2": "IN1-", "3": "IN1+", "4": "V-", "5": "IN2+", "6": "IN2-", "7": "OUT2", "8": "V+"}
+    },
+    "U10": {
+      "part": "MAX31855KASA+",
+      "package": "SOIC-8 narrow",
+      "datasheet": "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX31855.pdf",
+      "pins": {"1": "GND", "2": "T-", "3": "T+", "4": "VCC", "5": "SCK", "6": "CS", "7": "SO", "8": "NC"}
+    },
+    "U11": {
+      "part": "74LVC1G17GW,125",
+      "package": "TSSOP5 SOT353-1",
+      "datasheet": "https://assets.nexperia.com/documents/data-sheet/74LVC1G17.pdf",
+      "pins": {"1": "NC", "2": "A", "3": "GND", "4": "Y", "5": "VCC"}
+    }
+  },
+  "mcu_assignments": {
+    "ADC_IN1": {"pin": 11, "gpio": "PA0", "peripheral": "ADC_IN0"},
+    "ADC_IN2": {"pin": 12, "gpio": "PA1", "peripheral": "ADC_IN1"},
+    "ADC_IN3": {"pin": 13, "gpio": "PA2", "peripheral": "ADC_IN2"},
+    "ADC_IN4": {"pin": 14, "gpio": "PA3", "peripheral": "ADC_IN3"},
+    "DAC1_RAW": {"pin": 15, "gpio": "PA4", "peripheral": "DAC1_OUT1"},
+    "DAC2_RAW": {"pin": 16, "gpio": "PA5", "peripheral": "DAC1_OUT2"},
+    "ADC_IN5": {"pin": 17, "gpio": "PA6", "peripheral": "ADC_IN6"},
+    "ADC_IN6": {"pin": 18, "gpio": "PA7", "peripheral": "ADC_IN7"},
+    "ADC_IN7": {"pin": 19, "gpio": "PB0", "peripheral": "ADC_IN8"},
+    "ADC_IN8": {"pin": 20, "gpio": "PB1", "peripheral": "ADC_IN9"},
+    "VBAT_MON": {"pin": 22, "gpio": "PB10", "peripheral": "ADC_IN11"},
+    "V5_MON": {"pin": 23, "gpio": "PB11", "peripheral": "ADC_IN15"},
+    "V3V3_MON": {"pin": 24, "gpio": "PB12", "peripheral": "ADC_IN16"},
+    "RELAY2_GATE": {"pin": 25, "gpio": "PB13", "peripheral": "GPIO_OUT"},
+    "CAN_SILENT": {"pin": 26, "gpio": "PB14", "peripheral": "GPIO_OUT"},
+    "SENSOR_5V_EN": {"pin": 27, "gpio": "PB15", "peripheral": "GPIO_OUT"},
+    "FLEX_CAPTURE": {"pin": 28, "gpio": "PA8", "peripheral": "TIM1_CH1_AF2"},
+    "IGN_SENSE": {"pin": 29, "gpio": "PA9", "peripheral": "GPIO_IN"},
+    "PULL_4K7_EN_N": {"pin": 30, "gpio": "PC6", "peripheral": "GPIO_OUT"},
+    "RELAY1_GATE": {"pin": 31, "gpio": "PC7", "peripheral": "GPIO_OUT"},
+    "SERVICE": {"pin": 32, "gpio": "PA10", "peripheral": "GPIO_IN"},
+    "CAN_RX": {"pin": 33, "gpio": "PA11", "peripheral": "FDCAN1_RX_AF3"},
+    "CAN_TX": {"pin": 34, "gpio": "PA12", "peripheral": "FDCAN1_TX_AF3"},
+    "SWDIO": {"pin": 35, "gpio": "PA13", "peripheral": "SWDIO_AF0"},
+    "SWCLK": {"pin": 36, "gpio": "PA14", "peripheral": "SWCLK_AF0"},
+    "KLINE_ENABLE": {"pin": 37, "gpio": "PA15", "peripheral": "GPIO_OUT"},
+    "PULL_A0": {"pin": 38, "gpio": "PD0", "peripheral": "GPIO_OUT"},
+    "PULL_A1": {"pin": 39, "gpio": "PD1", "peripheral": "GPIO_OUT"},
+    "PULL_A2": {"pin": 40, "gpio": "PD2", "peripheral": "GPIO_OUT"},
+    "PULL_1K_EN_N": {"pin": 41, "gpio": "PD3", "peripheral": "GPIO_OUT"},
+    "EGT_SCK": {"pin": 42, "gpio": "PB3", "peripheral": "SPI1_SCK_AF0"},
+    "EGT_SO": {"pin": 43, "gpio": "PB4", "peripheral": "SPI1_MISO_AF0"},
+    "EGT_CS": {"pin": 44, "gpio": "PB5", "peripheral": "GPIO_OUT"},
+    "KTX": {"pin": 45, "gpio": "PB6", "peripheral": "USART1_TX_AF0"},
+    "KRX": {"pin": 46, "gpio": "PB7", "peripheral": "USART1_RX_AF0"},
+    "NRST": {"pin": 10, "gpio": "PF2", "peripheral": "NRST"}
+  },
+  "connectors": {
+    "J2": {
+      "part": "SWD_1x05_P2.54mm",
+      "populate": false,
+      "pins": {"1": "+3V3", "2": "SWDIO", "3": "SWCLK", "4": "NRST", "5": "POWER_GND"}
+    }
+  }
+}
