@@ -68,7 +68,14 @@ class CanIoHardwareContractTest(unittest.TestCase):
             5: "POWER_GND",
         }
         for pin, net in expected.items():
-            self.assertRegex(j2, rf'\(pad\s+"{pin}"\s+.*?\(net\s+\d+\s+"{re.escape(net)}"\)')
+            self.assertIsNotNone(
+                re.search(
+                    rf'\(pad\s+"{pin}"\s+.*?\(net\s+\d+\s+"{re.escape(net)}"\)',
+                    j2,
+                    re.DOTALL,
+                ),
+                f"J2 pin {pin} must map to {net}",
+            )
         self.assertIn("2.54", j2)
         self.assertIn("PIN 1", j2)
 
