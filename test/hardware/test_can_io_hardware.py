@@ -177,6 +177,33 @@ class CanIoHardwareContractTest(unittest.TestCase):
         self.assertRegex(u1, r'\(size\s+0\.25\s+1\.2(?:0)?\)')
         self.assertNotRegex(u1, r'\(size\s+1\.15\s+0\.75\)')
 
+    def test_different_nets_never_share_a_physical_pad_center(self):
+        root = Path(__file__).resolve().parents[2]
+        pcb = (root / "hardware/can-io-module/can-io-module.kicad_pcb").read_text(encoding="utf-8")
+        occupied: dict[tuple[float, float], tuple[str, str, str]] = {}
+        collisions: list[str] = []
+        for footprint in _sexpr_blocks(pcb, "footprint"):
+            ref_match = re.search(r'\(property\s+"Reference"\s+"([^"]+)"', footprint)
+            origin_match = re.search(r'\n\s*\(at\s+(-?[\d.]+)\s+(-?[\d.]+)', footprint)
+            if not ref_match or not origin_match:
+                continue
+            ref = ref_match.group(1)
+            origin_x, origin_y = map(float, origin_match.groups())
+            for pad in _sexpr_blocks(footprint, "pad"):
+                pad_match = re.search(r'\(pad\s+"([^"]+)".*?\(at\s+(-?[\d.]+)\s+(-?[\d.]+)', pad, re.DOTALL)
+                net_match = re.search(r'\(net\s+\d+\s+"([^"]+)"\)', pad)
+                if not pad_match or not net_match:
+                    continue
+                pin, local_x, local_y = pad_match.groups()
+                point = (round(origin_x + float(local_x), 3), round(origin_y + float(local_y), 3))
+                current = (ref, pin, net_match.group(1))
+                previous = occupied.get(point)
+                if previous and previous[2] != current[2]:
+                    collisions.append(f"{point}: {previous} overlaps {current}")
+                else:
+                    occupied[point] = current
+        self.assertEqual([], collisions)
+
     def test_autorouter_import_refills_ground_plane(self):
         root = Path(__file__).resolve().parents[2]
         bridge = (root / "scripts/autoroute_can_io.py").read_text(encoding="utf-8")
