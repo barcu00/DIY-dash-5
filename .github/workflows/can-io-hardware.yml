@@ -100,9 +100,22 @@ jobs:
             --output hardware/can-io-module/manufacturing/generated/drc-report.rpt \
             hardware/can-io-module/can-io-module.kicad_pcb \
             2>&1 | tee hardware/can-io-module/manufacturing/generated/drc-command.log
+          set +e
           kicad-cli pcb drc --severity-error --exit-code-violations --all-track-errors \
             --output hardware/can-io-module/manufacturing/generated/drc-errors.rpt \
-            hardware/can-io-module/can-io-module.kicad_pcb
+            hardware/can-io-module/can-io-module.kicad_pcb \
+            2>&1 | tee hardware/can-io-module/manufacturing/generated/drc-errors-command.log
+          drc_status=${PIPESTATUS[0]}
+          if (( drc_status != 0 )); then
+            {
+              cat hardware/can-io-module/manufacturing/generated/drc-errors-command.log
+              test ! -f hardware/can-io-module/manufacturing/generated/drc-errors.rpt || \
+                head -n 24 hardware/can-io-module/manufacturing/generated/drc-errors.rpt
+            } | tail -n 30 | tac | while IFS= read -r report_line; do
+              echo "::error title=CAN IO DRC::${report_line}"
+            done
+            exit "$drc_status"
+          fi
           {
             echo '## KiCad PCB DRC'
             echo '```text'
