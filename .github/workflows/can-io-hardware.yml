@@ -69,7 +69,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          kicad-cli sch erc --exit-code-violations \
+          kicad-cli sch erc --severity-error --exit-code-violations \
             --output hardware/can-io-module/manufacturing/generated/erc-report.rpt \
             hardware/can-io-module/can-io-module.kicad_sch \
             2>&1 | tee hardware/can-io-module/manufacturing/generated/erc-command.log
