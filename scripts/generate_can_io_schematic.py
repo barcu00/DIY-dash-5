@@ -12,6 +12,7 @@ import csv
 from pathlib import Path
 
 from kicad_sch_api import create_schematic
+from kicad_sch_api.core.pin_utils import get_component_pin_info
 
 from generate_can_io_routed_pcb import CONNECTOR, mappings
 
@@ -110,9 +111,10 @@ def main() -> None:
         )
         for pin_number, net in enumerate(pins, 1):
             pin = str(pin_number)
-            position = component.get_pin_position(pin)
-            if position is None:
+            pin_info = get_component_pin_info(component, pin)
+            if pin_info is None:
                 raise RuntimeError(f"cannot locate {reference} pin {pin}")
+            position, _ = pin_info
             if net:
                 schematic.add_label(str(net), pin=(reference, pin), size=0.9)
                 net_pins.setdefault(str(net), []).append((reference, pin))

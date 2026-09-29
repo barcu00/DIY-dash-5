@@ -26,7 +26,7 @@ NETS = CONNECTOR + [
     "RELAY1_GATE", "RELAY2_GATE", "PULL_A0", "PULL_A1", "PULL_A2", "PULL_1K_EN_N",
     "PULL_4K7_EN_N", "EXC_1K", "EXC_4K7", "AOUT1_OP", "AOUT2_OP",
     "VBAT_MON", "V5_MON", "V3V3_MON", "SENSOR_5V_EN", "SENSOR_5V_OC", "SENSOR_5V_SW",
-    "IGN_SENSE", "KLINE_ENABLE", "CAN_H_PROTECTED", "CAN_L_PROTECTED",
+    "IGN_SENSE", "CAN_H_PROTECTED", "CAN_L_PROTECTED",
 ] + [f"ADC_IN{i}" for i in range(1, 9)]
 NET_ID = {name: index + 1 for index, name in enumerate(NETS)}
 
@@ -135,8 +135,8 @@ def mappings() -> dict[str, list[str | None]]:
         "ADC_IN5", "ADC_IN6", "ADC_IN7", "ADC_IN8", "BOOT0", "VBAT_MON", "V5_MON",
         "V3V3_MON", "RELAY2_GATE", "CAN_SILENT", "SENSOR_5V_EN", "FLEX_CAPTURE",
         "IGN_SENSE", "PULL_4K7_EN_N", "RELAY1_GATE", "SERVICE", "CAN_RX", "CAN_TX",
-        "SWDIO", "SWCLK", "KLINE_ENABLE", "PULL_A0", "PULL_A1", "PULL_A2",
-        "PULL_1K_EN_N", "EGT_SCK", "EGT_SO", "EGT_CS", "KTX", "KRX", None, None,
+        "SWDIO", "SWCLK", None, "PULL_A0", "PULL_A1", "PULL_A2",
+        "PULL_1K_EN_N", "EGT_SCK", "EGT_SO", "EGT_CS", "KTX", "KRX", "SENSOR_5V_OC", None,
     ]
     m["U2"] = ["BUCK_BOOT", "POWER_GND", "BUCK_FB", "IGN", "VBAT_PROTECTED", "BUCK_SW"]
     m["U3"] = ["+5V", "POWER_GND", "+5V", None, "+3V3"]
@@ -159,6 +159,12 @@ def mappings() -> dict[str, list[str | None]]:
     m["R7"] = ["AOUT1_OP", "AOUT1"]; m["R8"] = ["AOUT2_OP", "AOUT2"]
     m["R9"] = ["+3V3", "NRST"]; m["R10"] = ["BOOT0", "POWER_GND"]
     m["C4"] = ["+3V3", "POWER_GND"]; m["C5"] = ["+3V3", "POWER_GND"]; m["C6"] = ["VDDA", "POWER_GND"]
+    m["C7"] = ["BUCK_BOOT", "BUCK_SW"]
+    m["R11"] = ["+5V", "BUCK_FB"]; m["R12"] = ["BUCK_FB", "POWER_GND"]
+    m["R13"] = ["VBAT_PROTECTED", "VBAT_MON"]; m["R14"] = ["VBAT_MON", "POWER_GND"]; m["C8"] = ["VBAT_MON", "POWER_GND"]
+    m["R15"] = ["+5V", "V5_MON"]; m["R16"] = ["V5_MON", "POWER_GND"]; m["C9"] = ["V5_MON", "POWER_GND"]
+    m["R17"] = ["+3V3", "V3V3_MON"]; m["R18"] = ["V3V3_MON", "POWER_GND"]; m["C10"] = ["V3V3_MON", "POWER_GND"]
+    m["R19"] = ["IGN", "IGN_SENSE"]; m["R20"] = ["IGN_SENSE", "POWER_GND"]; m["C11"] = ["IGN_SENSE", "POWER_GND"]
     m["TP1"] = ["SWDIO"]; m["TP2"] = ["SWCLK"]; m["TP3"] = ["NRST"]
     m["D3"] = ["CAN_H", "CAN_L"]; m["D4"] = ["K_LINE", "POWER_GND"]; m["D5"] = ["FLEX_IN", "POWER_GND"]
     m["D6"] = ["AOUT1", "POWER_GND"]; m["D7"] = ["AOUT2", "POWER_GND"]; m["JP1"] = ["CAN_H", "CAN_L"]
@@ -186,6 +192,11 @@ def main() -> None:
         "R1": (43, 76), "R2": (49, 76), "R3": (55, 76), "R4": (61, 76),
         "C4": (58, 94), "C5": (64, 94), "C6": (70, 94), "FB1": (76, 94),
         "R9": (58, 101), "R10": (64, 101), "TP1": (83, 82), "TP2": (83, 88), "TP3": (83, 94),
+        "C7": (28, 45), "R11": (36, 45), "R12": (40, 45),
+        "R13": (40, 35), "R14": (44, 35), "C8": (48, 35),
+        "R15": (25, 64), "R16": (29, 64), "C9": (33, 64),
+        "R17": (25, 68), "R18": (29, 68), "C10": (33, 68),
+        "R19": (37, 64), "R20": (41, 64), "C11": (45, 64),
         # Vehicle communications and thermocouple interface.
         "U8": (91, 29), "L2": (100, 29), "D3": (108, 29), "JP1": (108, 35),
         "U7": (101, 40), "D4": (109, 40), "U10": (101, 50), "U11": (109, 55), "D5": (109, 62),

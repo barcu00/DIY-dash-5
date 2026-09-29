@@ -106,7 +106,6 @@
     "CAN_TX": {"pin": 34, "gpio": "PA12", "peripheral": "FDCAN1_TX_AF3"},
     "SWDIO": {"pin": 35, "gpio": "PA13", "peripheral": "SWDIO_AF0"},
     "SWCLK": {"pin": 36, "gpio": "PA14", "peripheral": "SWCLK_AF0"},
-    "KLINE_ENABLE": {"pin": 37, "gpio": "PA15", "peripheral": "GPIO_OUT"},
     "PULL_A0": {"pin": 38, "gpio": "PD0", "peripheral": "GPIO_OUT"},
     "PULL_A1": {"pin": 39, "gpio": "PD1", "peripheral": "GPIO_OUT"},
     "PULL_A2": {"pin": 40, "gpio": "PD2", "peripheral": "GPIO_OUT"},
@@ -116,6 +115,7 @@
     "EGT_CS": {"pin": 44, "gpio": "PB5", "peripheral": "GPIO_OUT"},
     "KTX": {"pin": 45, "gpio": "PB6", "peripheral": "USART1_TX_AF0"},
     "KRX": {"pin": 46, "gpio": "PB7", "peripheral": "USART1_RX_AF0"},
+    "SENSOR_5V_OC": {"pin": 47, "gpio": "PB8", "peripheral": "GPIO_IN"},
     "NRST": {"pin": 10, "gpio": "PF2", "peripheral": "NRST"}
   },
   "connectors": {

@@ -41,6 +41,21 @@ C3,1,4.7uF 10V 3V3 bulk,Murata,GRM21BR61A475KA73L,0805,YES,3V3 rail
 C4,1,"100nF U1 VDD1",Murata,GRM188R71C104KA01D,0603,YES,"Place at pin"
 C5,1,"100nF U1 VDD2",Murata,GRM188R71C104KA01D,0603,YES,"Place at pin"
 C6,1,"100nF U1 VDDA",Murata,GRM188R71C104KA01D,0603,YES,"Place at pin"
+C7,1,100nF buck bootstrap,Murata,GRM188R71H104KA93D,0603,YES,"LMR16006 CB-to-SW bootstrap capacitor"
+C8,1,10nF VBAT monitor filter,Murata,GRM188R71H103KA01D,0603,YES,VBAT_MON low-pass filter
+C9,1,10nF 5V monitor filter,Murata,GRM188R71H103KA01D,0603,YES,V5_MON low-pass filter
+C10,1,10nF 3V3 monitor filter,Murata,GRM188R71H103KA01D,0603,YES,V3V3_MON low-pass filter
+C11,1,10nF IGN sense filter,Murata,GRM188R71H103KA01D,0603,YES,IGN_SENSE low-pass filter
+R11,1,40.2k 1% buck FB upper,Yageo,RC0603FR-0740K2L,0603,YES,LMR16006 5V feedback upper
+R12,1,10.0k 1% buck FB lower,Yageo,RC0603FR-0710KL,0603,YES,LMR16006 5V feedback lower
+R13,1,100k 1% VBAT monitor upper,Yageo,RC0603FR-07100KL,0603,YES,VBAT monitor divider upper
+R14,1,15.0k 1% VBAT monitor lower,Yageo,RC0603FR-0715KL,0603,YES,VBAT monitor divider lower
+R15,1,10.0k 1% 5V monitor upper,Yageo,RC0603FR-0710KL,0603,YES,5V monitor divider upper
+R16,1,18.0k 1% 5V monitor lower,Yageo,RC0603FR-0718KL,0603,YES,5V monitor divider lower
+R17,1,1.00k 1% 3V3 monitor upper,Yageo,RC0603FR-071KL,0603,YES,3V3 monitor divider upper
+R18,1,100k 1% 3V3 monitor lower,Yageo,RC0603FR-07100KL,0603,YES,3V3 monitor divider lower
+R19,1,100k 1% IGN sense upper,Yageo,RC0603FR-07100KL,0603,YES,IGN sense divider upper
+R20,1,15.0k 1% IGN sense lower,Yageo,RC0603FR-0715KL,0603,YES,IGN sense divider lower
 FB1,1,600R ferrite VDDA,Murata,BLM18PG601SN1D,0603,YES,"Analog rail filtering"
 F1,1,"1A input fuse",Littelfuse,0451001.MRL,NANO2 2410,YES,"PCB protection; harness fuse still required"
 F2,1,"250mA resettable sensor fuse",Littelfuse,1206L025YR,1206,YES,SENSOR_5V limit backup
