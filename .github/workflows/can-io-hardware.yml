@@ -30,7 +30,7 @@ on:
 jobs:
   can-io-hardware:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
 
@@ -85,25 +85,39 @@ jobs:
             exit "$erc_status"
           fi
 
-      - name: Stage checked-in routed PCB
+      - name: Autoroute two-layer PCB with Freerouting
         shell: bash
         run: |
           set -euo pipefail
           board=hardware/can-io-module/can-io-module.kicad_pcb
           out=hardware/can-io-module/manufacturing/generated
+          curl --fail --location --retry 3 \
+            --output "$out/freerouting.jar" \
+            https://github.com/freerouting/freerouting/releases/download/v2.4.1/freerouting-2.4.1.jar
+          python3 scripts/autoroute_can_io.py export "$board" "$out/can-io-module.dsn"
+          java -jar "$out/freerouting.jar" \
+            --gui.enabled=false --analytics.enabled=false \
+            --logging.file.enabled=false --logging.console.level=INFO \
+            --router.result_json="$out/freerouting-result.json" \
+            -de "$out/can-io-module.dsn" \
+            -do "$out/can-io-module.ses" \
+            -mp 20 -mt 4
+          test -s "$out/can-io-module.ses"
+          python3 scripts/autoroute_can_io.py import "$board" "$out/can-io-module.ses"
           cp "$board" "$out/can-io-module-routed.kicad_pcb"
 
       - name: Design rules check
         shell: bash
         run: |
+          board=hardware/can-io-module/manufacturing/generated/can-io-module-routed.kicad_pcb
           kicad-cli pcb drc --all-track-errors --schematic-parity \
             --output hardware/can-io-module/manufacturing/generated/drc-report.rpt \
-            hardware/can-io-module/can-io-module.kicad_pcb \
+            "$board" \
             2>&1 | tee hardware/can-io-module/manufacturing/generated/drc-command.log
           set +e
           kicad-cli pcb drc --severity-error --exit-code-violations --all-track-errors \
             --output hardware/can-io-module/manufacturing/generated/drc-errors.rpt \
-            hardware/can-io-module/can-io-module.kicad_pcb \
+            "$board" \
             2>&1 | tee hardware/can-io-module/manufacturing/generated/drc-errors-command.log
           drc_status=${PIPESTATUS[0]}
           if (( drc_status != 0 )); then
@@ -128,11 +142,12 @@ jobs:
 
       - name: Export review and fabrication files
         run: |
+          board=hardware/can-io-module/manufacturing/generated/can-io-module-routed.kicad_pcb
           kicad-cli sch export pdf --output hardware/can-io-module/manufacturing/generated/can-io-module-schematic.pdf hardware/can-io-module/can-io-module.kicad_sch
-          kicad-cli pcb export svg --layers F.Cu,B.Cu,F.Silkscreen,B.Silkscreen,Edge.Cuts --output hardware/can-io-module/manufacturing/generated/can-io-module-pcb.svg hardware/can-io-module/can-io-module.kicad_pcb
-          kicad-cli pcb export gerbers --output hardware/can-io-module/manufacturing/generated/gerbers/ hardware/can-io-module/can-io-module.kicad_pcb
-          kicad-cli pcb export drill --output hardware/can-io-module/manufacturing/generated/drill/ hardware/can-io-module/can-io-module.kicad_pcb
-          kicad-cli pcb export pos --format csv --units mm --output hardware/can-io-module/manufacturing/generated/position/can-io-module-top-pos.csv hardware/can-io-module/can-io-module.kicad_pcb
+          kicad-cli pcb export svg --layers F.Cu,B.Cu,F.Silkscreen,B.Silkscreen,Edge.Cuts --output hardware/can-io-module/manufacturing/generated/can-io-module-pcb.svg "$board"
+          kicad-cli pcb export gerbers --output hardware/can-io-module/manufacturing/generated/gerbers/ "$board"
+          kicad-cli pcb export drill --output hardware/can-io-module/manufacturing/generated/drill/ "$board"
+          kicad-cli pcb export pos --format csv --units mm --output hardware/can-io-module/manufacturing/generated/position/can-io-module-top-pos.csv "$board"
           cp hardware/can-io-module/bom/*.csv hardware/can-io-module/manufacturing/generated/
 
       - name: Upload reports and prototype package
