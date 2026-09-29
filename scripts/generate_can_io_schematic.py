@@ -129,11 +129,35 @@ def main() -> None:
         next_y[column] = y + max(15.0, len(pins) * 1.27 + 10.0)
 
     # Explicit physical connectivity is retained in addition to the pin labels.
-    # Chaining pins of each net gives ERC real endpoints on both sides of every
-    # wire and prevents a label-only schematic from passing structural review.
+    # Pins are paired rather than chained so no label has multiple wire ends.
+    # Each pair uses a dedicated lower-page routing lane, avoiding accidental
+    # contacts with the dense pin columns of the numbered package bodies.
+    route_index = 0
     for pins in net_pins.values():
-        for first, second in zip(pins, pins[1:]):
-            schematic.add_wire_between_pins(first[0], first[1], second[0], second[1])
+        for first, second in zip(pins[0::2], pins[1::2]):
+            first_component = schematic.components.get(first[0])
+            second_component = schematic.components.get(second[0])
+            first_info = get_component_pin_info(first_component, first[1])
+            second_info = get_component_pin_info(second_component, second[1])
+            if first_info is None or second_info is None:
+                raise RuntimeError(f"cannot route schematic pair {first} -> {second}")
+            start, _ = first_info
+            end, _ = second_info
+            lane_y = 475.0 + route_index * 0.45
+            offset = 2.54 + route_index * 0.071
+            start_x = start.x - offset
+            end_x = end.x - offset - 1.27
+            points = [
+                start,
+                (start_x, start.y),
+                (start_x, lane_y),
+                (end_x, lane_y),
+                (end_x, end.y),
+                end,
+            ]
+            for segment_start, segment_end in zip(points, points[1:]):
+                schematic.add_wire(segment_start, segment_end, grid_units=False)
+            route_index += 1
 
     schematic.save(OUTPUT, preserve_format=False)
     print(
