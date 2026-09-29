@@ -1,8 +1,5 @@
 name: CAN IO hardware
 
-permissions:
-  contents: write
-
 on:
   push:
     paths:
@@ -174,24 +171,6 @@ jobs:
             fi
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Store verified routed board on the source branch
-        if: github.event_name == 'push'
-        shell: bash
-        run: |
-          set -euo pipefail
-          routed=hardware/can-io-module/manufacturing/generated/can-io-module-routed.kicad_pcb
-          board=hardware/can-io-module/can-io-module.kicad_pcb
-          cp "$routed" "$board"
-          git add "$board"
-          if git diff --cached --quiet; then
-            echo "Verified route is already checked in."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "chore: store verified CAN IO route [skip ci]"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
 
       - name: Export review and fabrication files
         run: |
