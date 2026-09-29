@@ -85,6 +85,12 @@ jobs:
             exit "$erc_status"
           fi
 
+      - name: Install Java 25 for Freerouting
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+
       - name: Download pinned Freerouting
         shell: bash
         run: |
