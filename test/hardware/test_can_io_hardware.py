@@ -177,10 +177,10 @@ class CanIoHardwareContractTest(unittest.TestCase):
         self.assertRegex(u1, r'\(size\s+0\.25\s+1\.2(?:0)?\)')
         self.assertNotRegex(u1, r'\(size\s+1\.15\s+0\.75\)')
 
-    def test_different_nets_never_share_a_physical_pad_center(self):
+    def test_different_nets_keep_minimum_copper_clearance_between_pads(self):
         root = Path(__file__).resolve().parents[2]
         pcb = (root / "hardware/can-io-module/can-io-module.kicad_pcb").read_text(encoding="utf-8")
-        occupied: dict[tuple[float, float], tuple[str, str, str]] = {}
+        pads: list[tuple[str, str, str, float, float, float, float]] = []
         collisions: list[str] = []
         for footprint in _sexpr_blocks(pcb, "footprint"):
             ref_match = re.search(r'\(property\s+"Reference"\s+"([^"]+)"', footprint)
@@ -190,18 +190,40 @@ class CanIoHardwareContractTest(unittest.TestCase):
             ref = ref_match.group(1)
             origin_x, origin_y = map(float, origin_match.groups())
             for pad in _sexpr_blocks(footprint, "pad"):
-                pad_match = re.search(r'\(pad\s+"([^"]+)".*?\(at\s+(-?[\d.]+)\s+(-?[\d.]+)', pad, re.DOTALL)
+                pad_match = re.search(
+                    r'\(pad\s+"([^"]+)".*?\(at\s+(-?[\d.]+)\s+(-?[\d.]+)(?:\s+(-?[\d.]+))?\).*?'
+                    r'\(size\s+([\d.]+)\s+([\d.]+)\)',
+                    pad,
+                    re.DOTALL,
+                )
                 net_match = re.search(r'\(net\s+\d+\s+"([^"]+)"\)', pad)
                 if not pad_match or not net_match:
                     continue
-                pin, local_x, local_y = pad_match.groups()
-                point = (round(origin_x + float(local_x), 3), round(origin_y + float(local_y), 3))
-                current = (ref, pin, net_match.group(1))
-                previous = occupied.get(point)
-                if previous and previous[2] != current[2]:
-                    collisions.append(f"{point}: {previous} overlaps {current}")
-                else:
-                    occupied[point] = current
+                pin, local_x, local_y, angle, width, height = pad_match.groups()
+                width, height = float(width), float(height)
+                if angle and round(float(angle)) % 180 == 90:
+                    width, height = height, width
+                pads.append((
+                    ref,
+                    pin,
+                    net_match.group(1),
+                    origin_x + float(local_x),
+                    origin_y + float(local_y),
+                    width,
+                    height,
+                ))
+        required_clearance = 0.20
+        for index, first in enumerate(pads):
+            for second in pads[index + 1:]:
+                if first[2] == second[2]:
+                    continue
+                gap_x = abs(first[3] - second[3]) - (first[5] + second[5]) / 2
+                gap_y = abs(first[4] - second[4]) - (first[6] + second[6]) / 2
+                if gap_x < required_clearance - 0.001 and gap_y < required_clearance - 0.001:
+                    collisions.append(
+                        f"{first[0]}.{first[1]}[{first[2]}] conflicts with "
+                        f"{second[0]}.{second[1]}[{second[2]}] (gaps {gap_x:.3f}, {gap_y:.3f} mm)"
+                    )
         self.assertEqual([], collisions)
 
     def test_autorouter_import_refills_ground_plane(self):
