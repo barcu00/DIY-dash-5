@@ -78,7 +78,7 @@ jobs:
             {
               cat hardware/can-io-module/manufacturing/generated/erc-command.log
               test ! -f hardware/can-io-module/manufacturing/generated/erc-report.rpt || \
-                grep -B 4 -A 1 -m 3 '; error' hardware/can-io-module/manufacturing/generated/erc-report.rpt
+                head -n 24 hardware/can-io-module/manufacturing/generated/erc-report.rpt
             } | tail -n 30 | tac | while IFS= read -r report_line; do
               echo "::error title=CAN IO ERC::${report_line}"
             done
