@@ -85,24 +85,50 @@ jobs:
             exit "$erc_status"
           fi
 
-      - name: Autoroute two-layer PCB with Freerouting
+      - name: Download pinned Freerouting
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=hardware/can-io-module/manufacturing/generated
+          curl --fail --location --retry 3 \
+            --output "$out/freerouting.jar" \
+            https://github.com/freerouting/freerouting/releases/download/v2.4.1/freerouting-2.4.1.jar
+
+      - name: Export clean Specctra design
         shell: bash
         run: |
           set -euo pipefail
           board=hardware/can-io-module/can-io-module.kicad_pcb
           out=hardware/can-io-module/manufacturing/generated
-          curl --fail --location --retry 3 \
-            --output "$out/freerouting.jar" \
-            https://github.com/freerouting/freerouting/releases/download/v2.4.1/freerouting-2.4.1.jar
           python3 scripts/autoroute_can_io.py export "$board" "$out/can-io-module.dsn"
+
+      - name: Route two-layer PCB with Freerouting
+        shell: bash
+        run: |
+          set +e
+          out=hardware/can-io-module/manufacturing/generated
           java -jar "$out/freerouting.jar" \
             --gui.enabled=false --analytics.enabled=false \
             --logging.file.enabled=false --logging.console.level=INFO \
             --router.result_json="$out/freerouting-result.json" \
             -de "$out/can-io-module.dsn" \
             -do "$out/can-io-module.ses" \
-            -mp 20 -mt 4
+            -mp 20 -mt 4 2>&1 | tee "$out/freerouting-command.log"
+          routing_status=${PIPESTATUS[0]}
+          if (( routing_status != 0 )); then
+            tail -n 20 "$out/freerouting-command.log" | tac | while IFS= read -r report_line; do
+              echo "::error title=Freerouting::${report_line}"
+            done
+            exit "$routing_status"
+          fi
           test -s "$out/can-io-module.ses"
+
+      - name: Import routed Specctra session
+        shell: bash
+        run: |
+          set -euo pipefail
+          board=hardware/can-io-module/can-io-module.kicad_pcb
+          out=hardware/can-io-module/manufacturing/generated
           python3 scripts/autoroute_can_io.py import "$board" "$out/can-io-module.ses"
           cp "$board" "$out/can-io-module-routed.kicad_pcb"
 
