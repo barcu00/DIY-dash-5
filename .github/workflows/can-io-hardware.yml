@@ -1,5 +1,8 @@
 name: CAN IO hardware
 
+permissions:
+  contents: write
+
 on:
   push:
     paths:
@@ -177,10 +180,27 @@ jobs:
           board=hardware/can-io-module/manufacturing/generated/can-io-module-routed.kicad_pcb
           kicad-cli sch export pdf --output hardware/can-io-module/manufacturing/generated/can-io-module-schematic.pdf hardware/can-io-module/can-io-module.kicad_sch
           kicad-cli pcb export svg --layers F.Cu,B.Cu,F.Silkscreen,B.Silkscreen,Edge.Cuts --output hardware/can-io-module/manufacturing/generated/can-io-module-pcb.svg "$board"
+          mkdir -p hardware/can-io-module/renders
+          kicad-cli pcb export svg --exclude-drawing-sheet --layers F.Cu,F.Silkscreen,Edge.Cuts --output hardware/can-io-module/renders/can-io-rev-c-top.svg "$board"
+          kicad-cli pcb export svg --exclude-drawing-sheet --mirror --layers B.Cu,B.Silkscreen,Edge.Cuts --output hardware/can-io-module/renders/can-io-rev-c-bottom.svg "$board"
           kicad-cli pcb export gerbers --output hardware/can-io-module/manufacturing/generated/gerbers/ "$board"
           kicad-cli pcb export drill --output hardware/can-io-module/manufacturing/generated/drill/ "$board"
           kicad-cli pcb export pos --format csv --units mm --output hardware/can-io-module/manufacturing/generated/position/can-io-module-top-pos.csv "$board"
           cp hardware/can-io-module/bom/*.csv hardware/can-io-module/manufacturing/generated/
+
+      - name: Store verified PCB renders on the source branch
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add hardware/can-io-module/renders/can-io-rev-c-top.svg hardware/can-io-module/renders/can-io-rev-c-bottom.svg
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "docs: update verified CAN IO PCB renders [skip ci]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
 
       - name: Upload reports and prototype package
         if: always()
