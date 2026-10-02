@@ -2,13 +2,15 @@
 
 #include <cstdint>
 
+#include "board/hardware_profile.h"
+
 namespace DashboardConfig {
 constexpr uint32_t kCanBitrate = 1000000U;
 constexpr uint32_t kCanTimeoutMs = 1500U;
 constexpr uint32_t kUiUpdateIntervalMs = 25U;
 constexpr bool kDemoEnabled = true;
-constexpr uint8_t kCanTxGpio = 15U;
-constexpr uint8_t kCanRxGpio = 16U;
+constexpr uint8_t kCanTxGpio = currentHardwareProfile().can_tx_gpio;
+constexpr uint8_t kCanRxGpio = currentHardwareProfile().can_rx_gpio;
 
 constexpr float kCltWarningC = 105.0f;
 constexpr float kCltCriticalC = 115.0f;

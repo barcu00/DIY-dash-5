@@ -11,7 +11,7 @@ class FakeEnvironment(dict):
         self["PIOENV"] = pioenv
         self.flash_size = flash_size
         self.build = root / "build"
-        self.build.mkdir()
+        self.build.mkdir(parents=True)
         self.framework = root / "framework"
         self.framework.mkdir()
         for name in ("bootloader.bin", "partitions.bin", "firmware.bin"):

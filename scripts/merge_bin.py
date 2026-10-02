@@ -6,7 +6,10 @@ import shutil
 from os.path import basename, join
 
 app_bin = join("$BUILD_DIR", "${PROGNAME}.bin")
-merged_bin = join("$BUILD_DIR", "DIY-Dash-ESP32-S3-Touch-LCD-5-full.bin")
+display_size = "7" if env.get("PIOENV") == "waveshare_7" else "5"
+merged_bin = join(
+    "$BUILD_DIR", f"DIY-Dash-ESP32-S3-Touch-LCD-{display_size}-full.bin"
+)
 manifest_file = join("$BUILD_DIR", "flash-layout.json")
 
 

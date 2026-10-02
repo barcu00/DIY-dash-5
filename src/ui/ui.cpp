@@ -1,6 +1,7 @@
 #include "ui.h"
 #include <cstdio>
 #include <cstring>
+#include "board/hardware_profile.h"
 #include "ecu/can_profile_registry.h"
 #include "ui/tile_engine.h"
 #include "ui/parameter_options.h"
@@ -466,7 +467,11 @@ void Ui::createSystemSettings(lv_obj_t* panel) {
         lv_obj_add_state(warning_sound_, LV_STATE_CHECKED);
     lv_obj_add_event_cb(warning_sound_, settingsEvent, LV_EVENT_VALUE_CHANGED,
                         reinterpret_cast<void*>(WarningSoundChanged));
-    makeLabel(panel, "DO0 active buzzer | Startup test always enabled", 24, 210,
+    makeLabel(panel,
+              currentHardwareProfile().has_do0_buzzer
+                  ? "DO0 active buzzer | Startup test always enabled"
+                  : "Buzzer unavailable on this board",
+              24, 210,
               &lv_font_montserrat_12, UiTheme::muted());
     makeLabel(panel, "Firmware and runtime information", 24, 26,
               &lv_font_montserrat_14, UiTheme::text());

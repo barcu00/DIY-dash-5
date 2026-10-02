@@ -17,6 +17,13 @@ EXPECTED = {
     "spiffs": (0x01, 0x82, 0xD10000, 0x2E0000),
     "coredump": (0x01, 0x03, 0xFF0000, 0x010000),
 }
+EXPECTED_8MB = {
+    "nvs": (0x01, 0x02, 0x009000, 0x005000),
+    "app0": (0x00, 0x00, 0x010000, 0x5F0000),
+    "dashcfg": (0x01, 0x02, 0x600000, 0x080000),
+    "spiffs": (0x01, 0x82, 0x680000, 0x170000),
+    "coredump": (0x01, 0x03, 0x7F0000, 0x010000),
+}
 
 
 def parse_partition_table(data: bytes) -> dict[str, tuple[int, int, int, int]]:
@@ -35,25 +42,29 @@ def parse_partition_table(data: bytes) -> dict[str, tuple[int, int, int, int]]:
 
 
 def validate_partition_table(
-    data: bytes,
+    data: bytes, expected: dict[str, tuple[int, int, int, int]] = EXPECTED,
 ) -> dict[str, tuple[int, int, int, int]]:
     table = parse_partition_table(data)
-    for label, expected in EXPECTED.items():
+    for label, required in expected.items():
         actual = table.get(label)
-        if actual != expected:
+        if actual != required:
             raise ValueError(
-                f"partition {label} mismatch: expected {expected}, got {actual}"
+                f"partition {label} mismatch: expected {required}, got {actual}"
             )
     return table
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) != 2:
-        print("usage: validate_partition_bin.py PARTITIONS.BIN", file=sys.stderr)
+    if len(argv) not in (2, 3) or (len(argv) == 3 and argv[2] != "8mb"):
+        print(
+            "usage: validate_partition_bin.py PARTITIONS.BIN [8mb]",
+            file=sys.stderr,
+        )
         return 2
     path = Path(argv[1])
+    expected = EXPECTED_8MB if len(argv) == 3 else EXPECTED
     try:
-        table = validate_partition_table(path.read_bytes())
+        table = validate_partition_table(path.read_bytes(), expected)
     except (OSError, UnicodeDecodeError, ValueError) as error:
         print(f"partition validation failed: {error}", file=sys.stderr)
         return 1

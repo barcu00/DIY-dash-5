@@ -6,6 +6,7 @@
 #include <cstring>
 
 #include "board/display_tuning.h"
+#include "board/hardware_profile.h"
 #include "board/rgb_sdk_requirements.h"
 
 using esp_panel::board::Board;
@@ -13,6 +14,11 @@ using esp_panel::drivers::TouchPoint;
 uintptr_t diy_lvgl_memory = 0;
 
 bool BoardDisplay::beginBuzzer() {
+    if (!currentHardwareProfile().has_do0_buzzer) {
+        buzzer_ready_ = false;
+        buzzer_on_ = false;
+        return true;
+    }
     auto* adapter = board_ ? board_->getIO_Expander() : nullptr;
     auto* expander = adapter ? adapter->getBase() : nullptr;
     // CH422G OC0 maps to logical pin 8, not ESP32 GPIO8 (I2C SDA).
@@ -60,6 +66,19 @@ bool BoardDisplay::begin() {
     if (!board_->begin()) {
         Serial.println("[DIY Dash] ERROR: board begin failed");
         return false;
+    }
+
+    if (currentHardwareProfile().select_can_with_exio5) {
+        auto* adapter = board_->getIO_Expander();
+        auto* expander = adapter ? adapter->getBase() : nullptr;
+        constexpr uint8_t kCanUsbSelectorExio = 5U;
+        if (!expander ||
+            !expander->pinMode(kCanUsbSelectorExio, OUTPUT) ||
+            !expander->digitalWrite(kCanUsbSelectorExio, HIGH)) {
+            Serial.println("[DIY Dash] ERROR: cannot select onboard CAN routing");
+            return false;
+        }
+        Serial.println("[DIY Dash] Onboard CAN selected on GPIO20/GPIO19");
     }
 
     lcd_ = board_->getLCD();
