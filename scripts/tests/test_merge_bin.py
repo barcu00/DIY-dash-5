@@ -6,8 +6,10 @@ import unittest
 
 
 class FakeEnvironment(dict):
-    def __init__(self, root):
+    def __init__(self, root, pioenv="waveshare_5", flash_size="16MB"):
         super().__init__()
+        self["PIOENV"] = pioenv
+        self.flash_size = flash_size
         self.build = root / "build"
         self.build.mkdir()
         self.framework = root / "framework"
@@ -25,7 +27,7 @@ class FakeEnvironment(dict):
         self.result = 0
 
     def BoardConfig(self):
-        return {"build.mcu": "esp32s3", "upload.flash_size": "16MB"}
+        return {"build.mcu": "esp32s3", "upload.flash_size": self.flash_size}
 
     def subst(self, value):
         return (value.replace("$BUILD_DIR", str(self.build))
@@ -70,6 +72,24 @@ class MergeFirmwareTests(unittest.TestCase):
         self.assertEqual(
             ["0x0000", "0x8000", "0xe000", "0x10000"],
             [image["offset"] for image in manifest["images"]],
+        )
+
+    def test_seven_inch_build_uses_distinct_full_image_name_and_size(self):
+        self.env = FakeEnvironment(
+            Path(self.temp.name) / "seven", "waveshare_7", "8MB"
+        )
+        script = Path(__file__).resolve().parents[1] / "merge_bin.py"
+        runpy.run_path(str(script), init_globals={
+            "env": self.env, "Import": lambda _: None,
+        })
+
+        self.env.action([], [], self.env)
+        manifest = json.loads((self.env.build / "flash-layout.json").read_text())
+
+        self.assertEqual("8MB", manifest["flash_size"])
+        self.assertEqual(
+            "DIY-Dash-ESP32-S3-Touch-LCD-7-full.bin",
+            manifest["merged_image"],
         )
 
     def test_missing_input_stops_merge(self):
