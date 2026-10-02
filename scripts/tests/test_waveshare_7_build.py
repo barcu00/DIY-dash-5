@@ -1,4 +1,5 @@
 import csv
+import json
 from pathlib import Path
 import subprocess
 import unittest
@@ -21,6 +22,22 @@ class WaveshareSevenBuildTests(unittest.TestCase):
         self.assertIn('"env:waveshare_7"', result.stdout)
         self.assertIn('"waveshare_esp32_s3_touch_lcd_7"', result.stdout)
         self.assertIn('"partitions_diy_dash_8mb.csv"', result.stdout)
+
+    def test_can_pins_are_not_claimed_by_native_usb_cdc_at_startup(self):
+        seven = json.loads(
+            (ROOT / "boards" / "waveshare_esp32_s3_touch_lcd_7.json")
+            .read_text(encoding="utf-8")
+        )
+        five = json.loads(
+            (ROOT / "boards" / "waveshare_esp32_s3_touch_lcd_5.json")
+            .read_text(encoding="utf-8")
+        )
+
+        seven_flags = seven["build"]["extra_flags"]
+        five_flags = five["build"]["extra_flags"]
+        self.assertIn("-DARDUINO_USB_CDC_ON_BOOT=0", seven_flags)
+        self.assertNotIn("-DARDUINO_USB_CDC_ON_BOOT=1", seven_flags)
+        self.assertIn("-DARDUINO_USB_CDC_ON_BOOT=1", five_flags)
 
     def test_eight_megabyte_layout_fits_and_keeps_large_application(self):
         path = ROOT / "partitions_diy_dash_8mb.csv"
