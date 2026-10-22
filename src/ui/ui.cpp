@@ -497,10 +497,16 @@ void Ui::update(const CompositeTelemetryView& state,
     latest_racechrono_ = state.raceChronoState();
     latest_ui_status_ = status;
     latest_state_ms_ = diagnostics.uptime_ms;
-    for (std::size_t i=0; i<dash_highlights_.size(); ++i)
-        dash_highlights_[i] = warnings.isHighlighted({PageId::Dash, static_cast<uint8_t>(i)});
-    for (std::size_t i=0; i<track_highlights_.size(); ++i)
-        track_highlights_[i] = warnings.isHighlighted({PageId::Track, static_cast<uint8_t>(i)});
+    for (std::size_t i=0; i<dash_highlights_.size(); ++i) {
+        const TileAddress address{PageId::Dash, static_cast<uint8_t>(i)};
+        dash_highlights_[i] = warnings.isHighlighted(address);
+        dash_data_lost_[i] = warnings.isDataLost(address);
+    }
+    for (std::size_t i=0; i<track_highlights_.size(); ++i) {
+        const TileAddress address{PageId::Track, static_cast<uint8_t>(i)};
+        track_highlights_[i] = warnings.isHighlighted(address);
+        track_data_lost_[i] = warnings.isDataLost(address);
+    }
     if ((update_policy_.shouldUpdateData(PageId::Dash) ||
          update_policy_.shouldUpdateData(PageId::Track)) &&
         update_policy_.allowLayoutUpdates() &&
@@ -514,8 +520,7 @@ void Ui::update(const CompositeTelemetryView& state,
             dash_tiles_[i].update(tiles[i], config.units, state,
                 isRaceChronoParameter(tiles[i].parameter) ||
                     capabilities_.supports(tiles[i].parameter),
-                warnings.isHighlighted({PageId::Dash, static_cast<uint8_t>(i)}),
-                diagnostics.uptime_ms);
+                dash_highlights_[i], diagnostics.uptime_ms, dash_data_lost_[i]);
     }
     if (update_policy_.shouldUpdateData(PageId::Track)) {
         const auto tiles = activeTiles(config, PageId::Track);
@@ -523,8 +528,7 @@ void Ui::update(const CompositeTelemetryView& state,
             track_tiles_[i].update(tiles[i], config.units, state,
                 isRaceChronoParameter(tiles[i].parameter) ||
                     capabilities_.supports(tiles[i].parameter),
-                warnings.isHighlighted({PageId::Track, static_cast<uint8_t>(i)}),
-                diagnostics.uptime_ms);
+                track_highlights_[i], diagnostics.uptime_ms, track_data_lost_[i]);
     }
     if (settings_status_ &&
         update_policy_.shouldUpdateSettingsStatus(diagnostics.uptime_ms)) {
@@ -607,15 +611,15 @@ void Ui::prepareDataPage(Page page) {
     const PageId id = page == Page::Dash ? PageId::Dash : PageId::Track;
     const auto configs = activeTiles(*config_, id);
     const CompositeTelemetryView state(latest_state_, latest_racechrono_);
-    auto refresh = [&](auto& views, const auto& highlights) {
+    auto refresh = [&](auto& views, const auto& highlights, const auto& lost) {
         for (std::size_t i=0; i<configs.size(); ++i)
             views[i].update(configs[i], config_->units, state,
                 isRaceChronoParameter(configs[i].parameter) ||
                     capabilities_.supports(configs[i].parameter),
-                highlights[i], latest_state_ms_);
+                highlights[i], latest_state_ms_, lost[i]);
     };
-    if (page == Page::Dash) refresh(dash_tiles_, dash_highlights_);
-    else refresh(track_tiles_, track_highlights_);
+    if (page == Page::Dash) refresh(dash_tiles_, dash_highlights_, dash_data_lost_);
+    else refresh(track_tiles_, track_highlights_, track_data_lost_);
     const auto& rpm = latest_state_.get(ParameterId::Rpm);
     const uint16_t rpm_value = rpm.valid && rpm.value > 0 ? static_cast<uint16_t>(rpm.value) : 0;
     (page == Page::Dash ? dash_rpm_ : track_rpm_).update(rpm, latest_state_ms_, config_->shift);
@@ -1176,18 +1180,21 @@ void Ui::updateWarningModal(TileWarningEngine& warnings) {
     }
     const PresentedValue current = UnitPresenter::present(modal->parameter, modal->current_native, config_->units);
     const PresentedValue threshold = UnitPresenter::present(modal->parameter, modal->threshold_native, config_->units);
+    char more[32] = "";
+    if (modal->remaining_count)
+        std::snprintf(more, sizeof(more), "\nMore warnings: %u",
+                      static_cast<unsigned>(modal->remaining_count));
     char text[256];
-    if (modal->remaining_count) {
-        std::snprintf(text, sizeof(text), "WARNING\n%s\n%.1f %s\nLimit: %.1f %s\nMore warnings: %u",
-            parameterDescriptor(modal->parameter).name, static_cast<double>(current.value), current.unit,
-            static_cast<double>(threshold.value), threshold.unit,
-            static_cast<unsigned>(modal->remaining_count));
-    } else {
-        std::snprintf(text, sizeof(text), "WARNING\n%s\n%.1f %s\nLimit: %.1f %s",
-            parameterDescriptor(modal->parameter).name, static_cast<double>(current.value), current.unit,
-            static_cast<double>(threshold.value), threshold.unit);
-    }
-    lv_label_set_text(warning_text_, text); lv_obj_move_foreground(warning_panel_);
+    std::snprintf(text, sizeof(text), "WARNING%s\n%s\n%s%.1f %s\nLimit: %.1f %s%s",
+        modal->data_lost ? " - DATA LOST" : "",
+        parameterDescriptor(modal->parameter).name,
+        modal->data_lost ? "Last: " : "",
+        static_cast<double>(current.value), current.unit,
+        static_cast<double>(threshold.value), threshold.unit, more);
+    // Avoid re-laying out the label every frame when nothing changed.
+    if (std::strcmp(lv_label_get_text(warning_text_), text) != 0)
+        lv_label_set_text(warning_text_, text);
+    lv_obj_move_foreground(warning_panel_);
 }
 
 void Ui::warningEvent(lv_event_t*) {

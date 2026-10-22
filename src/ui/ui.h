@@ -145,6 +145,8 @@ private:
     uint32_t latest_state_ms_ = 0U;
     std::array<bool, AppConfig::kDashTileCount> dash_highlights_{};
     std::array<bool, AppConfig::kLayoutTileCapacity> track_highlights_{};
+    std::array<bool, AppConfig::kDashTileCount> dash_data_lost_{};
+    std::array<bool, AppConfig::kLayoutTileCapacity> track_data_lost_{};
     ParameterCapabilities capabilities_{};
     DataSource active_source_ = DataSource::Demo;
     const CanProfile* active_profile_ = nullptr;

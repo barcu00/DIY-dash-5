@@ -54,6 +54,7 @@ void TileWarningEngine::setSignature(RuntimeWarning& runtime,
     runtime.delay_ms = tile.warning.delay_ms;
     runtime.pending_since_ms = 0U;
     runtime.current_native = 0.0f;
+    runtime.data_lost = false;
 }
 
 bool TileWarningEngine::breached(const RuntimeWarning& runtime, float value) {
@@ -104,10 +105,18 @@ void TileWarningEngine::evaluate(const AppConfig& config,
 
         const SignalValue& signal = state.get(tile.parameter);
         if (!signal.valid) {
-            runtime.phase = TileAlarmPhase::Safe;
-            runtime.pending_since_ms = 0U;
+            // A pending breach was never confirmed: drop it. An active
+            // warning stays latched with its last value; losing the sensor
+            // during an excursion must not silently clear the alarm, and
+            // its return must not re-raise an acknowledged one.
+            if (runtime.phase == TileAlarmPhase::Pending) {
+                runtime.phase = TileAlarmPhase::Safe;
+                runtime.pending_since_ms = 0U;
+            }
+            runtime.data_lost = runtime.phase != TileAlarmPhase::Safe;
             continue;
         }
+        runtime.data_lost = false;
         runtime.current_native = signal.value;
 
         if (runtime.phase == TileAlarmPhase::Safe) {
@@ -172,7 +181,7 @@ std::optional<WarningModalData> TileWarningEngine::nextModal() const {
     return WarningModalData{
         addressOf(*best_index), best.parameter, best.current_native,
         best.threshold_native,
-        static_cast<uint8_t>(unacknowledged_count - 1U)};
+        static_cast<uint8_t>(unacknowledged_count - 1U), best.data_lost};
 }
 
 void TileWarningEngine::acknowledge(TileAddress address) {
@@ -191,4 +200,9 @@ bool TileWarningEngine::isHighlighted(TileAddress address) const {
     const TileAlarmPhase phase = runtime_[*index].phase;
     return phase == TileAlarmPhase::ActiveUnacknowledged ||
            phase == TileAlarmPhase::ActiveAcknowledged;
+}
+
+bool TileWarningEngine::isDataLost(TileAddress address) const {
+    const std::optional<std::size_t> index = indexOf(address);
+    return index.has_value() && runtime_[*index].data_lost;
 }

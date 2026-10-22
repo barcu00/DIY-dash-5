@@ -44,9 +44,14 @@ bool EcuCanDecoder::decode(const CanFrame& frame, VehicleState& state,
                 }
             }
 
+            // Structural problems (bad definition, short payload) reject the
+            // whole frame. A single implausible value only invalidates its
+            // own signal: one sensor fault must not blank co-packed channels
+            // such as oil pressure or coolant temperature.
             struct StagedValue {
                 VehicleSignal signal;
                 float value;
+                bool plausible;
             };
             constexpr std::size_t kMaximumSignalsPerFrame = 24U;
             if (candidate.signal_count > kMaximumSignalsPerFrame) {
@@ -95,18 +100,23 @@ bool EcuCanDecoder::decode(const CanFrame& frame, VehicleState& state,
                 } else {
                     return false;
                 }
-                if (!std::isfinite(value) || value < definition.minimum_native ||
-                    value > definition.maximum_native) {
-                    return false;
-                }
-                staged[signal_index] = {definition.signal, value};
+                const bool plausible = std::isfinite(value) &&
+                                       value >= definition.minimum_native &&
+                                       value <= definition.maximum_native;
+                staged[signal_index] = {definition.signal, value, plausible};
             }
+            bool committed = false;
             for (std::size_t signal_index = 0U;
                  signal_index < candidate.signal_count; ++signal_index) {
-                state.set(staged[signal_index].signal,
-                          staged[signal_index].value, now_ms);
+                const StagedValue& item = staged[signal_index];
+                if (item.plausible) {
+                    state.set(item.signal, item.value, now_ms);
+                    committed = true;
+                } else {
+                    state.invalidate(item.signal);
+                }
             }
-            return candidate.signal_count > 0U;
+            return committed;
         }
         return false;
     }

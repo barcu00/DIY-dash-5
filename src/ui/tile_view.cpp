@@ -20,6 +20,10 @@ lv_color_t temperatureBarColor(TemperatureBarZone zone) {
     }
     return UiTheme::muted();
 }
+bool statusText(const char* text) {
+    return std::strcmp(text, "UNAVAILABLE") == 0 ||
+           std::strcmp(text, "DATA LOST") == 0;
+}
 int opticalTextY(const char* text,const lv_font_t* font,int center) {
     int top=font->line_height,bottom=0;uint32_t index=0;
     while(text[index]) {
@@ -222,7 +226,7 @@ void TileView::hide() { if (root_) lv_obj_add_flag(root_, LV_OBJ_FLAG_HIDDEN); }
 void TileView::arrangeUnit(const char* text, bool is_flag) {
     const bool row = size_ == TileSize::CompactRow;
     lv_obj_set_width(unit_, LV_SIZE_CONTENT);
-    if (std::strcmp(text, "UNAVAILABLE") == 0) {
+    if (statusText(text)) {
         lv_obj_set_style_text_font(unit_, &lv_font_montserrat_12, 0);
         lv_obj_set_width(unit_, row ? 136 : geometry_.width - 24);
         lv_obj_set_style_text_align(unit_, LV_TEXT_ALIGN_CENTER, 0);
@@ -259,14 +263,20 @@ void TileView::arrangeUnit(const char* text, bool is_flag) {
 void TileView::update(const TileConfig& config, const UnitSettings& units,
                       const CompositeTelemetryView& state, bool supported,
                       bool warning_active,
-                      uint32_t now_ms) {
+                      uint32_t now_ms, bool data_lost) {
     if (!root_ || lv_obj_has_flag(root_, LV_OBJ_FLAG_HIDDEN)) return;
-    if (!warning_initialized_ || warning_active != last_warning_active_) {
-          lv_obj_set_style_border_width(root_, warning_active ? 3 : base_border_ ? 1 : 0, 0);
+    data_lost = data_lost && warning_active;
+    const bool data_lost_changed =
+        warning_initialized_ && data_lost != last_data_lost_;
+    if (!warning_initialized_ || warning_active != last_warning_active_ ||
+        data_lost != last_data_lost_) {
+        lv_obj_set_style_border_width(root_, warning_active ? 3 : base_border_ ? 1 : 0, 0);
         lv_obj_set_style_border_color(
-            root_, warning_active ? UiTheme::red() : UiTheme::border(), 0);
+            root_, data_lost ? UiTheme::orange()
+                   : warning_active ? UiTheme::red() : UiTheme::border(), 0);
         warning_initialized_ = true;
         last_warning_active_ = warning_active;
+        last_data_lost_ = data_lost;
     }
 
     const SignalValue& source = state.get(config.parameter);
@@ -278,7 +288,7 @@ void TileView::update(const TileConfig& config, const UnitSettings& units,
         next_refresh_ms_ = now_ms;
         refresh_initialized_ = true;
     }
-    if (!validity_changed &&
+    if (!validity_changed && !data_lost_changed &&
         static_cast<int32_t>(now_ms - next_refresh_ms_) < 0) {
         return;
     }
@@ -343,6 +353,8 @@ void TileView::update(const TileConfig& config, const UnitSettings& units,
         }
     } else if (!supported) {
         unit_text = "UNAVAILABLE";
+    } else if (!signal.valid && data_lost) {
+        unit_text = "DATA LOST";
     } else if (signal.valid) {
         const PresentedValue p = UnitPresenter::present(
             config.parameter, signal.value, units);
@@ -405,7 +417,7 @@ void TileView::arrangeRow(bool is_flag) {
     const auto* font=lv_obj_get_style_text_font(value_,0);
     lv_point_t v,u;
     lv_txt_get_size(&v,lv_label_get_text(value_),font,0,0,LV_COORD_MAX,LV_TEXT_FLAG_NONE);
-    const bool unavailable=std::strcmp(lv_label_get_text(unit_),"UNAVAILABLE")==0;
+    const bool unavailable=statusText(lv_label_get_text(unit_));
     lv_txt_get_size(&u,lv_label_get_text(unit_),&lv_font_montserrat_16,0,0,LV_COORD_MAX,LV_TEXT_FLAG_NONE);
     const int gap=u.x && !unavailable ? 8:0;
     const int group_width=v.x+gap+(unavailable ? 0:u.x);
