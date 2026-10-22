@@ -29,3 +29,7 @@ struct WarningLimits {
     float hysteresis_maximum;
 };
 WarningLimits warningLimits(ParameterId id);
+// Range accepted for already stored warnings: the per-unit limits widened by
+// the legacy 0..999 range, so configurations saved by older firmware load
+// unchanged. New entries in the editor use warningLimits().
+WarningLimits storedWarningLimits(ParameterId id);

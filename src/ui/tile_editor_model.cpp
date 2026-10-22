@@ -19,7 +19,7 @@ TileConfig* tileAt(AppConfig& config, TileAddress address) {
 }
 
 bool validWarning(const TileConfig& tile) {
-    const WarningLimits limits = warningLimits(tile.parameter);
+    const WarningLimits limits = storedWarningLimits(tile.parameter);
     return std::isfinite(tile.warning.threshold_native) &&
            std::isfinite(tile.warning.hysteresis_native) &&
            tile.warning.threshold_native >= limits.minimum &&
@@ -89,7 +89,7 @@ void TileEditorModel::setParameter(ParameterId parameter) {
         }
         // Keep a dormant warning inside the new parameter's limits so the
         // draft stays valid (e.g. a 110 C threshold moved to a lambda tile).
-        const WarningLimits limits = warningLimits(parameter);
+        const WarningLimits limits = storedWarningLimits(parameter);
         TileWarningConfig& warning = draft_.tile.warning;
         if (!std::isfinite(warning.threshold_native)) warning.threshold_native = 0.0f;
         if (!std::isfinite(warning.hysteresis_native)) warning.hysteresis_native = 0.0f;

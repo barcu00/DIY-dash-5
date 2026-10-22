@@ -79,7 +79,7 @@ void validateTiles(std::array<TileConfig, Count>& tiles) {
             static_cast<uint8_t>(WarningDirection::Below)) {
             config.warning.direction = WarningDirection::Above;
         }
-        const WarningLimits limits = warningLimits(config.parameter);
+        const WarningLimits limits = storedWarningLimits(config.parameter);
         if (!std::isfinite(config.warning.threshold_native)) {
             config.warning.threshold_native = 0.0f;
         }

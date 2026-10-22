@@ -175,3 +175,10 @@ WarningLimits warningLimits(ParameterId id) {
     }
     return {-9999.0f, 9999.0f, 9999.0f};
 }
+
+WarningLimits storedWarningLimits(ParameterId id) {
+    const WarningLimits strict = warningLimits(id);
+    return {strict.minimum < 0.0f ? strict.minimum : 0.0f,
+            strict.maximum > 999.0f ? strict.maximum : 999.0f,
+            strict.hysteresis_maximum > 999.0f ? strict.hysteresis_maximum : 999.0f};
+}
