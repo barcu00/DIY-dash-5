@@ -24,6 +24,9 @@ public:
     bool queueOnExit(const AppConfig& candidate);
     bool queueFactoryReset();
     bool take(ConfigCommitRequest& request);
+    // Same as take() but without copying the ~7 KB candidate: the returned
+    // request stays valid until complete() or the next queue call.
+    const ConfigCommitRequest* takeInPlace();
     bool complete(uint32_t revision, bool success);
     bool discardChanges();
 

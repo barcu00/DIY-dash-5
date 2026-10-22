@@ -25,6 +25,7 @@ public:
 private:
     void applyRuntimeConfig(uint32_t now_ms, bool configure_engine = true);
     UiRuntimeStatus runtimeStatus(uint32_t now_ms) const;
+    [[gnu::noinline]] void serviceConfigCommit(uint32_t now_ms);
 
     BoardDisplay board_;
     CanDriver can_;

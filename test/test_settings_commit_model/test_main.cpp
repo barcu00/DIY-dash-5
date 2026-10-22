@@ -171,6 +171,23 @@ void test_discard_clears_retry_state_after_failed_request() {
     TEST_ASSERT_FALSE(model.take(request));
 }
 
+void test_take_in_place_exposes_pending_request_without_copy() {
+    SettingsCommitModel model;
+    TEST_ASSERT_NULL(model.takeInPlace());
+    AppConfig candidate = AppConfig::defaults();
+    candidate.brightness_percent = 70U;
+    model.markDirty(true);
+    TEST_ASSERT_TRUE(model.queueOnExit(candidate));
+
+    const ConfigCommitRequest* request = model.takeInPlace();
+    TEST_ASSERT_NOT_NULL(request);
+    TEST_ASSERT_EQUAL_UINT8(70U, request->candidate.brightness_percent);
+    TEST_ASSERT_TRUE(request->reconfigure_runtime);
+    TEST_ASSERT_NULL(model.takeInPlace());
+    TEST_ASSERT_TRUE(model.complete(request->revision, true));
+    TEST_ASSERT_FALSE(model.dirty());
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_unchanged_exit_does_not_queue_a_commit);
@@ -184,5 +201,6 @@ int main(int, char**) {
     RUN_TEST(test_factory_reset_uses_a_distinct_commit_kind);
     RUN_TEST(test_discard_is_rejected_while_a_request_is_in_flight);
     RUN_TEST(test_discard_clears_retry_state_after_failed_request);
+    RUN_TEST(test_take_in_place_exposes_pending_request_without_copy);
     return UNITY_END();
 }

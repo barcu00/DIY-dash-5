@@ -48,26 +48,7 @@ void App::loop() {
     }
 
     const uint32_t now = millis();
-    ConfigCommitRequest commit;
-    if (ui_.takeConfigCommit(commit)) {
-        const AppConfig previous = config_;
-        const bool saved = commit.kind == ConfigCommitKind::FactoryReset
-                               ? config_repository_.reset(config_)
-                               : config_repository_.saveCandidate(
-                                     commit.candidate, config_);
-        if (saved && commit.reconfigure_runtime) {
-            const bool configure_engine =
-                previous.data_source != config_.data_source ||
-                previous.can.profile_id != config_.can.profile_id ||
-                previous.can.bitrate != config_.can.bitrate ||
-                previous.can.timeout_ms != config_.can.timeout_ms;
-            applyRuntimeConfig(now, configure_engine);
-        }
-        if (board_.lock()) {
-            ui_.completeConfigCommit(commit.revision, saved);
-            board_.unlock();
-        }
-    }
+    serviceConfigCommit(now);
     if (ui_.takeRaceChronoRestart()) racechrono_runtime_.restart(now);
     CanFrame frame;
     for (uint8_t drained = 0U; drained < 32U && can_.poll(frame); ++drained) {
@@ -108,6 +89,37 @@ void App::loop() {
         board_.unlock();
     }
     delay(2);
+}
+
+// Kept out of loop() so its locals do not sit on the stack underneath the
+// LVGL call chain. The request is read in place from the UI commit model
+// (no 7 KB copy) and only the engine-relevant fields of the previous
+// configuration are remembered.
+void App::serviceConfigCommit(uint32_t now_ms) {
+    const ConfigCommitRequest* commit = ui_.takeConfigCommit();
+    if (commit == nullptr) return;
+    const DataSource previous_source = config_.data_source;
+    const auto previous_profile = config_.can.profile_id;
+    const uint32_t previous_bitrate = config_.can.bitrate;
+    const uint32_t previous_timeout = config_.can.timeout_ms;
+    const bool reconfigure = commit->reconfigure_runtime;
+    const uint32_t revision = commit->revision;
+    const bool saved = commit->kind == ConfigCommitKind::FactoryReset
+                           ? config_repository_.reset(config_)
+                           : config_repository_.saveCandidate(
+                                 commit->candidate, config_);
+    if (saved && reconfigure) {
+        const bool configure_engine =
+            previous_source != config_.data_source ||
+            previous_profile != config_.can.profile_id ||
+            previous_bitrate != config_.can.bitrate ||
+            previous_timeout != config_.can.timeout_ms;
+        applyRuntimeConfig(now_ms, configure_engine);
+    }
+    if (board_.lock()) {
+        ui_.completeConfigCommit(revision, saved);
+        board_.unlock();
+    }
 }
 
 void App::applyRuntimeConfig(uint32_t now_ms, bool configure_engine) {

@@ -3,8 +3,8 @@
 
 App app;
 
-// Preset banks are data only, but NVS migration and deferred-save snapshots
-// temporarily coexist on the Arduino/UI stack. Budget for those copies.
+// NVS migration still stages legacy structs on this stack at boot. Runtime
+// saves and settings edits keep their AppConfig working copies on the heap.
 SET_LOOP_TASK_STACK_SIZE(32768);
 
 void setup() {

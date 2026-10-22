@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <memory>
 #include <cstddef>
 #include <cstdint>
 #include <lvgl.h>
@@ -43,7 +44,7 @@ public:
     void updateShiftLight(const VehicleState& state, uint32_t now_ms,
                           const ShiftLightConfig& config);
     void setDataContext(DataSource source, const CanProfile* profile);
-    bool takeConfigCommit(ConfigCommitRequest& request);
+    const ConfigCommitRequest* takeConfigCommit();
     void completeConfigCommit(uint32_t revision, bool success);
     bool takeWarningTest();
     bool takeRaceChronoRestart();
@@ -107,7 +108,7 @@ private:
     void closeAuxiliary();
     void openParameterPicker();
     void renderParameterPicker();
-    bool stageSettings(AppConfig candidate, bool reconfigure_runtime);
+    bool stageSettings(AppConfig& candidate, bool reconfigure_runtime);
     bool queueSettingsOnExit();
     const AppConfig& settingsConfig() const;
     void beginSettingsSession();
@@ -153,6 +154,10 @@ private:
     SettingsFlowModel settings_flow_{};
     AppConfig* config_ = nullptr;
     AppConfig settings_draft_ = AppConfig::defaults();
+    // Heap (PSRAM) working copy for event handlers; keeps ~7 KB AppConfig
+    // copies off the LVGL call stack. Handlers are not re-entrant.
+    std::unique_ptr<AppConfig> candidate_scratch_;
+    AppConfig* draftCandidate(const AppConfig& source);
     bool settings_draft_active_ = false;
     bool pending_settings_exit_ = false;
     bool pending_settings_exit_to_page_ = false;

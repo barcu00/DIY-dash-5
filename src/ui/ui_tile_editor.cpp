@@ -275,8 +275,10 @@ void Ui::closeEditor() {
 void Ui::saveEditor() {
     if(!config_ || !editor_.isOpen() || editor_commit_pending_)return;
     syncEditorDraftFromControls();if(!editor_controls_valid_)return;
-    AppConfig candidate=editor_return_page_==Page::Settings &&
-        settings_draft_active_ ? settings_draft_:*config_;
+    AppConfig* const scratch=draftCandidate(editor_return_page_==Page::Settings &&
+        settings_draft_active_ ? settings_draft_:*config_);
+    if(!scratch) {lv_label_set_text(editor_message_,"SAVE FAILED");return;}
+    AppConfig& candidate=*scratch;
     if(!editor_.writeCandidate(candidate)) {lv_label_set_text(editor_message_,"Check value ranges");return;}
     commit_model_.markDirty(false);
     if(!commit_model_.queueOnExit(candidate)) {lv_label_set_text(editor_message_,"SAVE FAILED");return;}

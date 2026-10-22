@@ -1,6 +1,7 @@
 #include "ui.h"
 #include <cstdio>
 #include <cstring>
+#include <new>
 #include "board/hardware_profile.h"
 #include "ecu/can_profile_registry.h"
 #include "ui/tile_engine.h"
@@ -639,8 +640,8 @@ void Ui::load(Page page) {
     if (page == Page::Settings) showSettings(SettingsCategory::Home);
 }
 
-bool Ui::takeConfigCommit(ConfigCommitRequest& request) {
-    return commit_model_.take(request);
+const ConfigCommitRequest* Ui::takeConfigCommit() {
+    return commit_model_.takeInPlace();
 }
 
 void Ui::completeConfigCommit(uint32_t revision, bool success) {
@@ -742,7 +743,15 @@ void Ui::showCommitFeedback(const char* message) {
     commit_toast_until_ms_ = lv_tick_get() + 1500U;
 }
 
-bool Ui::stageSettings(AppConfig candidate, bool reconfigure_runtime) {
+AppConfig* Ui::draftCandidate(const AppConfig& source) {
+    if (!candidate_scratch_)
+        candidate_scratch_.reset(new (std::nothrow) AppConfig(source));
+    else if (candidate_scratch_.get() != &source)
+        *candidate_scratch_ = source;
+    return candidate_scratch_.get();
+}
+
+bool Ui::stageSettings(AppConfig& candidate, bool reconfigure_runtime) {
     if (!config_ || !candidate.validate().valid) {
         showSettingsMessage("SAVE ERROR");
         if (board_ && config_)
@@ -918,23 +927,26 @@ void Ui::confirmReset() {
         reset_commit_pending_ || commit_model_.busy()) return;
     const SettingsResetTarget target = settings_flow_.pendingReset();
     bool queued = false;
-    if (target == SettingsResetTarget::DashLayout) {
-        AppConfig candidate = settings_draft_;
+    AppConfig* const scratch =
+        target == SettingsResetTarget::Factory ? nullptr
+                                               : draftCandidate(settings_draft_);
+    if (target == SettingsResetTarget::DashLayout && scratch) {
+        AppConfig& candidate = *scratch;
         resetPageLayouts(candidate, PageId::Dash);
         if (candidate.validate().valid) {
             settings_draft_ = candidate;
             commit_model_.markDirty(false);
             queued = commit_model_.queueOnExit(settings_draft_);
         }
-    } else if (target == SettingsResetTarget::TrackLayout) {
-        AppConfig candidate = settings_draft_;
+    } else if (target == SettingsResetTarget::TrackLayout && scratch) {
+        AppConfig& candidate = *scratch;
         resetPageLayouts(candidate, PageId::Track);
         if (candidate.validate().valid) {
             settings_draft_ = candidate;
             commit_model_.markDirty(false);
             queued = commit_model_.queueOnExit(settings_draft_);
         }
-    } else {
+    } else if (target == SettingsResetTarget::Factory) {
         queued = commit_model_.queueFactoryReset();
     }
     if (!queued) {
@@ -960,7 +972,10 @@ void Ui::editorEvent(lv_event_t* event) {
 void Ui::settingsEvent(lv_event_t* event) {
     if (!instance_ || !instance_->config_) return;
     const intptr_t action = reinterpret_cast<intptr_t>(lv_event_get_user_data(event));
-    AppConfig candidate = instance_->settings_draft_;
+    AppConfig* const scratch =
+        instance_->draftCandidate(instance_->settings_draft_);
+    if (!scratch) { instance_->showSettingsMessage("SAVE ERROR"); return; }
+    AppConfig& candidate = *scratch;
 
     if (action == LayoutPresetChanged) {
         auto* dropdown = lv_event_get_target(event);
