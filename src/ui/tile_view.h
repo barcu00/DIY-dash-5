@@ -5,6 +5,7 @@
 #include "settings/app_config.h"
 #include "telemetry/composite_telemetry_view.h"
 #include "ui/display_signal_filter.h"
+#include "ui/flag_tile_model.h"
 #include "ui/tile_layout.h"
 #include "ui/temperature_bar_model.h"
 class TileView {
@@ -44,6 +45,10 @@ private:
     bool warning_initialized_ = false;
     bool last_warning_active_ = false;
     bool last_data_lost_ = false;
+    bool flag_style_initialized_ = false;
+    FlagTileState last_flag_state_ = FlagTileState::Unavailable;
+    uint32_t last_flag_background_ = 0U;
+    uint32_t last_flag_pill_ = 0U;
     bool temperature_bar_initialized_ = false;
     uint16_t last_temperature_fill_ = 0U;
     TemperatureBarZone last_temperature_zone_ =

@@ -221,6 +221,7 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
     raw_valid_initialized_ = false;
     warning_initialized_ = false;
     temperature_bar_initialized_ = false;
+    flag_style_initialized_ = false;
 }
 void TileView::hide() { if (root_) lv_obj_add_flag(root_, LV_OBJ_FLAG_HIDDEN); }
 void TileView::arrangeUnit(const char* text, bool is_flag) {
@@ -329,27 +330,41 @@ void TileView::update(const TileConfig& config, const UnitSettings& units,
     if (is_flag) {
         const FlagTilePresentation presentation = flagTilePresentation(
             signal, config.flag_active_color);
-        lv_obj_set_style_bg_color(
-            root_, lv_color_hex(presentation.background_rgb), 0);
-        lv_obj_set_style_bg_color(
-            stripe_, UiTheme::border(), 0);
-        if (presentation.state == FlagTileState::Unavailable) {
-            lv_obj_set_style_bg_opa(value_, LV_OPA_TRANSP, 0);
-            lv_obj_set_style_pad_all(value_,0,0);
-            lv_obj_set_style_text_color(value_, UiTheme::muted(), 0);
-            unit_text = "UNAVAILABLE";
-        } else {
+        // Restyling every refresh forces LVGL to recompute styles and
+        // invalidate the tile; only touch styles when the look changes.
+        const bool style_changed = !flag_style_initialized_ ||
+            presentation.state != last_flag_state_ ||
+            presentation.background_rgb != last_flag_background_ ||
+            presentation.pill_rgb != last_flag_pill_;
+        flag_style_initialized_ = true;
+        last_flag_state_ = presentation.state;
+        last_flag_background_ = presentation.background_rgb;
+        last_flag_pill_ = presentation.pill_rgb;
+        if (presentation.state != FlagTileState::Unavailable)
             std::snprintf(value_text, sizeof(value_text), "%s",
                           presentation.status_text);
-            lv_obj_set_style_bg_opa(value_, LV_OPA_COVER, 0);
+        else
+            unit_text = "UNAVAILABLE";
+        if (style_changed) {
             lv_obj_set_style_bg_color(
-                value_, lv_color_hex(presentation.pill_rgb), 0);
-            lv_obj_set_style_radius(value_, 14, 0);
-            lv_obj_set_style_pad_left(value_, 12, 0);
-            lv_obj_set_style_pad_right(value_, 12, 0);
-            lv_obj_set_style_pad_top(value_, 4, 0);
-            lv_obj_set_style_pad_bottom(value_, 4, 0);
-            lv_obj_set_style_text_color(value_, UiTheme::background(), 0);
+                root_, lv_color_hex(presentation.background_rgb), 0);
+            lv_obj_set_style_bg_color(
+                stripe_, UiTheme::border(), 0);
+            if (presentation.state == FlagTileState::Unavailable) {
+                lv_obj_set_style_bg_opa(value_, LV_OPA_TRANSP, 0);
+                lv_obj_set_style_pad_all(value_,0,0);
+                lv_obj_set_style_text_color(value_, UiTheme::muted(), 0);
+            } else {
+                lv_obj_set_style_bg_opa(value_, LV_OPA_COVER, 0);
+                lv_obj_set_style_bg_color(
+                    value_, lv_color_hex(presentation.pill_rgb), 0);
+                lv_obj_set_style_radius(value_, 14, 0);
+                lv_obj_set_style_pad_left(value_, 12, 0);
+                lv_obj_set_style_pad_right(value_, 12, 0);
+                lv_obj_set_style_pad_top(value_, 4, 0);
+                lv_obj_set_style_pad_bottom(value_, 4, 0);
+                lv_obj_set_style_text_color(value_, UiTheme::background(), 0);
+            }
         }
     } else if (!supported) {
         unit_text = "UNAVAILABLE";

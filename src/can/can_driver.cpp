@@ -2,6 +2,7 @@
 
 #include <cstring>
 
+#include <Arduino.h>
 #include <driver/twai.h>
 #include <esp_err.h>
 
@@ -45,7 +46,7 @@ bool CanDriver::begin(uint32_t bitrate) {
         static_cast<gpio_num_t>(DashboardConfig::kCanRxGpio),
         TWAI_MODE_LISTEN_ONLY);
     general.tx_queue_len = 0U;
-    general.rx_queue_len = 32U;
+    general.rx_queue_len = DashboardConfig::kCanRxQueueLength;
     const twai_filter_config_t filter = TWAI_FILTER_CONFIG_ACCEPT_ALL();
 
     if (twai_driver_install(&general, &timing, &filter) != ESP_OK) {
@@ -59,6 +60,7 @@ bool CanDriver::begin(uint32_t bitrate) {
     bitrate_ = bitrate;
     received_frames_ = 0U;
     rejected_frames_ = 0U;
+    health_ = CanHealth{};
     running_ = true;
     return true;
 }
@@ -113,4 +115,18 @@ uint32_t CanDriver::receivedFrames() const {
 
 uint32_t CanDriver::rejectedFrames() const {
     return rejected_frames_;
+}
+
+CanHealth CanDriver::health() const {
+    if (!running_) return health_;
+    const uint32_t now = millis();
+    if (now - health_polled_ms_ < 250U) return health_;
+    health_polled_ms_ = now;
+    twai_status_info_t info{};
+    if (twai_get_status_info(&info) == ESP_OK) {
+        health_.dropped_frames = info.rx_missed_count + info.rx_overrun_count;
+        health_.bus_errors = info.bus_error_count;
+        health_.error_passive = info.rx_error_counter >= 128U;
+    }
+    return health_;
 }

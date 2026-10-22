@@ -10,6 +10,11 @@ display_size = "7" if env.get("PIOENV") == "waveshare_7" else "5"
 merged_bin = join(
     "$BUILD_DIR", f"DIY-Dash-ESP32-S3-Touch-LCD-{display_size}-full.bin"
 )
+# App-only image: flashing it at the app offset updates the firmware while
+# keeping the NVS partitions (dashboard settings and odometer) intact.
+update_bin = join(
+    "$BUILD_DIR", f"DIY-Dash-ESP32-S3-Touch-LCD-{display_size}-app-update.bin"
+)
 manifest_file = join("$BUILD_DIR", "flash-layout.json")
 
 
@@ -57,11 +62,17 @@ def merge_firmware(source, target, env):
     result = env.Execute(command)
     if result != 0:
         raise RuntimeError("Failed to create merged DIY Dash flash image")
+    shutil.copy2(env.subst(app_bin), env.subst(update_bin))
 
     manifest = {
         "chip": board.get("build.mcu", "esp32s3"),
         "flash_size": board.get("upload.flash_size", "16MB"),
         "merged_image": basename(env.subst(merged_bin)),
+        "app_update_image": {
+            "offset": env.subst("$ESP32_APP_OFFSET"),
+            "file": basename(env.subst(update_bin)),
+            "preserves": ["dashcfg settings", "odometer"],
+        },
         "images": [
             {"offset": address, "file": basename(image_path)}
             for address, image_path in image_pairs

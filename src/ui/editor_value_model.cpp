@@ -15,7 +15,8 @@ bool warningFromPresented(ParameterId id,const UnitSettings& units,bool enabled,
     const float t=UnitPresenter::toNative(id,threshold,units);
     const float r=UnitPresenter::toNative(id,reset,units);
     const float h=direction==WarningDirection::Above ? t-r:r-t;
-    if(!std::isfinite(t) || !std::isfinite(r) || t<0 || t>999 ||
-       h<-.0001f || h>999 || delay>10000)return false;
+    const WarningLimits limits=warningLimits(id);
+    if(!std::isfinite(t) || !std::isfinite(r) || t<limits.minimum || t>limits.maximum ||
+       h<-.0001f || h>limits.hysteresis_maximum || delay>10000)return false;
     result={enabled,direction,t,h<0 ? 0:h,delay};return true;
 }

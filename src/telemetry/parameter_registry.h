@@ -19,3 +19,13 @@ struct ParameterDescriptor {
 };
 
 const ParameterDescriptor& parameterDescriptor(ParameterId id);
+
+// Native-unit bounds for a tile warning. Replaces the former global
+// 0..999 limit, which excluded RPM, EGT and negative (vacuum, timing)
+// thresholds.
+struct WarningLimits {
+    float minimum;
+    float maximum;
+    float hysteresis_maximum;
+};
+WarningLimits warningLimits(ParameterId id);

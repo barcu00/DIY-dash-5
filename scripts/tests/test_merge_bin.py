@@ -52,6 +52,14 @@ class MergeFirmwareTests(unittest.TestCase):
             "env": self.env, "Import": lambda _: None,
         })
 
+    def test_app_update_image_targets_the_app_offset_only(self):
+        self.env.action([], [], self.env)
+        manifest = json.loads((self.env.build / "flash-layout.json").read_text())
+        update = manifest["app_update_image"]
+        self.assertEqual("0x10000", update["offset"])
+        self.assertEqual("DIY-Dash-ESP32-S3-Touch-LCD-5-app-update.bin", update["file"])
+        self.assertEqual(b"firmware.bin", (self.env.build / update["file"]).read_bytes())
+
     def test_external_framework_image_is_available_beside_manifest(self):
         self.env.action([], [], self.env)
         manifest = json.loads((self.env.build / "flash-layout.json").read_text())

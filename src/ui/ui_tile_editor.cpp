@@ -66,7 +66,7 @@ void Ui::openEditor(TileAddress address) {
     lv_obj_set_size(editor_direction_,270,48);lv_dropdown_set_options(editor_direction_,"ABOVE\nBELOW");
     lv_obj_add_event_cb(editor_direction_,editorTabEvent,LV_EVENT_VALUE_CHANGED,reinterpret_cast<void*>(4));
     label(editor_numeric_panel_,"THRESHOLD",20,132,&lv_font_montserrat_14,UiTheme::muted());
-    editor_threshold_=field(editor_numeric_panel_,180,118,270,0,999999,0);
+    editor_threshold_=field(editor_numeric_panel_,180,118,270,-999999,999999,0);
     editor_summary_=label(editor_numeric_panel_,"",480,66,&lv_font_montserrat_14,UiTheme::text());lv_obj_set_width(editor_summary_,294);
     editor_reset_label_=label(editor_numeric_panel_,"RESET BELOW",20,192,&lv_font_montserrat_14,UiTheme::muted());
     editor_hysteresis_=field(editor_numeric_panel_,180,178,270,-9999999,9999999,0,7,6);
@@ -168,8 +168,10 @@ void Ui::loadEditorControlsFromDraft() {
     setField(editor_hysteresis_,present(t.warning.threshold_native+(t.warning.direction==WarningDirection::Above ? -t.warning.hysteresis_native:t.warning.hysteresis_native)));
     setField(editor_delay_,t.warning.delay_ms/1000.f);loadEditorTemperatureControls(t.temperature_bar);
     numeric_binding_count_=0;const char* unit=UnitPresenter::present(id,0,config_->units).unit;
-    bindNumeric(editor_threshold_,"WARNING THRESHOLD",present(0),present(999),1,unit);
-    bindNumeric(editor_hysteresis_,t.warning.direction==WarningDirection::Above ? "RESET BELOW":"RESET ABOVE",present(-999),present(1998),1,unit);
+    const WarningLimits limits=warningLimits(id);
+    bindNumeric(editor_threshold_,"WARNING THRESHOLD",present(limits.minimum),present(limits.maximum),1,unit);
+    bindNumeric(editor_hysteresis_,t.warning.direction==WarningDirection::Above ? "RESET BELOW":"RESET ABOVE",
+        present(limits.minimum-limits.hysteresis_maximum),present(limits.maximum+limits.hysteresis_maximum),1,unit);
     bindNumeric(editor_delay_,"WARNING DELAY",0,10,1,"s");
     const char* names[]={"TEMPERATURE MIN","TEMPERATURE READY","TEMPERATURE RED","TEMPERATURE MAX"};
     lv_obj_t* fields[]={editor_temperature_minimum_,editor_temperature_ready_,editor_temperature_red_,editor_temperature_maximum_};
@@ -228,11 +230,11 @@ void Ui::refreshEditorPreview() {
         lv_obj_set_style_bg_color(editor_decimal_buttons_[i],i==t.decimals ? UiTheme::blue():UiTheme::background(),0);
         lv_obj_set_style_text_color(lv_obj_get_child(editor_decimal_buttons_[i],0),i==t.decimals ? UiTheme::background():UiTheme::text(),0);
     }
-    const CompositeTelemetryView state(latest_state_,latest_racechrono_);
+    const CompositeTelemetryView state(latest_state_,latest_racechrono_,odometer_);
     const auto& signal=state.get(t.parameter);const auto value=UnitPresenter::present(t.parameter,signal.value,config_->units);
     char text[64]="---";
     if(signal.valid && (capabilities_.supports(t.parameter) ||
-                        isRaceChronoParameter(t.parameter))) {
+                        isRaceChronoParameter(t.parameter) || isOdometerParameter(t.parameter))) {
         if(d.kind==ParameterKind::Flag)std::snprintf(text,sizeof(text),"%s",signal.value!=0 ? "ON":"OFF");
         else std::snprintf(text,sizeof(text),"%.*f",t.decimals,static_cast<double>(value.value));
     }

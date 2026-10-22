@@ -138,7 +138,7 @@ void test_validation_normalizes_unsafe_persisted_values() {
     TEST_ASSERT_FLOAT_WITHIN(
         0.001f, 0.0f, config.dash_tiles[0].warning.threshold_native);
     TEST_ASSERT_FLOAT_WITHIN(
-        0.001f, 999.0f, config.dash_tiles[0].warning.hysteresis_native);
+        0.001f, 1200.0f, config.dash_tiles[0].warning.hysteresis_native);
     TEST_ASSERT_EQUAL_UINT16(10000U,
                              config.dash_tiles[0].warning.delay_ms);
     TEST_ASSERT_FALSE(config.dash_tiles[3].temperature_bar.enabled);

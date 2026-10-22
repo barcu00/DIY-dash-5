@@ -1,5 +1,7 @@
 #include "parameter_options.h"
 
+#include <initializer_list>
+
 #include <cstdio>
 
 #include "racechrono/racechrono_channel_catalog.h"
@@ -46,7 +48,7 @@ ParameterOptionList ParameterOptions::build(DataSource source,
     const bool current_valid =
         static_cast<std::size_t>(current) < parameterCount();
     if (current_valid && !isRaceChronoParameter(current) &&
-        !capabilities.supports(current)) {
+        !isOdometerParameter(current) && !capabilities.supports(current)) {
         result.parameters_[result.count_++] = current;
         result.first_unavailable_ = true;
     }
@@ -55,6 +57,12 @@ ParameterOptionList ParameterOptions::build(DataSource source,
         if (!isRaceChronoParameter(parameter)) {
             result.parameters_[result.count_++] = parameter;
         }
+    }
+    // Dash-computed distance values are available with every data source.
+    for (const ParameterId parameter : {ParameterId::Odometer,
+                                        ParameterId::TripA,
+                                        ParameterId::TripB}) {
+        result.parameters_[result.count_++] = parameter;
     }
     for (std::size_t index = 0U; index < raceChronoChannelCount(); ++index) {
         result.parameters_[result.count_++] =

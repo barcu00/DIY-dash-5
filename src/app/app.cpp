@@ -3,6 +3,7 @@
 #include <Arduino.h>
 
 #include "ecu/can_profile_registry.h"
+#include "odometer/distance_source.h"
 
 bool App::begin() {
     config_repository_.load(config_);
@@ -22,11 +23,12 @@ bool App::begin() {
         return false;
     }
 
+    beginOdometer(now);
+    ui_.setOdometer(&odometer_);
     ui_.begin(config_, board_);
     telemetry_.update(now);
     const UiRuntimeStatus status = runtimeStatus(now);
-    const CompositeTelemetryView combined(
-        telemetry_.state(), racechrono_runtime_.telemetry());
+    const CompositeTelemetryView combined = telemetryView();
     warnings_.evaluate(config_, combined, now);
     ui_.update(combined, board_.diagnostics(), status, config_, warnings_);
     ui_.updateShiftLight(telemetry_.state(), now, config_.shift);
@@ -51,15 +53,19 @@ void App::loop() {
     serviceConfigCommit(now);
     if (ui_.takeRaceChronoRestart()) racechrono_runtime_.restart(now);
     CanFrame frame;
-    for (uint8_t drained = 0U; drained < 32U && can_.poll(frame); ++drained) {
+    // Drain enough per pass to keep up with ~2 kfps buses while a render
+    // pass (VSYNC wait) holds the loop for tens of milliseconds.
+    for (uint16_t drained = 0U;
+         drained < DashboardConfig::kCanDrainPerLoop && can_.poll(frame);
+         ++drained) {
         telemetry_.accept(frame, now);
     }
     racechrono_runtime_.service(now);
     telemetry_.update(now);
+    serviceOdometer(now);
 
     if (frame_scheduler_.takeShift(now)) {
-        const CompositeTelemetryView combined(
-            telemetry_.state(), racechrono_runtime_.telemetry());
+        const CompositeTelemetryView combined = telemetryView();
         warnings_.evaluate(config_, combined, now);
         if (board_.lock()) {
             ui_.updateShiftLight(telemetry_.state(), now, config_.shift);
@@ -71,8 +77,7 @@ void App::loop() {
         if (board_.lock()) {
             board_.incrementUiUpdates();
             const UiRuntimeStatus status = runtimeStatus(now);
-            const CompositeTelemetryView combined(
-                telemetry_.state(), racechrono_runtime_.telemetry());
+            const CompositeTelemetryView combined = telemetryView();
             ui_.update(combined, board_.diagnostics(), status, config_, warnings_);
             board_.unlock();
         }
@@ -122,6 +127,46 @@ void App::serviceConfigCommit(uint32_t now_ms) {
     }
 }
 
+CompositeTelemetryView App::telemetryView() const {
+    return CompositeTelemetryView(telemetry_.state(),
+                                  racechrono_runtime_.telemetry(), &odometer_);
+}
+
+void App::beginOdometer(uint32_t now_ms) {
+    OdometerRecord record{};
+    const OdometerLoadResult result = odometer_store_.load(record);
+    if (result == OdometerLoadResult::Loaded) odometer_.restore(record, now_ms);
+    odometer_storage_ready_ = result != OdometerLoadResult::Unavailable;
+    odometer_load_retry_ms_ = now_ms + OdometerModel::kRetryAfterFailureMs;
+    Serial.printf("[ODO] %s, %.1f km\n",
+                  result == OdometerLoadResult::Loaded ? "loaded"
+                  : result == OdometerLoadResult::Empty ? "new"
+                  : result == OdometerLoadResult::Corrupt ? "corrupt record, reset"
+                                                          : "storage unavailable",
+                  odometer_.odometerKm());
+}
+
+void App::serviceOdometer(uint32_t now_ms) {
+    const CompositeTelemetryView view = telemetryView();
+    odometer_.integrate(selectDistanceSpeed(odometer_.settings(), view,
+                                            telemetry_.demoActive()),
+                        now_ms);
+    if (!odometer_storage_ready_) {
+        // Never overwrite a record we could not read; retry the load and
+        // merge the distance driven since boot once storage is back.
+        if (static_cast<int32_t>(now_ms - odometer_load_retry_ms_) < 0) return;
+        odometer_load_retry_ms_ = now_ms + OdometerModel::kRetryAfterFailureMs;
+        OdometerRecord record{};
+        const OdometerLoadResult result = odometer_store_.load(record);
+        if (result == OdometerLoadResult::Unavailable) return;
+        if (result == OdometerLoadResult::Loaded) odometer_.mergeStored(record, now_ms);
+        odometer_storage_ready_ = true;
+    }
+    if (!odometer_.persistDue(now_ms)) return;
+    if (odometer_store_.save(odometer_.record())) odometer_.markPersisted(now_ms);
+    else odometer_.persistFailed(now_ms);
+}
+
 void App::applyRuntimeConfig(uint32_t now_ms, bool configure_engine) {
     racechrono_runtime_.setEnabled(config_.racechrono.enabled, now_ms);
     if (!configure_engine) return;
@@ -152,6 +197,10 @@ UiRuntimeStatus App::runtimeStatus(uint32_t now_ms) const {
     status.decoder_mappings = telemetry_.mappingCount();
     status.received_frames = can_.receivedFrames();
     status.rejected_frames = can_.rejectedFrames();
+    const CanHealth health = can_.health();
+    status.can_dropped_frames = health.dropped_frames;
+    status.can_bus_errors = health.bus_errors;
+    status.can_error_passive = health.error_passive;
     status.racechrono_connection = racechrono_runtime_.state();
     status.racechrono = racechrono_runtime_.status(now_ms);
     return status;

@@ -73,6 +73,7 @@ void Ui::numericKeyEvent(lv_event_t* e) {
         s->closeAuxiliary();
         if(binding.slider) {lv_slider_set_value(binding.widget,std::lround(value),LV_ANIM_OFF);lv_event_send(binding.widget,LV_EVENT_VALUE_CHANGED,nullptr);}
         else lv_spinbox_set_value(binding.widget,std::lround(value*(binding.decimals ? 10:1)));
+        if(binding.widget==s->odometer_field_ && s->odometer_field_) {s->applyOdometerField();return;}
         if(s->editor_.isOpen()) {s->syncEditorDraftFromControls();s->refreshEditorPreview();}
         s->refreshNumericFields();return;
     }
@@ -110,7 +111,7 @@ void Ui::renderParameterPicker() {
         const size_t position=matched++;
         if(position<picker_page_*4 || shown>=4)continue;
         const auto& d=parameterDescriptor(id);char text[110];
-        const bool available=capabilities_.supports(id) || isRaceChronoParameter(id);
+        const bool available=capabilities_.supports(id) || isRaceChronoParameter(id) || isOdometerParameter(id);
         std::snprintf(text,sizeof(text),"%s    %s%s",d.name,UnitPresenter::present(id,0,config_->units).unit,available ? "":" (UNAVAILABLE)");
         auto* row=button(auxiliary_screen_,text,20,120+shown*58,760,50,pickerEvent,300+static_cast<intptr_t>(id),id==picker_selected_);
         if(!available)lv_obj_add_state(row,LV_STATE_DISABLED);shown++;
@@ -123,7 +124,7 @@ void Ui::renderParameterPicker() {
     button(auxiliary_screen_,"BACK",20,420,180,48,pickerEvent,212);
     auto* select=button(auxiliary_screen_,"SELECT",590,420,190,48,pickerEvent,213,true);
     if(!capabilities_.supports(picker_selected_) &&
-       !isRaceChronoParameter(picker_selected_))lv_obj_add_state(select,LV_STATE_DISABLED);
+       !isRaceChronoParameter(picker_selected_) && !isOdometerParameter(picker_selected_))lv_obj_add_state(select,LV_STATE_DISABLED);
     lv_scr_load(auxiliary_screen_);if(previous)lv_obj_del_async(previous);
 }
 void Ui::pickerEvent(lv_event_t* e) {

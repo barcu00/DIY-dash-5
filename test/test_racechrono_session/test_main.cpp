@@ -231,6 +231,62 @@ void test_unsigned_deadlines_work_across_millis_rollover() {
     TEST_ASSERT_FALSE(telemetry.get(ParameterId::RcGpsSpeed).valid);
 }
 
+void drainActions(RaceChronoSession& session) {
+    RaceChronoAction action;
+    while (session.takeAction(action)) {
+    }
+}
+
+void test_lost_fragment_confirmation_retries_then_fails_only_that_channel() {
+    RaceChronoTelemetry telemetry;
+    RaceChronoSession session(telemetry);
+    beginConfiguration(session);
+    drainActions(session);  // first fragment sent, confirmation never comes
+
+    uint32_t now = 0U;
+    for (uint8_t attempt = 0U; attempt < RaceChronoSession::kMaximumStepRetries;
+         ++attempt) {
+        now += RaceChronoSession::kResponseTimeoutMs + 1U;
+        session.update(now);
+        TEST_ASSERT_EQUAL_UINT8(
+            static_cast<uint8_t>(RaceChronoConnectionState::Configuring),
+            static_cast<uint8_t>(session.state()));
+        if (attempt + 1U < RaceChronoSession::kMaximumStepRetries)
+            drainActions(session);
+    }
+    const RaceChronoAction final = advanceToCompleteFragment(session, now);
+    TEST_ASSERT_EQUAL_UINT8(2U, final.packet.bytes[1]);
+    TEST_ASSERT_EQUAL_UINT8(
+        static_cast<uint8_t>(RaceChronoChannelState::Error),
+        static_cast<uint8_t>(
+            telemetry.channelState(ParameterId::RcLapNumber)));
+}
+
+void test_unanswered_remove_all_drops_the_link() {
+    RaceChronoTelemetry telemetry;
+    RaceChronoSession session(telemetry);
+    session.setEnabled(true);
+    drainActions(session);
+    session.onEvent(event(RaceChronoEventType::Connected), 0U);
+    session.onEvent(event(RaceChronoEventType::IndicationsSubscribed), 0U);
+    uint32_t now = 0U;
+    for (uint8_t attempt = 0U; attempt + 1U < RaceChronoSession::kMaximumStepRetries;
+         ++attempt) {
+        TEST_ASSERT_EQUAL_UINT8(0U, take(session).packet.bytes[0]);
+        now += RaceChronoSession::kResponseTimeoutMs + 1U;
+        session.update(now);
+    }
+    drainActions(session);
+    now += RaceChronoSession::kResponseTimeoutMs + 1U;
+    session.update(now);
+    TEST_ASSERT_EQUAL_UINT8(
+        static_cast<uint8_t>(RaceChronoConnectionState::Error),
+        static_cast<uint8_t>(session.state()));
+    TEST_ASSERT_EQUAL_UINT8(
+        static_cast<uint8_t>(RaceChronoActionType::Disconnect),
+        static_cast<uint8_t>(take(session).type));
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_complete_connection_configuration_and_no_data_graph);
@@ -238,5 +294,7 @@ int main(int, char**) {
     RUN_TEST(test_three_out_of_sequence_results_fail_only_current_channel);
     RUN_TEST(test_disable_clears_work_and_requests_disconnect_and_stop);
     RUN_TEST(test_unsigned_deadlines_work_across_millis_rollover);
+    RUN_TEST(test_lost_fragment_confirmation_retries_then_fails_only_that_channel);
+    RUN_TEST(test_unanswered_remove_all_drops_the_link);
     return UNITY_END();
 }

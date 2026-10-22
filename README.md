@@ -381,6 +381,24 @@ This method does not require downloading or compiling the source code.
      0x0 DIY-Dash-ESP32-S3-Touch-LCD-5-full.bin
    ```
 
+> [!WARNING]
+> `erase_flash` followed by the full image also erases the `dashcfg`
+> partition: dashboard settings **and the odometer** return to defaults.
+> Use it for a first installation or a clean start only.
+
+### Updating an installed dash (keeps settings and odometer)
+
+Flash only the application image at the app offset, without `erase_flash`:
+
+```bash
+python -m esptool --chip esp32s3 --port COM5 --baud 921600 write_flash \
+  0x10000 DIY-Dash-ESP32-S3-Touch-LCD-5-app-update.bin
+```
+
+The offset is also recorded as `app_update_image` in `flash-layout.json`.
+Before a clean install you can note the odometer value in
+SETTINGS > ODOMETER & TRIP and restore it there with SET VALUE.
+
 Replace `COM5` with the board port. On Linux it is commonly similar to
 `/dev/ttyACM0` or `/dev/ttyUSB0`; on macOS it is commonly under `/dev/cu.*`.
 If the board does not enter download mode automatically, use its BOOT/RESET

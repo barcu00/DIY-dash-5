@@ -2,6 +2,10 @@
 
 #include "settings/config_repository.h"
 
+// Initializes an NVS data partition, erasing it once if the IDF reports it
+// unusable (NO_FREE_PAGES / NEW_VERSION_FOUND).
+bool ensureNvsPartition(const char* label);
+
 class NvsConfigBackend : public ConfigBackend {
 public:
     std::size_t storedSize() const override;

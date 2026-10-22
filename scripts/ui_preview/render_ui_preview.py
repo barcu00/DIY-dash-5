@@ -256,14 +256,16 @@ def settings_home_page():
     image, draw = settings_shell("SETTINGS", back=False)
     labels = (("DISPLAY", "Brightness & memory"), ("DATA & CAN", "Source, profile, bitrate"),
               ("SHIFT LIGHT", "Start, redline, maximum"), ("UNITS", "Temperature & pressure"),
-              ("LAYOUTS", "Dash & track tiles"), ("SYSTEM", "Reset, version, memory"))
+              ("LAYOUTS", "Dash & track tiles"), ("ODOMETER", "ODO, trips, source"),
+              ("SYSTEM", "Reset, version, memory"))
+    assert len(labels) == CONTRACT["settings"]["category_count"]
     for index, (title, detail) in enumerate(labels):
-        col, row = index % 3, index // 3
-        x, y = 22 + col * 256, 72 + row * 166
-        draw.rounded_rectangle((x, y, x + 244, y + 154), 10,
+        col, row = index % 4, index // 4
+        x, y = 22 + col * 192, 72 + row * 166
+        draw.rounded_rectangle((x, y, x + 180, y + 154), 10,
                                fill=C["panel"], outline=C["border"])
-        draw.text((x + 122, y + 62), title, fill=C["text"], font=F18, anchor="mm")
-        draw.text((x + 122, y + 96), detail, fill=C["muted"], font=F12, anchor="mm")
+        draw.text((x + 90, y + 62), title, fill=C["text"], font=F18, anchor="mm")
+        draw.text((x + 90, y + 96), detail, fill=C["muted"], font=F12, anchor="mm")
     return image
 
 
