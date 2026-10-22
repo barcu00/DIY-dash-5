@@ -1,5 +1,8 @@
 #include "config_repository.h"
 
+#include <memory>
+#include <new>
+
 #include <algorithm>
 #include <cstring>
 #include "ui/dashboard_layout.h"
@@ -491,36 +494,43 @@ LoadResult ConfigRepository::load(AppConfig& config) {
     return LoadResult::Loaded;
 }
 
+// AppConfig is ~7.4 KB. Saving runs on the Arduino loop task, whose stack
+// also carries the LVGL call chain, so the working copies live on the heap
+// (PSRAM on the target) instead of the stack.
 bool ConfigRepository::saveCandidate(const AppConfig& candidate,
                                      AppConfig& runtime_config) {
-    AppConfig validated = candidate;
-    if (validated.schema_version != AppConfig::kSchemaVersion ||
-        !validated.validate().valid ||
-        !backend_.write(&validated, sizeof(validated))) {
+    std::unique_ptr<AppConfig> validated(new (std::nothrow) AppConfig(candidate));
+    std::unique_ptr<AppConfig> stored(new (std::nothrow) AppConfig{});
+    if (!validated || !stored) {
+        return false;
+    }
+    if (validated->schema_version != AppConfig::kSchemaVersion ||
+        !validated->validate().valid ||
+        !backend_.write(validated.get(), sizeof(AppConfig))) {
         return false;
     }
 
-    AppConfig stored{};
-    if (backend_.storedSize() != sizeof(stored) ||
-        !backend_.read(&stored, sizeof(stored)) ||
-        std::memcmp(&stored, &validated, sizeof(stored)) != 0) {
+    if (backend_.storedSize() != sizeof(AppConfig) ||
+        !backend_.read(stored.get(), sizeof(AppConfig)) ||
+        std::memcmp(stored.get(), validated.get(), sizeof(AppConfig)) != 0) {
         return false;
     }
 
-    runtime_config = stored;
+    runtime_config = *stored;
     return true;
 }
 
 bool ConfigRepository::resetLayout(PageId page, AppConfig& runtime_config) {
-    AppConfig candidate = runtime_config;
-    if (page == PageId::Dash) {
-        resetPageLayouts(candidate, page);
-    } else if (page == PageId::Track) {
-        resetPageLayouts(candidate, page);
-    } else {
+    if (page != PageId::Dash && page != PageId::Track) {
         return false;
     }
-    return saveCandidate(candidate, runtime_config);
+    std::unique_ptr<AppConfig> candidate(
+        new (std::nothrow) AppConfig(runtime_config));
+    if (!candidate) {
+        return false;
+    }
+    resetPageLayouts(*candidate, page);
+    return saveCandidate(*candidate, runtime_config);
 }
 
 bool ConfigRepository::reset(AppConfig& runtime_config) {

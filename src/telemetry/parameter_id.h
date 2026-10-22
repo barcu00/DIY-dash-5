@@ -138,8 +138,30 @@ enum class ParameterId : uint8_t {
     RcLongitudinalAcceleration,
     RcCombinedAcceleration,
     RcLeanAngle,
+    // Dash-computed distance values (see odometer/). Appended only: these
+    // ids are persisted in tile configurations.
+    Odometer,
+    TripA,
+    TripB,
     Count,
 };
+
+// Stored tile configurations reference ParameterId by value. Inserting or
+// reordering enumerators silently remaps saved tiles; append new ids just
+// before Count and extend these anchors instead.
+static_assert(static_cast<uint8_t>(ParameterId::Egt1) == 23U, "ParameterId order is persisted");
+static_assert(static_cast<uint8_t>(ParameterId::IgnitionOn) == 35U, "ParameterId order is persisted");
+static_assert(static_cast<uint8_t>(ParameterId::CheckEngine) == 44U, "ParameterId order is persisted");
+static_assert(static_cast<uint8_t>(ParameterId::RcLapNumber) == 101U, "ParameterId order is persisted");
+static_assert(static_cast<uint8_t>(ParameterId::RcLeanAngle) == 133U, "ParameterId order is persisted");
+static_assert(static_cast<uint8_t>(ParameterId::Odometer) == 134U, "ParameterId order is persisted");
+static_assert(static_cast<uint8_t>(ParameterId::TripB) == 136U, "ParameterId order is persisted");
+static_assert(static_cast<uint16_t>(ParameterId::Count) < 255U, "ParameterId must fit uint8_t");
+
+constexpr bool isOdometerParameter(ParameterId id) {
+    return id == ParameterId::Odometer || id == ParameterId::TripA ||
+           id == ParameterId::TripB;
+}
 
 using VehicleSignal = ParameterId;
 
@@ -165,4 +187,5 @@ enum class NativeUnit : uint8_t {
     Hertz,
     GForce,
     CoordinateDegrees,
+    Kilometers,
 };

@@ -33,7 +33,7 @@ const CanSignalDefinition kFrame602[] = {
     {ParameterId::Speed, 0U, RawType::Unsigned16, ByteOrder::Little, 1.0f, 0.0f,
      0.0f, 400.0f, kFastTimeout},
     {ParameterId::OilTemperature, 3U, RawType::Unsigned8, ByteOrder::Little,
-     1.0f, 0.0f, 0.0f, 160.0f, kFastTimeout},
+     1.0f, 0.0f, 0.0f, 255.0f, kFastTimeout},
     {ParameterId::OilPressure, 4U, RawType::Unsigned8, ByteOrder::Little,
      0.0625f, 0.0f, 0.0f, 12.0f, kFastTimeout},
     {ParameterId::FuelPressure, 5U, RawType::Unsigned8, ByteOrder::Little,

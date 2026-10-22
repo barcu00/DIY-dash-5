@@ -45,13 +45,15 @@ void test_filtered_options_map_indexes_to_stable_parameter_ids() {
     char text[8192]{};
 
     TEST_ASSERT_TRUE(options.write(text, sizeof(text)));
-    TEST_ASSERT_EQUAL_UINT32(55U, options.count());
+    TEST_ASSERT_EQUAL_UINT32(58U, options.count());
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(ParameterId::Rpm),
                             static_cast<uint8_t>(options.parameterAt(0U)));
     TEST_ASSERT_TRUE(std::strstr(text, "CHECK ENGINE") != nullptr);
     TEST_ASSERT_TRUE(std::strstr(text, "LAMBDA") == nullptr);
     TEST_ASSERT_TRUE(std::strstr(text, "LAP TIME") != nullptr);
     TEST_ASSERT_TRUE(std::strstr(text, "SATELLITES") != nullptr);
+    TEST_ASSERT_TRUE(std::strstr(text, "ODO") != nullptr);
+    TEST_ASSERT_TRUE(std::strstr(text, "TRIP B") != nullptr);
 }
 
 void test_unsupported_saved_parameter_is_retained_and_labeled_in_english() {
@@ -61,7 +63,7 @@ void test_unsupported_saved_parameter_is_retained_and_labeled_in_english() {
     char text[8192]{};
 
     TEST_ASSERT_TRUE(options.write(text, sizeof(text)));
-    TEST_ASSERT_EQUAL_UINT32(56U, options.count());
+    TEST_ASSERT_EQUAL_UINT32(59U, options.count());
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(ParameterId::Lambda),
                             static_cast<uint8_t>(options.parameterAt(0U)));
     TEST_ASSERT_EQUAL_STRING("LAMBDA (UNAVAILABLE)", std::strtok(text, "\n"));

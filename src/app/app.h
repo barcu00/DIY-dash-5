@@ -16,6 +16,8 @@
 #include "alarms/buzzer_test_pulse.h"
 #include "racechrono/racechrono_ble_transport.h"
 #include "racechrono/racechrono_runtime.h"
+#include "odometer/odometer_model.h"
+#include "settings/nvs_odometer_store.h"
 
 class App {
 public:
@@ -25,6 +27,10 @@ public:
 private:
     void applyRuntimeConfig(uint32_t now_ms, bool configure_engine = true);
     UiRuntimeStatus runtimeStatus(uint32_t now_ms) const;
+    [[gnu::noinline]] void serviceConfigCommit(uint32_t now_ms);
+    void beginOdometer(uint32_t now_ms);
+    void serviceOdometer(uint32_t now_ms);
+    CompositeTelemetryView telemetryView() const;
 
     BoardDisplay board_;
     CanDriver can_;
@@ -40,5 +46,9 @@ private:
     BuzzerTestPulse buzzer_test_{};
     Ui ui_;
     FrameScheduler frame_scheduler_{};
+    OdometerModel odometer_{};
+    NvsOdometerStore odometer_store_{};
+    bool odometer_storage_ready_ = false;
+    uint32_t odometer_load_retry_ms_ = 0U;
     bool ready_ = false;
 };

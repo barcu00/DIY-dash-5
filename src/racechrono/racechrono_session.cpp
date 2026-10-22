@@ -29,6 +29,7 @@ void RaceChronoSession::onEvent(const RaceChronoEvent& event,
     if (!enabled_) {
         return;
     }
+    now_ms_ = now_ms;
     switch (event.type) {
         case RaceChronoEventType::Connected:
             state_ = RaceChronoConnectionState::Connected;
@@ -51,6 +52,7 @@ void RaceChronoSession::onEvent(const RaceChronoEvent& event,
             sequence_retries_ = 0U;
             waiting_config_write_ = false;
             have_valid_packet_ = false;
+            remove_retries_ = 0U;
             state_ = RaceChronoConnectionState::Configuring;
             enqueueIndication(RaceChronoProtocol::removeAll(),
                               PendingIndication::RemoveAll);
@@ -68,7 +70,17 @@ void RaceChronoSession::onEvent(const RaceChronoEvent& event,
 }
 
 void RaceChronoSession::update(uint32_t now_ms) {
+    now_ms_ = now_ms;
     telemetry_.updateStale(now_ms);
+    const bool session_running =
+        state_ == RaceChronoConnectionState::Configuring ||
+        state_ == RaceChronoConnectionState::Active ||
+        state_ == RaceChronoConnectionState::NoData;
+    if (session_running &&
+        (pending_indication_ != PendingIndication::None || waiting_config_write_) &&
+        now_ms - waiting_since_ms_ > kResponseTimeoutMs) {
+        handleResponseTimeout(now_ms);
+    }
     if (state_ != RaceChronoConnectionState::Active &&
         state_ != RaceChronoConnectionState::NoData) {
         return;
@@ -134,6 +146,41 @@ void RaceChronoSession::enqueueIndication(const RaceChronoPacket& packet,
     if (enqueue(action)) {
         pending_indication_ = pending;
         pending_command_ = packet.bytes[0];
+        startWaiting(now_ms_);
+    }
+}
+
+void RaceChronoSession::startWaiting(uint32_t now_ms) {
+    waiting_since_ms_ = now_ms;
+}
+
+void RaceChronoSession::handleResponseTimeout(uint32_t now_ms) {
+    const PendingIndication pending = pending_indication_;
+    pending_indication_ = PendingIndication::None;
+    if (pending == PendingIndication::UpdateAll) {
+        return;  // the periodic refresh simply tries again
+    }
+    if (pending == PendingIndication::RemoveAll) {
+        if (++remove_retries_ < kMaximumStepRetries) {
+            enqueueIndication(RaceChronoProtocol::removeAll(),
+                              PendingIndication::RemoveAll);
+        } else {
+            // The peer is not answering at all: drop the link and let the
+            // Disconnected event restart advertising.
+            state_ = RaceChronoConnectionState::Error;
+            enqueueSimple(RaceChronoActionType::Disconnect);
+        }
+        return;
+    }
+    // AddFragment confirmation or config-result write lost.
+    waiting_config_write_ = false;
+    if (channel_index_ >= raceChronoChannelCount()) return;
+    if (++sequence_retries_ >= kMaximumStepRetries) {
+        telemetry_.markError(raceChronoChannelAt(channel_index_).parameter);
+        advanceChannel(now_ms);
+    } else {
+        fragment_index_ = 0U;
+        queueCurrentFragment();
     }
 }
 
@@ -161,7 +208,8 @@ void RaceChronoSession::advanceChannel(uint32_t now_ms) {
     }
 }
 
-void RaceChronoSession::handleIndicationConfirmed(uint32_t) {
+void RaceChronoSession::handleIndicationConfirmed(uint32_t now_ms) {
+    now_ms_ = now_ms;
     const PendingIndication confirmed = pending_indication_;
     pending_indication_ = PendingIndication::None;
     if (confirmed == PendingIndication::RemoveAll) {
@@ -173,6 +221,7 @@ void RaceChronoSession::handleIndicationConfirmed(uint32_t) {
             queueCurrentFragment();
         } else if (pending_command_ == 3U) {
             waiting_config_write_ = true;
+            startWaiting(now_ms_);
         }
     }
 }

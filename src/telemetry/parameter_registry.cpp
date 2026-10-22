@@ -138,6 +138,9 @@ constexpr std::array<ParameterDescriptor, parameterCount()> kDescriptors{{
     {ParameterId::RcLongitudinalAcceleration, "Longitudinal acceleration", "LONGITUDINAL G", NativeUnit::GForce, 2U},
     {ParameterId::RcCombinedAcceleration, "Combined acceleration", "COMBINED G", NativeUnit::GForce, 2U},
     {ParameterId::RcLeanAngle, "Lean angle", "LEAN ANGLE", NativeUnit::Degrees, 2U},
+    {ParameterId::Odometer, "Odometer", "ODO", NativeUnit::Kilometers, 0U},
+    {ParameterId::TripA, "Trip A", "TRIP A", NativeUnit::Kilometers, 1U},
+    {ParameterId::TripB, "Trip B", "TRIP B", NativeUnit::Kilometers, 1U},
 }};
 
 constexpr ParameterDescriptor kUnknown{
@@ -147,4 +150,35 @@ constexpr ParameterDescriptor kUnknown{
 const ParameterDescriptor& parameterDescriptor(ParameterId id) {
     const std::size_t index = static_cast<std::size_t>(id);
     return index < kDescriptors.size() ? kDescriptors[index] : kUnknown;
+}
+
+WarningLimits warningLimits(ParameterId id) {
+    switch (parameterDescriptor(id).native_unit) {
+        case NativeUnit::Rpm: return {0.0f, 20000.0f, 5000.0f};
+        case NativeUnit::Bar: return {-1.0f, 100.0f, 50.0f};
+        case NativeUnit::Lambda: return {0.0f, 5.0f, 2.0f};
+        case NativeUnit::Percent: return {-100.0f, 200.0f, 100.0f};
+        case NativeUnit::Celsius: return {-60.0f, 1300.0f, 500.0f};
+        case NativeUnit::Volt: return {0.0f, 30.0f, 10.0f};
+        case NativeUnit::Kph: return {0.0f, 500.0f, 100.0f};
+        case NativeUnit::Gear: return {-1.0f, 10.0f, 5.0f};
+        case NativeUnit::Degrees: return {-90.0f, 360.0f, 90.0f};
+        case NativeUnit::Milliseconds: return {0.0f, 10000.0f, 5000.0f};
+        case NativeUnit::GramsPerSecond: return {0.0f, 2000.0f, 1000.0f};
+        case NativeUnit::Seconds: return {0.0f, 36000.0f, 3600.0f};
+        case NativeUnit::Meters: return {-1000.0f, 100000.0f, 10000.0f};
+        case NativeUnit::Hertz: return {0.0f, 10000.0f, 5000.0f};
+        case NativeUnit::GForce: return {-10.0f, 10.0f, 10.0f};
+        case NativeUnit::CoordinateDegrees: return {-180.0f, 180.0f, 90.0f};
+        case NativeUnit::Kilometers: return {0.0f, 99999.0f, 1000.0f};
+        case NativeUnit::None: break;
+    }
+    return {-9999.0f, 9999.0f, 9999.0f};
+}
+
+WarningLimits storedWarningLimits(ParameterId id) {
+    const WarningLimits strict = warningLimits(id);
+    return {strict.minimum < 0.0f ? strict.minimum : 0.0f,
+            strict.maximum > 999.0f ? strict.maximum : 999.0f,
+            strict.hysteresis_maximum > 999.0f ? strict.hysteresis_maximum : 999.0f};
 }

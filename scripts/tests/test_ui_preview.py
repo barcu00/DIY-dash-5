@@ -59,7 +59,7 @@ class PreviewContractTest(unittest.TestCase):
 
         self.assertEqual(348, settings["content_height"])
         self.assertFalse(settings["scrollable"])
-        self.assertEqual(6, settings["category_count"])
+        self.assertEqual(7, settings["category_count"])
         self.assertEqual(6, settings["layout_slots_per_page"])
         self.assertEqual(5, settings["shift_slider_count"])
         self.assertTrue(settings["shift_flash_switch"])
@@ -67,8 +67,8 @@ class PreviewContractTest(unittest.TestCase):
         self.assertEqual("continuous", settings["temperature_bar_style"])
         self.assertEqual([40.0, 75.0, 115.0, 130.0],
                          settings["temperature_bar_defaults"])
-        self.assertEqual(0.0, settings["alarm_minimum"])
-        self.assertEqual(999.0, settings["alarm_maximum"])
+        self.assertEqual("per_parameter_native_unit", settings["alarm_limits"])
+        self.assertEqual(20000.0, settings["alarm_rpm_maximum"])
         self.assertEqual(1, settings["alarm_decimals"])
 
     def test_shift_settings_uses_sliders_without_step_buttons(self):

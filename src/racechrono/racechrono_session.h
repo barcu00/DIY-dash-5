@@ -19,6 +19,11 @@ enum class RaceChronoConnectionState : uint8_t {
 
 class RaceChronoSession {
 public:
+    // A lost indication confirmation or config-result write must not leave
+    // the session in CONFIGURING forever.
+    static constexpr uint32_t kResponseTimeoutMs = 3000U;
+    static constexpr uint8_t kMaximumStepRetries = 3U;
+
     explicit RaceChronoSession(RaceChronoTelemetry& telemetry);
 
     void setEnabled(bool enabled);
@@ -45,6 +50,8 @@ private:
     void handleIndicationConfirmed(uint32_t now_ms);
     void handleConfigWrite(const RaceChronoEvent& event, uint32_t now_ms);
     void handleValuesWrite(const RaceChronoEvent& event, uint32_t now_ms);
+    void handleResponseTimeout(uint32_t now_ms);
+    void startWaiting(uint32_t now_ms);
 
     RaceChronoTelemetry& telemetry_;
     RaceChronoConnectionState state_ = RaceChronoConnectionState::Disabled;
@@ -58,6 +65,9 @@ private:
     bool have_valid_packet_ = false;
     uint32_t last_valid_packet_ms_ = 0U;
     uint32_t last_update_request_ms_ = 0U;
+    uint32_t now_ms_ = 0U;
+    uint32_t waiting_since_ms_ = 0U;
+    uint8_t remove_retries_ = 0U;
 
     std::array<RaceChronoAction, 8U> actions_{};
     uint8_t action_head_ = 0U;

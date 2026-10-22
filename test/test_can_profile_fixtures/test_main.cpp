@@ -585,19 +585,42 @@ void test_wrong_dlc_and_format_are_rejected_without_partial_update() {
     TEST_ASSERT_FALSE(decoder.decode(extended, state, 4U));
 }
 
-void test_out_of_range_signal_rejects_the_whole_matching_frame() {
+void test_out_of_range_signal_invalidates_only_itself() {
     EcuCanDecoder decoder(CanProfileRegistry::find("ecumaster_emu_black"));
     VehicleState state;
     state.reset(DataSource::Can);
+    state.set(ParameterId::Rpm, 3000.0f, 1U);
 
     const CanFrame invalid_rpm{
         0x600U, 8U, {0xFFU, 0xFFU, 100U, 25U, 0xFAU, 0U, 0U, 0U},
         false, false};
-    TEST_ASSERT_FALSE(decoder.decode(invalid_rpm, state, 5U));
+    TEST_ASSERT_TRUE(decoder.decode(invalid_rpm, state, 5U));
     TEST_ASSERT_FALSE(state.get(ParameterId::Rpm).valid);
-    TEST_ASSERT_FALSE(state.get(ParameterId::Tps).valid);
-    TEST_ASSERT_FALSE(state.get(ParameterId::Iat).valid);
-    TEST_ASSERT_FALSE(state.get(ParameterId::Map).valid);
+    assertValue(state, ParameterId::Tps, 50.0f);
+    assertValue(state, ParameterId::Iat, 25.0f);
+    assertValue(state, ParameterId::Map, 2.5f);
+}
+
+void test_hot_oil_keeps_coolant_and_oil_pressure_valid() {
+    // 0x602: speed 100, oil 161 C, oil 4.0 bar, fuel 3.0 bar, CLT 95 C.
+    VehicleState state = decode(
+        "ecumaster_emu_black",
+        CanFrame{0x602U, 8U, {100U, 0U, 0U, 161U, 64U, 48U, 95U, 0U},
+                 false, false});
+    assertValue(state, ParameterId::OilTemperature, 161.0f);
+    assertValue(state, ParameterId::OilPressure, 4.0f);
+    assertValue(state, ParameterId::Clt, 95.0f);
+    assertValue(state, ParameterId::Speed, 100.0f);
+}
+
+void test_frame_with_only_implausible_values_is_not_accepted() {
+    EcuCanDecoder decoder(CanProfileRegistry::find("haltech_broadcast_2_0"));
+    VehicleState state;
+    state.reset(DataSource::Can);
+    // 0x3E0 all raw zero = -273 C on every channel: nothing plausible.
+    TEST_ASSERT_FALSE(decoder.decode(
+        CanFrame{0x3E0U, 8U, {0U}, false, false}, state, 5U));
+    TEST_ASSERT_FALSE(state.get(ParameterId::Clt).valid);
 }
 
 int main(int, char**) {
@@ -623,6 +646,8 @@ int main(int, char**) {
     RUN_TEST(test_maxxecu_decodes_all_approved_status_flags);
     RUN_TEST(test_link_decodes_limit_bits_and_exact_active_feature_states);
     RUN_TEST(test_wrong_dlc_and_format_are_rejected_without_partial_update);
-    RUN_TEST(test_out_of_range_signal_rejects_the_whole_matching_frame);
+    RUN_TEST(test_out_of_range_signal_invalidates_only_itself);
+    RUN_TEST(test_hot_oil_keeps_coolant_and_oil_pressure_valid);
+    RUN_TEST(test_frame_with_only_implausible_values_is_not_accepted);
     return UNITY_END();
 }

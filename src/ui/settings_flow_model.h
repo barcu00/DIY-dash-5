@@ -14,6 +14,7 @@ enum class SettingsCategory : uint8_t {
     Units,
     Layouts,
     System,
+    Odometer,
 };
 
 enum class SettingsInputKind : uint8_t {

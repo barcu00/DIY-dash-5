@@ -2,10 +2,33 @@
 
 #include <Arduino.h>
 #include <Preferences.h>
+#include <nvs_flash.h>
+
+// Preferences::begin() fails forever when the dedicated partition reports
+// NO_FREE_PAGES or NEW_VERSION_FOUND (e.g. after an IDF upgrade or a
+// truncated write). Recover once per boot by erasing only "dashcfg"; the
+// config then falls back to defaults instead of being unsaveable.
+bool ensureNvsPartition(const char* label) {
+    static bool ready = false;
+    if (ready) return true;
+    esp_err_t result = nvs_flash_init_partition(label);
+    if (result == ESP_ERR_NVS_NO_FREE_PAGES ||
+        result == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        Serial.printf("[CONFIG] NVS partition %s unusable (%s), erasing\n",
+                      label, esp_err_to_name(result));
+        if (nvs_flash_erase_partition(label) == ESP_OK)
+            result = nvs_flash_init_partition(label);
+    }
+    ready = result == ESP_OK;
+    if (!ready)
+        Serial.printf("[CONFIG] NVS partition %s init failed: %s\n", label,
+                      esp_err_to_name(result));
+    return ready;
+}
 
 std::size_t NvsConfigBackend::storedSize() const {
     Preferences preferences;
-    if (!preferences.begin(kNamespace, true, kPartition)) {
+    if (!ensureNvsPartition(kPartition) || !preferences.begin(kNamespace, true, kPartition)) {
         Serial.println("[CONFIG] NVS open failed: size");
         return 0U;
     }
@@ -16,7 +39,7 @@ std::size_t NvsConfigBackend::storedSize() const {
 
 bool NvsConfigBackend::read(void* data, std::size_t size) {
     Preferences preferences;
-    if (!preferences.begin(kNamespace, true, kPartition)) {
+    if (!ensureNvsPartition(kPartition) || !preferences.begin(kNamespace, true, kPartition)) {
         Serial.println("[CONFIG] NVS open failed: read");
         return false;
     }
@@ -36,7 +59,7 @@ bool NvsConfigBackend::read(void* data, std::size_t size) {
 
 bool NvsConfigBackend::write(const void* data, std::size_t size) {
     Preferences preferences;
-    if (!preferences.begin(kNamespace, false, kPartition)) {
+    if (!ensureNvsPartition(kPartition) || !preferences.begin(kNamespace, false, kPartition)) {
         Serial.println("[CONFIG] NVS open failed: write");
         return false;
     }
@@ -53,7 +76,7 @@ bool NvsConfigBackend::write(const void* data, std::size_t size) {
 
 bool NvsConfigBackend::erase() {
     Preferences preferences;
-    if (!preferences.begin(kNamespace, false, kPartition)) {
+    if (!ensureNvsPartition(kPartition) || !preferences.begin(kNamespace, false, kPartition)) {
         Serial.println("[CONFIG] NVS open failed: erase");
         return false;
     }

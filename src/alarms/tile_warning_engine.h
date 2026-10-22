@@ -21,6 +21,7 @@ struct WarningModalData {
     float current_native = 0.0f;
     float threshold_native = 0.0f;
     uint8_t remaining_count = 0U;
+    bool data_lost = false;
 };
 
 class TileWarningEngine {
@@ -32,10 +33,14 @@ public:
     std::optional<WarningModalData> nextModal() const;
     void acknowledge(TileAddress address);
     bool isHighlighted(TileAddress address) const;
+    bool isDataLost(TileAddress address) const;
 
 private:
     static constexpr std::size_t kRuntimeCount =
         2U * AppConfig::kLayoutTileCapacity;
+    // Runtime slots are addressed as DASH [0, cap) and TRACK [cap, 2*cap).
+    static_assert(AppConfig::kDashTileCount == AppConfig::kLayoutTileCapacity,
+                  "warning runtime indexing assumes DASH bank == capacity");
 
     struct RuntimeWarning {
         TileAlarmPhase phase = TileAlarmPhase::Safe;
@@ -47,6 +52,7 @@ private:
         uint16_t delay_ms = 0U;
         uint32_t pending_since_ms = 0U;
         float current_native = 0.0f;
+        bool data_lost = false;
     };
 
     static std::optional<std::size_t> indexOf(TileAddress address);

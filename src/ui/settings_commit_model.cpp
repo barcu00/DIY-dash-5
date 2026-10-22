@@ -46,14 +46,22 @@ bool SettingsCommitModel::queueFactoryReset() {
     return true;
 }
 
-bool SettingsCommitModel::take(ConfigCommitRequest& request) {
+const ConfigCommitRequest* SettingsCommitModel::takeInPlace() {
     if (!pending_ || in_flight_) {
-        return false;
+        return nullptr;
     }
-    request = pending_request_;
     pending_ = false;
     in_flight_ = true;
-    in_flight_revision_ = request.revision;
+    in_flight_revision_ = pending_request_.revision;
+    return &pending_request_;
+}
+
+bool SettingsCommitModel::take(ConfigCommitRequest& request) {
+    const ConfigCommitRequest* taken = takeInPlace();
+    if (taken == nullptr) {
+        return false;
+    }
+    request = *taken;
     return true;
 }
 

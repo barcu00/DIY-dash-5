@@ -32,7 +32,8 @@ public:
     uint32_t droppedEvents() const;
 
 private:
-    void executeActions();
+    static constexpr uint32_t kDeferredActionTimeoutMs = 1000U;
+    void executeActions(uint32_t now_ms);
     bool executeAction(const RaceChronoAction& action);
     bool nextEvent(RaceChronoEvent& event);
 
@@ -43,4 +44,5 @@ private:
     bool enabled_ = false;
     RaceChronoAction deferred_action_{};
     bool has_deferred_action_ = false;
+    uint32_t deferred_since_ms_ = 0U;
 };

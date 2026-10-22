@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <memory>
 #include <cstddef>
 #include <cstdint>
 #include <lvgl.h>
@@ -7,6 +8,7 @@
 #include "board/board_display.h"
 #include "can/can_status.h"
 #include "ecu/parameter_capabilities.h"
+#include "odometer/odometer_model.h"
 #include "settings/app_config.h"
 #include "telemetry/vehicle_state.h"
 #include "telemetry/composite_telemetry_view.h"
@@ -29,6 +31,9 @@ struct UiRuntimeStatus {
     std::size_t decoder_mappings = 0U;
     uint32_t received_frames = 0U;
     uint32_t rejected_frames = 0U;
+    uint32_t can_dropped_frames = 0U;   // RX FIFO overrun + queue full
+    uint32_t can_bus_errors = 0U;
+    bool can_error_passive = false;
     RaceChronoConnectionState racechrono_connection =
         RaceChronoConnectionState::Disabled;
     RaceChronoRuntimeStatus racechrono{};
@@ -43,10 +48,11 @@ public:
     void updateShiftLight(const VehicleState& state, uint32_t now_ms,
                           const ShiftLightConfig& config);
     void setDataContext(DataSource source, const CanProfile* profile);
-    bool takeConfigCommit(ConfigCommitRequest& request);
+    const ConfigCommitRequest* takeConfigCommit();
     void completeConfigCommit(uint32_t revision, bool success);
     bool takeWarningTest();
     bool takeRaceChronoRestart();
+    void setOdometer(OdometerModel* odometer) { odometer_ = odometer; }
     static void spinDecreaseEvent(lv_event_t* event);
     static void spinIncreaseEvent(lv_event_t* event);
 private:
@@ -85,6 +91,10 @@ private:
     void createUnitSettings(lv_obj_t* panel);
     void createLayoutSettings(lv_obj_t* panel);
     void createSystemSettings(lv_obj_t* panel);
+    void createOdometerSettings(lv_obj_t* panel);
+    void refreshOdometerSettings();
+    void applyOdometerField();
+    static void odometerEvent(lv_event_t* event);
     void clearSettingsWidgets();
     void createNavigation(lv_obj_t* parent, Page active);
     void applyLayout(Page page, const AppConfig& config);
@@ -107,7 +117,7 @@ private:
     void closeAuxiliary();
     void openParameterPicker();
     void renderParameterPicker();
-    bool stageSettings(AppConfig candidate, bool reconfigure_runtime);
+    bool stageSettings(AppConfig& candidate, bool reconfigure_runtime);
     bool queueSettingsOnExit();
     const AppConfig& settingsConfig() const;
     void beginSettingsSession();
@@ -145,12 +155,28 @@ private:
     uint32_t latest_state_ms_ = 0U;
     std::array<bool, AppConfig::kDashTileCount> dash_highlights_{};
     std::array<bool, AppConfig::kLayoutTileCapacity> track_highlights_{};
+    std::array<bool, AppConfig::kDashTileCount> dash_data_lost_{};
+    std::array<bool, AppConfig::kLayoutTileCapacity> track_data_lost_{};
     ParameterCapabilities capabilities_{};
     DataSource active_source_ = DataSource::Demo;
     const CanProfile* active_profile_ = nullptr;
     SettingsFlowModel settings_flow_{};
     AppConfig* config_ = nullptr;
     AppConfig settings_draft_ = AppConfig::defaults();
+    // Heap (PSRAM) working copy for event handlers; keeps ~7 KB AppConfig
+    // copies off the LVGL call stack. Handlers are not re-entrant.
+    std::unique_ptr<AppConfig> candidate_scratch_;
+    OdometerModel* odometer_ = nullptr;
+    lv_obj_t* odometer_value_ = nullptr;
+    lv_obj_t* odometer_status_ = nullptr;
+    lv_obj_t* odometer_field_ = nullptr;
+    std::size_t odometer_binding_index_ = 0U;
+    std::array<lv_obj_t*, 3> odometer_source_{};
+    lv_obj_t* odometer_fallback_ = nullptr;
+    std::array<lv_obj_t*, 2> trip_value_{};
+    std::array<lv_obj_t*, 2> trip_detail_{};
+    lv_obj_t* odometer_correction_ = nullptr;
+    AppConfig* draftCandidate(const AppConfig& source);
     bool settings_draft_active_ = false;
     bool pending_settings_exit_ = false;
     bool pending_settings_exit_to_page_ = false;

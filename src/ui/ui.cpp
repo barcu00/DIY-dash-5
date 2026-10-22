@@ -1,6 +1,7 @@
 #include "ui.h"
 #include <cstdio>
 #include <cstring>
+#include <new>
 #include "board/hardware_profile.h"
 #include "ecu/can_profile_registry.h"
 #include "ui/tile_engine.h"
@@ -66,6 +67,11 @@ lv_obj_t* makeSettingsCard(lv_obj_t* parent, const char* title,
     lv_obj_set_style_border_color(button, UiTheme::border(), 0);
     lv_obj_set_style_border_width(button, 1, 0);
     lv_obj_set_style_radius(button, 10, 0);
+    lv_obj_t* caption = lv_obj_get_child(button, 0);
+    lv_obj_set_width(caption, width - 20);
+    lv_label_set_long_mode(caption, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_text_align(caption, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_center(caption);
     return button;
 }
 }  // namespace
@@ -132,6 +138,14 @@ void Ui::clearSettingsWidgets() {
     numeric_binding_count_=0;
     rpm_preview_blocks_.fill(nullptr);
     settings_status_ = nullptr;
+    odometer_value_ = nullptr;
+    odometer_status_ = nullptr;
+    odometer_field_ = nullptr;
+    odometer_source_.fill(nullptr);
+    odometer_fallback_ = nullptr;
+    trip_value_.fill(nullptr);
+    trip_detail_.fill(nullptr);
+    odometer_correction_ = nullptr;
     warning_sound_ = nullptr;
     settings_message_ = nullptr;
     settings_back_ = nullptr;
@@ -206,7 +220,8 @@ void Ui::showSettings(SettingsCategory category) {
         category == SettingsCategory::RaceChrono ? "RACECHRONO" :
         category == SettingsCategory::ShiftLight ? "RPM & SHIFT LIGHT" :
         category == SettingsCategory::Units ? "UNITS" :
-        category == SettingsCategory::Layouts ? "LAYOUTS" : "SYSTEM");
+        category == SettingsCategory::Layouts ? "LAYOUTS" :
+        category == SettingsCategory::Odometer ? "ODOMETER & TRIP" : "SYSTEM");
     if (category != SettingsCategory::Home) {
         settings_back_ = makeButton(
             settings_, "< BACK", 20, 18, 120, 38,
@@ -222,6 +237,7 @@ void Ui::showSettings(SettingsCategory category) {
     if (category == SettingsCategory::Units) createUnitSettings(panel);
     if (category == SettingsCategory::Layouts) createLayoutSettings(panel);
     if (category == SettingsCategory::System) createSystemSettings(panel);
+    if (category == SettingsCategory::Odometer) createOdometerSettings(panel);
     createNavigation(settings_, Page::Settings);
     lv_scr_load(settings_);
     if (previous && previous != settings_) lv_obj_del_async(previous);
@@ -230,17 +246,19 @@ void Ui::showSettings(SettingsCategory category) {
 
 void Ui::createSettingsHome(lv_obj_t* panel) {
     constexpr const char* names[] = {
-        "DISPLAY", "DATA & CAN", "RPM & SHIFT LIGHT",
-        "UNITS", "LAYOUTS", "SYSTEM"};
+        "DISPLAY", "DATA & CAN", "RPM & SHIFT LIGHT", "UNITS",
+        "LAYOUTS", "ODOMETER & TRIP", "SYSTEM"};
     constexpr SettingsCategory categories[] = {
         SettingsCategory::Display, SettingsCategory::DataCan,
         SettingsCategory::ShiftLight, SettingsCategory::Units,
-        SettingsCategory::Layouts, SettingsCategory::System};
-    for (int index = 0; index < 6; ++index) {
-        const int column = index % 3;
-        const int row = index / 3;
-        makeSettingsCard(panel, names[index], column * 256 + 6,
-                         row * 166 + 6, 244, 154,
+        SettingsCategory::Layouts, SettingsCategory::Odometer,
+        SettingsCategory::System};
+    constexpr int kCards = sizeof(categories) / sizeof(categories[0]);
+    for (int index = 0; index < kCards; ++index) {
+        const int column = index % 4;
+        const int row = index / 4;
+        makeSettingsCard(panel, names[index], column * 192 + 6,
+                         row * 166 + 6, 180, 154,
                          settingsCategoryEvent,
                          reinterpret_cast<void*>(static_cast<intptr_t>(
                              categories[index])));
@@ -497,10 +515,16 @@ void Ui::update(const CompositeTelemetryView& state,
     latest_racechrono_ = state.raceChronoState();
     latest_ui_status_ = status;
     latest_state_ms_ = diagnostics.uptime_ms;
-    for (std::size_t i=0; i<dash_highlights_.size(); ++i)
-        dash_highlights_[i] = warnings.isHighlighted({PageId::Dash, static_cast<uint8_t>(i)});
-    for (std::size_t i=0; i<track_highlights_.size(); ++i)
-        track_highlights_[i] = warnings.isHighlighted({PageId::Track, static_cast<uint8_t>(i)});
+    for (std::size_t i=0; i<dash_highlights_.size(); ++i) {
+        const TileAddress address{PageId::Dash, static_cast<uint8_t>(i)};
+        dash_highlights_[i] = warnings.isHighlighted(address);
+        dash_data_lost_[i] = warnings.isDataLost(address);
+    }
+    for (std::size_t i=0; i<track_highlights_.size(); ++i) {
+        const TileAddress address{PageId::Track, static_cast<uint8_t>(i)};
+        track_highlights_[i] = warnings.isHighlighted(address);
+        track_data_lost_[i] = warnings.isDataLost(address);
+    }
     if ((update_policy_.shouldUpdateData(PageId::Dash) ||
          update_policy_.shouldUpdateData(PageId::Track)) &&
         update_policy_.allowLayoutUpdates() &&
@@ -512,23 +536,22 @@ void Ui::update(const CompositeTelemetryView& state,
         const auto tiles = activeTiles(config, PageId::Dash);
         for (std::size_t i = 0U; i < tiles.size(); ++i)
             dash_tiles_[i].update(tiles[i], config.units, state,
-                isRaceChronoParameter(tiles[i].parameter) ||
+                isRaceChronoParameter(tiles[i].parameter) || isOdometerParameter(tiles[i].parameter) ||
                     capabilities_.supports(tiles[i].parameter),
-                warnings.isHighlighted({PageId::Dash, static_cast<uint8_t>(i)}),
-                diagnostics.uptime_ms);
+                dash_highlights_[i], diagnostics.uptime_ms, dash_data_lost_[i]);
     }
     if (update_policy_.shouldUpdateData(PageId::Track)) {
         const auto tiles = activeTiles(config, PageId::Track);
         for (std::size_t i = 0U; i < tiles.size(); ++i)
             track_tiles_[i].update(tiles[i], config.units, state,
-                isRaceChronoParameter(tiles[i].parameter) ||
+                isRaceChronoParameter(tiles[i].parameter) || isOdometerParameter(tiles[i].parameter) ||
                     capabilities_.supports(tiles[i].parameter),
-                warnings.isHighlighted({PageId::Track, static_cast<uint8_t>(i)}),
-                diagnostics.uptime_ms);
+                track_highlights_[i], diagnostics.uptime_ms, track_data_lost_[i]);
     }
     if (settings_status_ &&
         update_policy_.shouldUpdateSettingsStatus(diagnostics.uptime_ms)) {
         char buffer[256];
+        buffer[0] = '\0';
         if (settings_flow_.category() == SettingsCategory::Display) {
             std::snprintf(buffer, sizeof(buffer),
                 "Free heap: %u KiB\nPSRAM total: %u KiB\nDisplay: 800 x 480 RGB565\nRGB buffers: 1500 KiB | LVGL: 512 KiB PSRAM",
@@ -536,11 +559,15 @@ void Ui::update(const CompositeTelemetryView& state,
                 static_cast<unsigned>(diagnostics.psram_total / 1024U));
         } else if (settings_flow_.category() == SettingsCategory::DataCan) {
             std::snprintf(buffer, sizeof(buffer),
-                "CAN: %s  |  receive-only\nRX: %u  |  rejected: %u  |  mappings: %u",
+                "CAN: %s  |  receive-only\nRX: %u  |  rejected: %u  |  mappings: %u\n"
+                "Dropped: %u  |  bus errors: %u%s",
                 canStatusText(status.can_status),
                 static_cast<unsigned>(status.received_frames),
                 static_cast<unsigned>(status.rejected_frames),
-                static_cast<unsigned>(status.decoder_mappings));
+                static_cast<unsigned>(status.decoder_mappings),
+                static_cast<unsigned>(status.can_dropped_frames),
+                static_cast<unsigned>(status.can_bus_errors),
+                status.can_error_passive ? "  |  ERROR PASSIVE" : "");
         } else if (settings_flow_.category() == SettingsCategory::System) {
             std::snprintf(buffer, sizeof(buffer),
                 "Uptime: %u s\nFree heap: %u KiB\nPSRAM total: %u KiB\nUI updates: %u",
@@ -548,12 +575,21 @@ void Ui::update(const CompositeTelemetryView& state,
                 static_cast<unsigned>(diagnostics.free_heap / 1024U),
                 static_cast<unsigned>(diagnostics.psram_total / 1024U),
                 static_cast<unsigned>(diagnostics.ui_updates));
-            lv_label_set_text(settings_status_, buffer);
         }
+        // Only the three diagnostic categories own this label's text; other
+        // pages (e.g. RPM) use it for static hints.
+        if (buffer[0] != '\0' &&
+            std::strcmp(lv_label_get_text(settings_status_), buffer) != 0)
+            lv_label_set_text(settings_status_, buffer);
     }
     if (settings_flow_.category() == SettingsCategory::RaceChrono &&
         update_policy_.shouldUpdateSettingsStatus(diagnostics.uptime_ms)) {
         refreshRaceChronoSettings();
+    }
+    if (settings_flow_.category() == SettingsCategory::Odometer &&
+        !auxiliary_screen_ &&
+        update_policy_.shouldUpdateSettingsStatus(diagnostics.uptime_ms)) {
+        refreshOdometerSettings();
     }
     if (commit_toast_ &&
         static_cast<int32_t>(lv_tick_get() - commit_toast_until_ms_) >= 0) {
@@ -606,16 +642,16 @@ void Ui::prepareDataPage(Page page) {
     }
     const PageId id = page == Page::Dash ? PageId::Dash : PageId::Track;
     const auto configs = activeTiles(*config_, id);
-    const CompositeTelemetryView state(latest_state_, latest_racechrono_);
-    auto refresh = [&](auto& views, const auto& highlights) {
+    const CompositeTelemetryView state(latest_state_, latest_racechrono_, odometer_);
+    auto refresh = [&](auto& views, const auto& highlights, const auto& lost) {
         for (std::size_t i=0; i<configs.size(); ++i)
             views[i].update(configs[i], config_->units, state,
-                isRaceChronoParameter(configs[i].parameter) ||
+                isRaceChronoParameter(configs[i].parameter) || isOdometerParameter(configs[i].parameter) ||
                     capabilities_.supports(configs[i].parameter),
-                highlights[i], latest_state_ms_);
+                highlights[i], latest_state_ms_, lost[i]);
     };
-    if (page == Page::Dash) refresh(dash_tiles_, dash_highlights_);
-    else refresh(track_tiles_, track_highlights_);
+    if (page == Page::Dash) refresh(dash_tiles_, dash_highlights_, dash_data_lost_);
+    else refresh(track_tiles_, track_highlights_, track_data_lost_);
     const auto& rpm = latest_state_.get(ParameterId::Rpm);
     const uint16_t rpm_value = rpm.valid && rpm.value > 0 ? static_cast<uint16_t>(rpm.value) : 0;
     (page == Page::Dash ? dash_rpm_ : track_rpm_).update(rpm, latest_state_ms_, config_->shift);
@@ -635,8 +671,8 @@ void Ui::load(Page page) {
     if (page == Page::Settings) showSettings(SettingsCategory::Home);
 }
 
-bool Ui::takeConfigCommit(ConfigCommitRequest& request) {
-    return commit_model_.take(request);
+const ConfigCommitRequest* Ui::takeConfigCommit() {
+    return commit_model_.takeInPlace();
 }
 
 void Ui::completeConfigCommit(uint32_t revision, bool success) {
@@ -738,7 +774,15 @@ void Ui::showCommitFeedback(const char* message) {
     commit_toast_until_ms_ = lv_tick_get() + 1500U;
 }
 
-bool Ui::stageSettings(AppConfig candidate, bool reconfigure_runtime) {
+AppConfig* Ui::draftCandidate(const AppConfig& source) {
+    if (!candidate_scratch_)
+        candidate_scratch_.reset(new (std::nothrow) AppConfig(source));
+    else if (candidate_scratch_.get() != &source)
+        *candidate_scratch_ = source;
+    return candidate_scratch_.get();
+}
+
+bool Ui::stageSettings(AppConfig& candidate, bool reconfigure_runtime) {
     if (!config_ || !candidate.validate().valid) {
         showSettingsMessage("SAVE ERROR");
         if (board_ && config_)
@@ -914,23 +958,26 @@ void Ui::confirmReset() {
         reset_commit_pending_ || commit_model_.busy()) return;
     const SettingsResetTarget target = settings_flow_.pendingReset();
     bool queued = false;
-    if (target == SettingsResetTarget::DashLayout) {
-        AppConfig candidate = settings_draft_;
+    AppConfig* const scratch =
+        target == SettingsResetTarget::Factory ? nullptr
+                                               : draftCandidate(settings_draft_);
+    if (target == SettingsResetTarget::DashLayout && scratch) {
+        AppConfig& candidate = *scratch;
         resetPageLayouts(candidate, PageId::Dash);
         if (candidate.validate().valid) {
             settings_draft_ = candidate;
             commit_model_.markDirty(false);
             queued = commit_model_.queueOnExit(settings_draft_);
         }
-    } else if (target == SettingsResetTarget::TrackLayout) {
-        AppConfig candidate = settings_draft_;
+    } else if (target == SettingsResetTarget::TrackLayout && scratch) {
+        AppConfig& candidate = *scratch;
         resetPageLayouts(candidate, PageId::Track);
         if (candidate.validate().valid) {
             settings_draft_ = candidate;
             commit_model_.markDirty(false);
             queued = commit_model_.queueOnExit(settings_draft_);
         }
-    } else {
+    } else if (target == SettingsResetTarget::Factory) {
         queued = commit_model_.queueFactoryReset();
     }
     if (!queued) {
@@ -956,7 +1003,10 @@ void Ui::editorEvent(lv_event_t* event) {
 void Ui::settingsEvent(lv_event_t* event) {
     if (!instance_ || !instance_->config_) return;
     const intptr_t action = reinterpret_cast<intptr_t>(lv_event_get_user_data(event));
-    AppConfig candidate = instance_->settings_draft_;
+    AppConfig* const scratch =
+        instance_->draftCandidate(instance_->settings_draft_);
+    if (!scratch) { instance_->showSettingsMessage("SAVE ERROR"); return; }
+    AppConfig& candidate = *scratch;
 
     if (action == LayoutPresetChanged) {
         auto* dropdown = lv_event_get_target(event);
@@ -1176,18 +1226,21 @@ void Ui::updateWarningModal(TileWarningEngine& warnings) {
     }
     const PresentedValue current = UnitPresenter::present(modal->parameter, modal->current_native, config_->units);
     const PresentedValue threshold = UnitPresenter::present(modal->parameter, modal->threshold_native, config_->units);
+    char more[32] = "";
+    if (modal->remaining_count)
+        std::snprintf(more, sizeof(more), "\nMore warnings: %u",
+                      static_cast<unsigned>(modal->remaining_count));
     char text[256];
-    if (modal->remaining_count) {
-        std::snprintf(text, sizeof(text), "WARNING\n%s\n%.1f %s\nLimit: %.1f %s\nMore warnings: %u",
-            parameterDescriptor(modal->parameter).name, static_cast<double>(current.value), current.unit,
-            static_cast<double>(threshold.value), threshold.unit,
-            static_cast<unsigned>(modal->remaining_count));
-    } else {
-        std::snprintf(text, sizeof(text), "WARNING\n%s\n%.1f %s\nLimit: %.1f %s",
-            parameterDescriptor(modal->parameter).name, static_cast<double>(current.value), current.unit,
-            static_cast<double>(threshold.value), threshold.unit);
-    }
-    lv_label_set_text(warning_text_, text); lv_obj_move_foreground(warning_panel_);
+    std::snprintf(text, sizeof(text), "WARNING%s\n%s\n%s%.1f %s\nLimit: %.1f %s%s",
+        modal->data_lost ? " - DATA LOST" : "",
+        parameterDescriptor(modal->parameter).name,
+        modal->data_lost ? "Last: " : "",
+        static_cast<double>(current.value), current.unit,
+        static_cast<double>(threshold.value), threshold.unit, more);
+    // Avoid re-laying out the label every frame when nothing changed.
+    if (std::strcmp(lv_label_get_text(warning_text_), text) != 0)
+        lv_label_set_text(warning_text_, text);
+    lv_obj_move_foreground(warning_panel_);
 }
 
 void Ui::warningEvent(lv_event_t*) {

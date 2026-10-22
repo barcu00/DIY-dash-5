@@ -79,17 +79,18 @@ void validateTiles(std::array<TileConfig, Count>& tiles) {
             static_cast<uint8_t>(WarningDirection::Below)) {
             config.warning.direction = WarningDirection::Above;
         }
+        const WarningLimits limits = storedWarningLimits(config.parameter);
         if (!std::isfinite(config.warning.threshold_native)) {
             config.warning.threshold_native = 0.0f;
         }
         config.warning.threshold_native = std::clamp(
-            config.warning.threshold_native, 0.0f, kMaximumTileSetting);
+            config.warning.threshold_native, limits.minimum, limits.maximum);
         if (!std::isfinite(config.warning.hysteresis_native) ||
             config.warning.hysteresis_native < 0.0f) {
             config.warning.hysteresis_native = 0.0f;
         }
         config.warning.hysteresis_native = std::clamp(
-            config.warning.hysteresis_native, 0.0f, kMaximumTileSetting);
+            config.warning.hysteresis_native, 0.0f, limits.hysteresis_maximum);
         config.warning.delay_ms = std::min<uint16_t>(
             config.warning.delay_ms, kMaximumWarningDelayMs);
 

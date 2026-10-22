@@ -390,7 +390,9 @@ void Ui::raceChronoEvent(lv_event_t* event) {
 }
 
 void Ui::setRaceChronoDraftEnabled(bool enabled) {
-    AppConfig candidate = settings_draft_;
+    AppConfig* const scratch = draftCandidate(settings_draft_);
+    if (!scratch) { showSettingsMessage("SAVE ERROR"); return; }
+    AppConfig& candidate = *scratch;
     candidate.racechrono.enabled = enabled;
     if (!stageSettings(candidate, true)) return;
     if (racechrono_enabled_) {

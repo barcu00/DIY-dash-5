@@ -1,5 +1,6 @@
 #include "tile_editor_model.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 
@@ -17,19 +18,24 @@ TileConfig* tileAt(AppConfig& config, TileAddress address) {
     return address.slot < tiles.size() ? &tiles[address.slot] : nullptr;
 }
 
+bool validWarning(const TileConfig& tile) {
+    const WarningLimits limits = storedWarningLimits(tile.parameter);
+    return std::isfinite(tile.warning.threshold_native) &&
+           std::isfinite(tile.warning.hysteresis_native) &&
+           tile.warning.threshold_native >= limits.minimum &&
+           tile.warning.threshold_native <= limits.maximum &&
+           tile.warning.hysteresis_native >= 0.0f &&
+           tile.warning.hysteresis_native <= limits.hysteresis_maximum;
+}
+
 bool validDraft(const TileConfig& tile) {
     return static_cast<std::size_t>(tile.parameter) < parameterCount() &&
+           validWarning(tile) &&
            tile.decimals <= 5U &&
            static_cast<uint8_t>(tile.flag_active_color) <=
                static_cast<uint8_t>(FlagActiveColor::Red) &&
            static_cast<uint8_t>(tile.warning.direction) <=
                static_cast<uint8_t>(WarningDirection::Below) &&
-           std::isfinite(tile.warning.threshold_native) &&
-           std::isfinite(tile.warning.hysteresis_native) &&
-           tile.warning.threshold_native >= 0.0f &&
-           tile.warning.threshold_native <= 999.0f &&
-           tile.warning.hysteresis_native >= 0.0f &&
-           tile.warning.hysteresis_native <= 999.0f &&
            tile.warning.delay_ms <= 10000U &&
            std::isfinite(tile.temperature_bar.minimum_native) &&
            std::isfinite(tile.temperature_bar.ready_native) &&
@@ -81,6 +87,16 @@ void TileEditorModel::setParameter(ParameterId parameter) {
             draft_.tile.temperature_bar =
                 defaultTemperatureBarConfig(parameter);
         }
+        // Keep a dormant warning inside the new parameter's limits so the
+        // draft stays valid (e.g. a 110 C threshold moved to a lambda tile).
+        const WarningLimits limits = storedWarningLimits(parameter);
+        TileWarningConfig& warning = draft_.tile.warning;
+        if (!std::isfinite(warning.threshold_native)) warning.threshold_native = 0.0f;
+        if (!std::isfinite(warning.hysteresis_native)) warning.hysteresis_native = 0.0f;
+        warning.threshold_native = std::min(std::max(warning.threshold_native,
+                                                     limits.minimum), limits.maximum);
+        warning.hysteresis_native = std::min(std::max(warning.hysteresis_native, 0.0f),
+                                             limits.hysteresis_maximum);
     }
 }
 

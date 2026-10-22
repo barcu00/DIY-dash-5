@@ -93,7 +93,7 @@ void test_acknowledged_warning_retriggers_only_after_safe_rearm() {
     TEST_ASSERT_TRUE(engine.nextModal().has_value());
 }
 
-void test_invalid_value_clears_pending_and_active_warning() {
+void test_invalid_value_clears_pending_warning() {
     const AppConfig config = oneWarning(PageId::Dash, 0U, ParameterId::Clt,
         WarningDirection::Above, 110.0f, 5.0f, 100U);
     VehicleState state;
@@ -106,6 +106,35 @@ void test_invalid_value_clears_pending_and_active_warning() {
     engine.evaluate(config, state, 100U);
     TEST_ASSERT_FALSE(engine.nextModal().has_value());
     TEST_ASSERT_FALSE(engine.isHighlighted({PageId::Dash, 0U}));
+}
+
+void test_active_warning_survives_data_loss_without_reraise() {
+    const AppConfig config = oneWarning(PageId::Dash, 3U, ParameterId::Clt,
+        WarningDirection::Above, 105.0f, 5.0f, 0U);
+    VehicleState state;
+    state.reset(DataSource::Can);
+    TileWarningEngine engine;
+
+    state.set(ParameterId::Clt, 110.0f, 0U);
+    engine.evaluate(config, state, 0U);
+    TEST_ASSERT_TRUE(engine.nextModal().has_value());
+    engine.acknowledge({PageId::Dash, 3U});
+    TEST_ASSERT_FALSE(engine.nextModal().has_value());
+
+    state.invalidate(ParameterId::Clt);
+    engine.evaluate(config, state, 10U);
+    TEST_ASSERT_TRUE(engine.isHighlighted({PageId::Dash, 3U}));
+    TEST_ASSERT_TRUE(engine.isDataLost({PageId::Dash, 3U}));
+
+    state.set(ParameterId::Clt, 110.0f, 20U);
+    engine.evaluate(config, state, 20U);
+    TEST_ASSERT_FALSE(engine.nextModal().has_value());
+    TEST_ASSERT_TRUE(engine.isHighlighted({PageId::Dash, 3U}));
+    TEST_ASSERT_FALSE(engine.isDataLost({PageId::Dash, 3U}));
+
+    state.set(ParameterId::Clt, 99.0f, 30U);
+    engine.evaluate(config, state, 30U);
+    TEST_ASSERT_FALSE(engine.isHighlighted({PageId::Dash, 3U}));
 }
 
 void test_hidden_tile_warning_still_opens_global_modal() {
@@ -181,7 +210,7 @@ void test_flag_tiles_never_open_numeric_warning_modal() {
     TEST_ASSERT_FALSE(engine.isHighlighted({PageId::Dash, 0U}));
 }
 
-void test_racechrono_warning_clears_without_touching_engine_state() {
+void test_racechrono_loss_latches_warning_without_touching_engine_state() {
     const AppConfig config = oneWarning(
         PageId::Dash, 0U, ParameterId::RcGpsSpeed,
         WarningDirection::Above, 100.0f, 5.0f, 0U);
@@ -199,6 +228,10 @@ void test_racechrono_warning_clears_without_touching_engine_state() {
     racechrono.invalidateAll();
     CompositeTelemetryView disconnected(engine_state, racechrono);
     warnings.evaluate(config, disconnected, 101U);
+    const auto modal = warnings.nextModal();
+    TEST_ASSERT_TRUE(modal.has_value());
+    TEST_ASSERT_TRUE(modal->data_lost);
+    warnings.acknowledge(modal->address);
     TEST_ASSERT_FALSE(warnings.nextModal().has_value());
     TEST_ASSERT_TRUE(engine_state.get(ParameterId::Rpm).valid);
     TEST_ASSERT_FLOAT_WITHIN(
@@ -210,11 +243,12 @@ int main(int, char**) {
     RUN_TEST(test_above_warning_activates_only_after_configured_delay);
     RUN_TEST(test_below_warning_uses_mirrored_hysteresis_rearm);
     RUN_TEST(test_acknowledged_warning_retriggers_only_after_safe_rearm);
-    RUN_TEST(test_invalid_value_clears_pending_and_active_warning);
+    RUN_TEST(test_invalid_value_clears_pending_warning);
+    RUN_TEST(test_active_warning_survives_data_loss_without_reraise);
     RUN_TEST(test_hidden_tile_warning_still_opens_global_modal);
     RUN_TEST(test_largest_normalized_excursion_is_shown_first);
     RUN_TEST(test_equal_excursions_use_page_then_slot_order);
     RUN_TEST(test_flag_tiles_never_open_numeric_warning_modal);
-    RUN_TEST(test_racechrono_warning_clears_without_touching_engine_state);
+    RUN_TEST(test_racechrono_loss_latches_warning_without_touching_engine_state);
     return UNITY_END();
 }

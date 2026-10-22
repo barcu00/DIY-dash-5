@@ -22,6 +22,7 @@ const char* nativeUnitText(NativeUnit unit) {
         case NativeUnit::Hertz: return "Hz";
         case NativeUnit::GForce: return "g";
         case NativeUnit::CoordinateDegrees: return "deg";
+        case NativeUnit::Kilometers: return "km";
         case NativeUnit::None: return "";
     }
     return "";
@@ -48,6 +49,11 @@ PresentedValue UnitPresenter::present(ParameterId id, float native_value,
         case NativeUnit::Kph:
             if (settings.speed == SpeedUnit::Mph) {
                 return {native_value * kMphPerKph, "mph"};
+            }
+            break;
+        case NativeUnit::Kilometers:
+            if (settings.speed == SpeedUnit::Mph) {
+                return {native_value * kMphPerKph, "mi"};
             }
             break;
         case NativeUnit::Lambda:
@@ -78,6 +84,7 @@ float UnitPresenter::toNative(ParameterId id, float presented_value,
             }
             break;
         case NativeUnit::Kph:
+        case NativeUnit::Kilometers:
             if (settings.speed == SpeedUnit::Mph) {
                 return presented_value / kMphPerKph;
             }

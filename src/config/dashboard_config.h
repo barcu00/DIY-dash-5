@@ -7,6 +7,9 @@
 namespace DashboardConfig {
 constexpr uint32_t kCanBitrate = 1000000U;
 constexpr uint32_t kCanTimeoutMs = 1500U;
+// ~20 B per queued frame in internal RAM; 256 covers >100 ms at 2 kfps.
+constexpr uint32_t kCanRxQueueLength = 256U;
+constexpr uint16_t kCanDrainPerLoop = 192U;
 constexpr uint32_t kUiUpdateIntervalMs = 25U;
 constexpr bool kDemoEnabled = true;
 constexpr uint8_t kCanTxGpio = currentHardwareProfile().can_tx_gpio;
