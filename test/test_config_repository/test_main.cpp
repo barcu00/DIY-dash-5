@@ -850,7 +850,7 @@ void test_schema_v8_migration_is_lossless_and_initializes_racechrono_off() {
     TEST_ASSERT_EQUAL_UINT8(
         static_cast<uint8_t>(LoadResult::Migrated),
         static_cast<uint8_t>(repository.load(loaded)));
-    TEST_ASSERT_EQUAL_UINT32(9U, loaded.schema_version);
+    TEST_ASSERT_EQUAL_UINT32(AppConfig::kSchemaVersion, loaded.schema_version);
     TEST_ASSERT_FALSE(loaded.racechrono.enabled);
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(old.data_source),
                             static_cast<uint8_t>(loaded.data_source));
@@ -910,8 +910,72 @@ void test_racechrono_enable_setting_round_trips_in_schema_nine() {
         static_cast<uint8_t>(repository.load(loaded)));
     TEST_ASSERT_TRUE(loaded.racechrono.enabled);
 }
+struct StoredAppConfigV9 {
+    uint32_t schema_version = 9U;
+    DataSource data_source = DataSource::Demo;
+    uint8_t brightness_percent = 100U;
+    CanSettings can{};
+    ShiftLightConfig shift{};
+    UnitSettings units{};
+    std::array<TileConfig, 14> dash_tiles{};
+    std::array<TileConfig, 12> track_tiles{};
+    DashboardLayout dash_layout = DashboardLayout::ClassicDash;
+    DashboardLayout track_layout = DashboardLayout::ClassicTrack;
+    uint16_t rpm_scale_max = 10000U;
+    std::array<AppConfig::TileBank, 5> dash_alternate_tiles{};
+    std::array<AppConfig::TileBank, 5> track_alternate_tiles{};
+    bool warning_sound_enabled = true;
+    RaceChronoSettings racechrono{};
+};
+
+// Catches schema 10 dropping or shifting anything stored by schema 9, and
+// new layout banks not getting their defaults.
+void test_schema_v9_migration_keeps_everything_and_adds_new_layout_banks() {
+    const StoredAppConfigV8 base = distinctV8Config();
+    static StoredAppConfigV9 old;
+    old.data_source = base.data_source;
+    old.brightness_percent = base.brightness_percent;
+    old.can = base.can;
+    old.shift = base.shift;
+    old.units = base.units;
+    old.dash_tiles = base.dash_tiles;
+    old.track_tiles = base.track_tiles;
+    old.dash_layout = base.dash_layout;
+    old.track_layout = base.track_layout;
+    old.rpm_scale_max = base.rpm_scale_max;
+    old.dash_alternate_tiles = base.dash_alternate_tiles;
+    old.track_alternate_tiles = base.track_alternate_tiles;
+    old.warning_sound_enabled = false;
+    old.racechrono.enabled = true;
+    static MemoryBackend backend;
+    TEST_ASSERT_TRUE(backend.write(&old, sizeof(old)));
+    ConfigRepository repository(backend);
+    static AppConfig loaded{};
+
+    TEST_ASSERT_EQUAL_UINT8(
+        static_cast<uint8_t>(LoadResult::Migrated),
+        static_cast<uint8_t>(repository.load(loaded)));
+    TEST_ASSERT_EQUAL_UINT32(AppConfig::kSchemaVersion, loaded.schema_version);
+    TEST_ASSERT_TRUE(loaded.racechrono.enabled);
+    TEST_ASSERT_FALSE(loaded.warning_sound_enabled);
+    TEST_ASSERT_EQUAL_MEMORY(&old.can, &loaded.can, sizeof(old.can));
+    TEST_ASSERT_EQUAL_MEMORY(&old.shift, &loaded.shift, sizeof(old.shift));
+    TEST_ASSERT_EQUAL_MEMORY(old.dash_alternate_tiles.data(),
+                             loaded.dash_alternate_tiles.data(),
+                             sizeof(old.dash_alternate_tiles));
+    TEST_ASSERT_EQUAL_MEMORY(old.track_alternate_tiles.data(),
+                             loaded.track_alternate_tiles.data(),
+                             sizeof(old.track_alternate_tiles));
+    static const AppConfig defaults = AppConfig::defaults();
+    TEST_ASSERT_EQUAL_MEMORY(defaults.dash_extra_tiles.data(),
+                             loaded.dash_extra_tiles.data(),
+                             sizeof(defaults.dash_extra_tiles));
+    TEST_ASSERT_EQUAL_UINT32(sizeof(AppConfig), backend.storedSize());
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
+    RUN_TEST(test_schema_v9_migration_keeps_everything_and_adds_new_layout_banks);
     RUN_TEST(test_nvs_backend_names_the_dedicated_configuration_partition);
     RUN_TEST(test_save_requires_readback_before_applying_runtime);
     RUN_TEST(test_save_rejects_mismatched_readback);
