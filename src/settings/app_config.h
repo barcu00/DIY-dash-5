@@ -23,6 +23,8 @@ enum class TileSize : uint8_t {
     Large,    // bordered, 96 px value, title and temperature bar
     Inline,   // borderless one-line label/value (status bands)
     Gauge,    // bordered mini needle gauge with value
+    DialCenter,  // borderless value in a dial centre, unit or label below
+    DialBadge,   // borderless value in the hexagon under a dial
 };
 
 enum class DashboardLayout : uint8_t {

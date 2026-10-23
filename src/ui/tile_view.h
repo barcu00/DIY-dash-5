@@ -31,8 +31,21 @@ private:
     GaugeRange gauge_range_{};
     uint16_t gauge_fill_ = 0U;
     bool gauge_valid_ = false;
+    bool gauge_celsius_ = false;
+    float gauge_label_min_ = 0.0f;
+    float gauge_label_max_ = 100.0f;
+    std::array<char, 8> gauge_unit_{};
     DeltaTone last_tone_ = DeltaTone::Neutral;
     static void drawGauge(lv_event_t* event);
+    // Analog-style (chamfered / dial) presentation.
+    static void drawChamfer(lv_event_t* event);
+    void setupStyled(const TileConfig& config);
+    void arrangeStyled();
+    uint8_t chamfer_ = 0U;
+    bool styled_ = false;
+    bool styled_warning_ = false;
+    bool styled_data_lost_ = false;
+    const lv_font_t* styled_value_font_ = nullptr;
     TileAddress address_{};
     bool base_border_ = true;
     TileSize size_ = TileSize::Small;

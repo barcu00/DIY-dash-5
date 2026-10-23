@@ -51,6 +51,7 @@ void TileView::create(lv_obj_t* parent, TileAddress address, lv_event_cb_t callb
     lv_obj_clear_flag(root_, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_flag(root_, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(root_, callback, LV_EVENT_LONG_PRESSED, this);
+    lv_obj_add_event_cb(root_, drawChamfer, LV_EVENT_DRAW_MAIN, this);
     stripe_ = lv_obj_create(root_);
     lv_obj_set_pos(stripe_, 0, 0);
     lv_obj_set_size(stripe_, 4, 88);
@@ -101,7 +102,12 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
     const bool large = geometry.size == TileSize::Large;
     size_ = geometry.size;
     geometry_ = geometry;
-    base_border_ = geometry.size != TileSize::Hero && !inline_tile;
+    chamfer_ = geometry.chamfer;
+    styled_ = chamfer_ != 0U || geometry.size == TileSize::DialCenter ||
+              geometry.size == TileSize::DialBadge;
+    base_border_ = geometry.size != TileSize::Hero && !inline_tile && !styled_;
+    lv_obj_set_style_text_letter_space(title_, 0, 0);
+    lv_obj_set_style_text_letter_space(unit_, 0, 0);
     lv_obj_clear_flag(root_, LV_OBJ_FLAG_HIDDEN);
     lv_obj_set_pos(root_, geometry.x, geometry.y);
     lv_obj_set_size(root_, geometry.width, geometry.height);
@@ -113,7 +119,7 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
     lv_obj_set_size(stripe_, 4, geometry.height - (row ? 14 : 10));
     lv_obj_set_style_radius(stripe_, 2, 0);
     lv_obj_set_style_bg_color(stripe_, UiTheme::border(), 0);
-    if (hero || inline_tile) lv_obj_add_flag(stripe_, LV_OBJ_FLAG_HIDDEN);
+    if (hero || inline_tile || styled_) lv_obj_add_flag(stripe_, LV_OBJ_FLAG_HIDDEN);
     else lv_obj_clear_flag(stripe_, LV_OBJ_FLAG_HIDDEN);
     const lv_font_t* value_font = &race_digits_48;
     if (geometry.size == TileSize::Wide) value_font = &race_digits_64;
@@ -259,8 +265,8 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
     }
     if (gauge && !is_flag) {
         lv_obj_clear_flag(gauge_, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_set_pos(gauge_, 8, 6);
-        lv_obj_set_size(gauge_, 172, geometry.height - 12);
+        lv_obj_set_pos(gauge_, 1, (geometry.height - 150) / 2);
+        lv_obj_set_size(gauge_, 192, 150);
         lv_obj_set_width(title_, geometry.width - 196);
         lv_obj_align(title_, LV_ALIGN_TOP_RIGHT, -12, 34);
         lv_obj_set_width(value_, geometry.width - 196 - 40);
@@ -269,10 +275,12 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
         lv_obj_set_style_text_font(unit_, &lv_font_montserrat_16, 0);
         lv_obj_align(unit_, LV_ALIGN_TOP_RIGHT, -12, 96);
         gauge_range_ = gaugeRange(config);
+        gauge_celsius_ = parameterDescriptor(config.parameter).native_unit == NativeUnit::Celsius;
         lv_obj_add_flag(temperature_bar_, LV_OBJ_FLAG_HIDDEN);
     } else {
         lv_obj_add_flag(gauge_, LV_OBJ_FLAG_HIDDEN);
     }
+    if (styled_) setupStyled(config);
     gauge_valid_ = false;
     gauge_fill_ = 0U;
     last_tone_ = DeltaTone::Neutral;
@@ -360,7 +368,11 @@ void TileView::update(const TileConfig& config, const UnitSettings& units,
         warning_initialized_ && data_lost != last_data_lost_;
     if (!warning_initialized_ || warning_active != last_warning_active_ ||
         data_lost != last_data_lost_) {
-        lv_obj_set_style_border_width(root_, warning_active ? 3 : base_border_ ? 1 : 0, 0);
+        styled_warning_ = warning_active;
+        styled_data_lost_ = data_lost;
+        if (chamfer_ != 0U) lv_obj_invalidate(root_);
+        lv_obj_set_style_border_width(root_, chamfer_ != 0U ? 0
+            : warning_active ? 3 : base_border_ ? 1 : 0, 0);
         lv_obj_set_style_border_color(
             root_, data_lost ? UiTheme::orange()
                    : warning_active ? UiTheme::red() : UiTheme::border(), 0);
@@ -401,6 +413,7 @@ void TileView::update(const TileConfig& config, const UnitSettings& units,
     if (bar_visible == lv_obj_has_flag(temperature_bar_, LV_OBJ_FLAG_HIDDEN)) {
         if (bar_visible) lv_obj_clear_flag(temperature_bar_, LV_OBJ_FLAG_HIDDEN);
         else lv_obj_add_flag(temperature_bar_, LV_OBJ_FLAG_HIDDEN);
+        if (styled_ && value_text_initialized_) arrangeStyled();
     }
     if (temperature.visible &&
         (!temperature_bar_initialized_ ||
@@ -479,11 +492,37 @@ void TileView::update(const TileConfig& config, const UnitSettings& units,
     if (size_ == TileSize::Gauge && !is_flag) {
         const bool gauge_valid = supported && signal.valid;
         const uint16_t fill = gauge_valid ? gaugeFill(signal.value, gauge_range_) : 0U;
+        const PresentedValue low = UnitPresenter::present(config.parameter, gauge_range_.minimum, units);
+        const PresentedValue high = UnitPresenter::present(config.parameter, gauge_range_.maximum, units);
+        char unit_label[8];
+        std::snprintf(unit_label, sizeof(unit_label), "%s", high.unit);
+        for (char* c = unit_label; *c; ++c) if (*c >= 'a' && *c <= 'z') *c = static_cast<char>(*c - 32);
+        if (low.value != gauge_label_min_ || high.value != gauge_label_max_ ||
+            std::strcmp(unit_label, gauge_unit_.data()) != 0) {
+            gauge_label_min_ = low.value;
+            gauge_label_max_ = high.value;
+            std::snprintf(gauge_unit_.data(), gauge_unit_.size(), "%s", unit_label);
+            lv_obj_invalidate(gauge_);
+        }
         if (gauge_valid != gauge_valid_ || fill != gauge_fill_) {
             gauge_valid_ = gauge_valid;
             gauge_fill_ = fill;
             lv_obj_invalidate(gauge_);
         }
+    }
+    if (styled_) {
+        const bool changed = !value_text_initialized_ || !unit_text_initialized_ ||
+            std::strcmp(last_value_text_.data(), value_text) != 0 ||
+            std::strcmp(last_unit_text_.data(), unit_text) != 0;
+        if (changed) {
+            lv_label_set_text(value_, value_text);
+            lv_label_set_text(unit_, unit_text);
+            std::snprintf(last_value_text_.data(), last_value_text_.size(), "%s", value_text);
+            std::snprintf(last_unit_text_.data(), last_unit_text_.size(), "%s", unit_text);
+            value_text_initialized_ = unit_text_initialized_ = true;
+            arrangeStyled();
+        }
+        return;
     }
     const bool row_changed = !value_text_initialized_ || !unit_text_initialized_ ||
         std::strcmp(last_value_text_.data(), value_text) != 0 ||
@@ -564,62 +603,259 @@ lv_point_t gaugePoint(lv_point_t center, float radius, float degrees) {
 }
 }  // namespace
 
-// Mini needle gauge: 240 degree segmented arc, lit up to the value, red zone
-// from the tile's warning threshold or temperature red mark.
+// Mini needle gauge (ANALOG TWIN): 240 degree segmented arc lit up to the
+// value, thin inner trail, scale numbers, red zone outside, white needle.
 void TileView::drawGauge(lv_event_t* event) {
     auto* self = static_cast<TileView*>(lv_event_get_user_data(event));
     if (self == nullptr || self->gauge_ == nullptr) return;
     lv_draw_ctx_t* ctx = lv_event_get_draw_ctx(event);
     lv_area_t area;
     lv_obj_get_coords(self->gauge_, &area);
-    const int width = area.x2 - area.x1 + 1;
-    const int height = area.y2 - area.y1 + 1;
-    const int radius = std::min(width / 2 - 14, height / 2 - 4);
-    const lv_point_t center{static_cast<lv_coord_t>(area.x1 + width / 2),
-                            static_cast<lv_coord_t>(area.y1 + height / 2 + 8)};
-    constexpr int kSegments = 24;
+    const lv_point_t c{static_cast<lv_coord_t>(area.x1 + 96), static_cast<lv_coord_t>(area.y1 + 92)};
     constexpr float kStart = 150.0f, kSweep = 240.0f;
-    const lv_color_t dim = lv_color_hex(0x1C2228);
-    for (int i = 0; i < kSegments; ++i) {
-        const uint16_t at = static_cast<uint16_t>((i * 1000 + 500) / kSegments);
-        const bool red = at >= self->gauge_range_.red_from_permille ||
-                         at < self->gauge_range_.red_below_permille;
-        const bool lit = self->gauge_valid_ && at <= self->gauge_fill_;
+    constexpr int kSegments = 24;
+    const GaugeRange& range = self->gauge_range_;
+    const bool fill_red = self->gauge_valid_ &&
+        (self->gauge_fill_ >= range.red_from_permille || self->gauge_fill_ < range.red_below_permille);
+    const lv_color_t lit = fill_red ? UiTheme::red()
+                         : self->gauge_celsius_ ? lv_color_hex(0x22C55E) : lv_color_hex(0xE6EAEE);
+    const auto arcDeg = [&](int radius, float from, float to, lv_color_t color, int width, lv_opa_t opa) {
+        if (to <= from) return;
         lv_draw_arc_dsc_t d;
         lv_draw_arc_dsc_init(&d);
-        d.width = 12;
-        d.color = lit ? (red ? UiTheme::red() : UiTheme::text()) : dim;
+        d.color = color;
+        d.width = static_cast<lv_coord_t>(width);
+        d.opa = opa;
+        lv_draw_arc(ctx, &d, &c, static_cast<uint16_t>(radius),
+                    static_cast<uint16_t>(std::lround(from)) % 360U,
+                    static_cast<uint16_t>(std::lround(to)) % 360U);
+    };
+    // Red zone(s) outside the segments.
+    if (range.red_from_permille <= 1000U)
+        arcDeg(72, kStart + kSweep * range.red_from_permille / 1000.0f, kStart + kSweep,
+               UiTheme::red(), 3, LV_OPA_COVER);
+    if (range.red_below_permille > 0U)
+        arcDeg(72, kStart, kStart + kSweep * range.red_below_permille / 1000.0f,
+               UiTheme::red(), 3, LV_OPA_COVER);
+    for (int i = 0; i < kSegments; ++i) {
         const float a0 = kStart + kSweep * i / kSegments;
-        const float a1 = kStart + kSweep * (i + 1) / kSegments - 2.0f;
-        lv_draw_arc(ctx, &d, &center, static_cast<uint16_t>(radius),
-                    static_cast<uint16_t>(std::lround(a0)) % 360U,
-                    static_cast<uint16_t>(std::lround(a1)) % 360U);
+        const uint16_t at = static_cast<uint16_t>((i * 1000 + 500) / kSegments);
+        const bool on = self->gauge_valid_ && at <= self->gauge_fill_;
+        arcDeg(58, a0, a0 + 7.0f, on ? lit : lv_color_hex(0x1A2129), 12, LV_OPA_COVER);
     }
-    // Red zone marks just outside the segments.
-    lv_draw_arc_dsc_t zone;
-    lv_draw_arc_dsc_init(&zone);
-    zone.width = 2;
-    zone.color = UiTheme::red();
-    if (self->gauge_range_.red_from_permille <= 1000U) {
-        const float a0 = kStart + kSweep * self->gauge_range_.red_from_permille / 1000.0f;
-        lv_draw_arc(ctx, &zone, &center, static_cast<uint16_t>(radius + 6),
-                    static_cast<uint16_t>(std::lround(a0)) % 360U,
-                    static_cast<uint16_t>(std::lround(kStart + kSweep)) % 360U);
+    if (self->gauge_valid_)
+        arcDeg(47, kStart, kStart + kSweep * self->gauge_fill_ / 1000.0f, lit, 2, LV_OPA_50);
+    // Scale numbers at 0/25/50/75/100 %.
+    lv_draw_label_dsc_t number;
+    lv_draw_label_dsc_init(&number);
+    number.font = &dash_italic_14;
+    number.color = lv_color_hex(0x8E9AA6);
+    number.align = LV_TEXT_ALIGN_CENTER;
+    for (int k = 0; k <= 4; ++k) {
+        const float value = self->gauge_label_min_ + (self->gauge_label_max_ - self->gauge_label_min_) * k / 4.0f;
+        char text[8];
+        std::snprintf(text, sizeof(text), "%.0f", static_cast<double>(value));
+        const lv_point_t p = gaugePoint(c, 40, kStart + kSweep * k / 4.0f);
+        const lv_area_t box{static_cast<lv_coord_t>(p.x - 16), static_cast<lv_coord_t>(p.y - 8),
+                            static_cast<lv_coord_t>(p.x + 16), static_cast<lv_coord_t>(p.y + 9)};
+        lv_draw_label(ctx, &number, &box, text, nullptr);
     }
-    if (self->gauge_range_.red_below_permille > 0U) {
-        const float a1 = kStart + kSweep * self->gauge_range_.red_below_permille / 1000.0f;
-        lv_draw_arc(ctx, &zone, &center, static_cast<uint16_t>(radius + 6),
-                    static_cast<uint16_t>(kStart),
-                    static_cast<uint16_t>(std::lround(a1)) % 360U);
-    }
+    lv_draw_label_dsc_t unit;
+    lv_draw_label_dsc_init(&unit);
+    unit.font = &dash_label_12;
+    unit.color = lv_color_hex(0x5E6872);
+    unit.letter_space = 2;
+    unit.align = LV_TEXT_ALIGN_CENTER;
+    const lv_area_t unit_box{static_cast<lv_coord_t>(c.x - 30), static_cast<lv_coord_t>(c.y + 26),
+                             static_cast<lv_coord_t>(c.x + 30), static_cast<lv_coord_t>(c.y + 42)};
+    lv_draw_label(ctx, &unit, &unit_box, self->gauge_unit_.data(), nullptr);
     if (!self->gauge_valid_) return;
+    // Needle: a slim white wedge from just inside the segments to the red zone.
     const float angle = kStart + kSweep * self->gauge_fill_ / 1000.0f;
-    lv_draw_line_dsc_t needle;
-    lv_draw_line_dsc_init(&needle);
-    needle.color = UiTheme::text();
-    needle.width = 3;
-    needle.round_start = needle.round_end = 1;
-    const lv_point_t tip = gaugePoint(center, radius + 8, angle);
-    const lv_point_t tail = gaugePoint(center, radius - 26, angle);
-    lv_draw_line(ctx, &needle, &tail, &tip);
+    const float radians = angle * kGaugePi / 180.0f;
+    const float nx = -std::sin(radians), ny = std::cos(radians);
+    const lv_point_t base = gaugePoint(c, 49, angle), tip = gaugePoint(c, 73, angle);
+    const lv_point_t needle[4] = {
+        {static_cast<lv_coord_t>(std::lround(base.x + nx * 3)), static_cast<lv_coord_t>(std::lround(base.y + ny * 3))},
+        {static_cast<lv_coord_t>(std::lround(tip.x + nx * 1)), static_cast<lv_coord_t>(std::lround(tip.y + ny * 1))},
+        {static_cast<lv_coord_t>(std::lround(tip.x - nx * 1)), static_cast<lv_coord_t>(std::lround(tip.y - ny * 1))},
+        {static_cast<lv_coord_t>(std::lround(base.x - nx * 3)), static_cast<lv_coord_t>(std::lround(base.y - ny * 3))}};
+    lv_draw_rect_dsc_t white;
+    lv_draw_rect_dsc_init(&white);
+    white.bg_color = lv_color_hex(0xFFFFFF);
+    lv_draw_polygon(ctx, &white, needle, 4);
+}
+
+namespace {
+const lv_color_t kStyledLabel = lv_color_hex(0x8E9AA6);
+int textWidth(const char* text, const lv_font_t* font, int letter_space = 0) {
+    lv_point_t size;
+    lv_txt_get_size(&size, text, font, letter_space, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    return size.x;
+}
+// Places a label so that its text baseline lands on `baseline`.
+void placeOnBaseline(lv_obj_t* label, const lv_font_t* font, int x, int baseline) {
+    lv_obj_align(label, LV_ALIGN_TOP_LEFT, x, baseline - (font->line_height - font->base_line));
+}
+int capHeight(const lv_font_t* font) {
+    return font->line_height - font->base_line;
+}
+}  // namespace
+
+void TileView::setupStyled(const TileConfig&) {
+    lv_obj_set_style_bg_opa(root_, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(root_, 0, 0);
+    lv_obj_set_style_radius(root_, 0, 0);
+    lv_obj_set_style_text_font(title_, &dash_label_12, 0);
+    lv_obj_set_style_text_letter_space(title_, 2, 0);
+    lv_obj_set_style_text_color(title_, kStyledLabel, 0);
+    lv_obj_set_width(title_, LV_SIZE_CONTENT);
+    lv_obj_set_width(value_, LV_SIZE_CONTENT);
+    lv_obj_set_width(unit_, LV_SIZE_CONTENT);
+    lv_label_set_long_mode(value_, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_text_align(value_, LV_TEXT_ALIGN_LEFT, 0);
+    lv_obj_set_style_text_font(unit_, &dash_label_14, 0);
+    lv_obj_set_style_text_color(unit_, kStyledLabel, 0);
+    switch (size_) {
+        case TileSize::DialCenter: styled_value_font_ = &dash_italic_80; break;
+        case TileSize::Inline: styled_value_font_ = &dash_italic_38; break;
+        default: styled_value_font_ = &dash_italic_48; break;
+    }
+    lv_obj_set_style_text_font(value_, styled_value_font_, 0);
+    if (size_ == TileSize::DialCenter) {
+        lv_obj_set_style_text_letter_space(unit_, 2, 0);
+        lv_obj_set_style_text_letter_space(title_, 2, 0);
+    }
+    if (size_ == TileSize::DialBadge) {
+        lv_obj_add_flag(title_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(unit_, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_clear_flag(title_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(unit_, LV_OBJ_FLAG_HIDDEN);
+    }
+    lv_obj_set_style_radius(temperature_bar_, 0, LV_PART_MAIN);
+    lv_obj_set_style_radius(temperature_bar_, 0, LV_PART_INDICATOR);
+    lv_obj_set_style_bg_color(temperature_bar_, lv_color_hex(0x1C2228), LV_PART_MAIN);
+    arrangeStyled();
+}
+
+void TileView::arrangeStyled() {
+    const int w = geometry_.width;
+    const int h = geometry_.height;
+    const char* value = lv_label_get_text(value_);
+    const char* unit = lv_label_get_text(unit_);
+    const bool status = statusText(unit);
+    const lv_font_t* vf = styled_value_font_ ? styled_value_font_ : &dash_italic_48;
+    // Fall back to a smaller italic size when the text does not fit.
+    const int room = size_ == TileSize::Gauge ? 140 : w - 20;
+    if (textWidth(value, vf) > room && vf != &dash_italic_38 && size_ != TileSize::DialCenter) vf = &dash_italic_38;
+    if (lv_obj_get_style_text_font(value_, LV_PART_MAIN) != vf) lv_obj_set_style_text_font(value_, vf, 0);
+    const lv_font_t* uf = &dash_label_14;
+    const lv_font_t* tf = &dash_label_12;
+    const int vw = textWidth(value, vf);
+    const int uw = unit[0] ? textWidth(unit, uf, size_ == TileSize::DialCenter ? 2 : 0) : 0;
+    const int tw = textWidth(lv_label_get_text(title_), tf, 2);
+    const int gap = unit[0] && !status ? 5 : 0;
+    const int cap = capHeight(vf);
+    if (status) lv_obj_set_style_text_color(unit_, UiTheme::orange(), 0);
+    else lv_obj_set_style_text_color(unit_, kStyledLabel, 0);
+
+    if (size_ == TileSize::DialCenter) {
+        const int baseline = 62;
+        placeOnBaseline(value_, vf, (w - vw) / 2, baseline);
+        const bool show_unit = unit[0] != '\0';
+        if (show_unit) {
+            // Dial centre shows the unit in capitals (KM/H).
+            char upper[16];
+            std::snprintf(upper, sizeof(upper), "%s", unit);
+            for (char* ch = upper; *ch; ++ch) if (*ch >= 'a' && *ch <= 'z') *ch = static_cast<char>(*ch - 32);
+            if (std::strcmp(upper, unit) != 0) lv_label_set_text(unit_, upper);
+            lv_obj_add_flag(title_, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(unit_, LV_OBJ_FLAG_HIDDEN);
+            placeOnBaseline(unit_, uf, (w - uw) / 2, 94);
+        } else {
+            lv_obj_add_flag(unit_, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(title_, LV_OBJ_FLAG_HIDDEN);
+            placeOnBaseline(title_, tf, (w - tw) / 2, 88);
+        }
+        return;
+    }
+    if (size_ == TileSize::DialBadge) {
+        placeOnBaseline(value_, vf, (w - vw) / 2, (h + cap) / 2 - 2);
+        return;
+    }
+    if (size_ == TileSize::Inline) {
+        const int total = tw + 10 + vw + (status ? 0 : gap + uw);
+        const int x0 = std::max(4, (w - total) / 2);
+        const int baseline = (h + cap) / 2;
+        placeOnBaseline(title_, tf, x0, h / 2 + capHeight(tf) / 2);
+        placeOnBaseline(value_, vf, x0 + tw + 10, baseline);
+        if (status) placeOnBaseline(unit_, &dash_label_12, (w - uw) / 2, h - 6);
+        else placeOnBaseline(unit_, uf, x0 + tw + 10 + vw + gap, baseline);
+        return;
+    }
+    const bool bar = !lv_obj_has_flag(temperature_bar_, LV_OBJ_FLAG_HIDDEN);
+    const int cx = size_ == TileSize::Gauge ? w - 87 : w / 2;
+    const int title_h = capHeight(tf);
+    const int block = title_h + 10 + cap + (bar ? 12 : 0);
+    const int top = size_ == TileSize::Gauge ? h / 2 - block / 2 - 4 : (h - block) / 2;
+    placeOnBaseline(title_, tf, cx - tw / 2, top + title_h);
+    const int baseline = top + title_h + 10 + cap;
+    const int row = vw + (status ? 0 : gap + uw);
+    const int x0 = cx - row / 2;
+    placeOnBaseline(value_, vf, x0, baseline);
+    if (status) placeOnBaseline(unit_, &dash_label_12, cx - uw / 2, baseline + 16);
+    else placeOnBaseline(unit_, uf, x0 + vw + gap, baseline);
+    if (bar) {
+        const int bw = w * 62 / 100;
+        lv_obj_set_size(temperature_bar_, bw, 3);
+        lv_obj_align(temperature_bar_, LV_ALIGN_TOP_LEFT, cx - bw / 2, baseline + 9);
+    }
+}
+
+// Chamfered panel: grey 1 px outline with a dark vertical gradient inside;
+// red (warning) or orange (data lost) outline when highlighted.
+void TileView::drawChamfer(lv_event_t* event) {
+    auto* self = static_cast<TileView*>(lv_event_get_user_data(event));
+    if (self == nullptr || self->chamfer_ == 0U) return;
+    lv_draw_ctx_t* ctx = lv_event_get_draw_ctx(event);
+    lv_area_t a;
+    lv_obj_get_coords(self->root_, &a);
+    const bool left = self->chamfer_ == 1U;
+    const auto shape = [&](int inset, int cut, lv_point_t* p) {
+        const int x1 = a.x1 + inset, y1 = a.y1 + inset, x2 = a.x2 - inset, y2 = a.y2 - inset;
+        if (left) {  // cuts at top-left and bottom-right
+            p[0] = {static_cast<lv_coord_t>(x1 + cut), static_cast<lv_coord_t>(y1)};
+            p[1] = {static_cast<lv_coord_t>(x2), static_cast<lv_coord_t>(y1)};
+            p[2] = {static_cast<lv_coord_t>(x2), static_cast<lv_coord_t>(y2 - cut)};
+            p[3] = {static_cast<lv_coord_t>(x2 - cut), static_cast<lv_coord_t>(y2)};
+            p[4] = {static_cast<lv_coord_t>(x1), static_cast<lv_coord_t>(y2)};
+            p[5] = {static_cast<lv_coord_t>(x1), static_cast<lv_coord_t>(y1 + cut)};
+        } else {     // cuts at top-right and bottom-left
+            p[0] = {static_cast<lv_coord_t>(x1), static_cast<lv_coord_t>(y1)};
+            p[1] = {static_cast<lv_coord_t>(x2 - cut), static_cast<lv_coord_t>(y1)};
+            p[2] = {static_cast<lv_coord_t>(x2), static_cast<lv_coord_t>(y1 + cut)};
+            p[3] = {static_cast<lv_coord_t>(x2), static_cast<lv_coord_t>(y2)};
+            p[4] = {static_cast<lv_coord_t>(x1 + cut), static_cast<lv_coord_t>(y2)};
+            p[5] = {static_cast<lv_coord_t>(x1), static_cast<lv_coord_t>(y2 - cut)};
+        }
+    };
+    const int stroke = self->styled_warning_ ? 3 : 1;
+    lv_point_t outer[6], inner[6];
+    shape(0, 18, outer);
+    shape(stroke, 18 - stroke / 2, inner);
+    lv_draw_rect_dsc_t edge;
+    lv_draw_rect_dsc_init(&edge);
+    edge.bg_color = self->styled_data_lost_ ? UiTheme::orange()
+                  : self->styled_warning_ ? UiTheme::red() : lv_color_hex(0x3A4048);
+    lv_draw_polygon(ctx, &edge, outer, 6);
+    lv_draw_rect_dsc_t fill;
+    lv_draw_rect_dsc_init(&fill);
+    fill.bg_grad.dir = LV_GRAD_DIR_VER;
+    fill.bg_grad.stops_count = 2;
+    fill.bg_grad.stops[0].color = lv_color_hex(0x0B1015);
+    fill.bg_grad.stops[0].frac = 0;
+    fill.bg_grad.stops[1].color = lv_color_hex(0x030507);
+    fill.bg_grad.stops[1].frac = 255;
+    lv_draw_polygon(ctx, &fill, inner, 6);
 }

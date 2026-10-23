@@ -18,12 +18,17 @@ GaugeRange gaugeRange(const TileConfig& tile) {
     GaugeRange range;
     const NativeUnit unit = parameterDescriptor(tile.parameter).native_unit;
     switch (unit) {
-        case NativeUnit::Celsius:
-            range = {tile.temperature_bar.minimum_native,
-                     tile.temperature_bar.maximum_native};
-            if (!(range.maximum > range.minimum)) range = {40.0f, 140.0f};
+        case NativeUnit::Celsius: {
+            // Four equal steps of a round size ending at the bar maximum,
+            // e.g. 40..130 C becomes 50/70/90/110/130.
+            float maximum = tile.temperature_bar.maximum_native;
+            float minimum = tile.temperature_bar.minimum_native;
+            if (!(maximum > minimum)) { minimum = 50.0f; maximum = 130.0f; }
+            const float step = std::max(10.0f, std::floor((maximum - minimum) / 40.0f) * 10.0f);
+            range = {maximum - 4.0f * step, maximum};
             break;
-        case NativeUnit::Bar: range = {0.0f, 10.0f}; break;
+        }
+        case NativeUnit::Bar: range = {0.0f, 8.0f}; break;
         case NativeUnit::Rpm: range = {0.0f, 8000.0f}; break;
         case NativeUnit::Kph: range = {0.0f, 300.0f}; break;
         case NativeUnit::Volt: range = {8.0f, 16.0f}; break;

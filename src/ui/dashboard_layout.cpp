@@ -176,7 +176,7 @@ void initializeExtraLayouts(AppConfig& config) {
         {DashboardLayout::AnalogTwin, PageId::Dash,
          {P::Gear, P::OilPressure, P::Clt, P::Speed, P::BatteryVoltage}, 0U},
         {DashboardLayout::AnalogTwin, PageId::Track,
-         {P::Gear, P::OilPressure, P::Clt, P::RcLapTime, P::RcDeltaLapTime}, 0U},
+         {P::Gear, P::OilPressure, P::Clt, P::Speed, P::BatteryVoltage}, 0U},
     };
     for (const Preset& preset : presets) {
         auto tiles = layoutTiles(config, preset.page, preset.layout);

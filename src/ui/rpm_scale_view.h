@@ -45,5 +45,5 @@ private:
     bool initialized_ = false;
     uint32_t last_update_ms_ = 0U;
     DisplaySignalFilter filter_{};
-    std::array<char, 16> last_text_{};
+    std::array<char, 24> last_text_{};
 };

@@ -41,11 +41,33 @@ bool dial(DashboardLayout layout) {
 bool sport(DashboardLayout layout) {
     return layout==DashboardLayout::AnalogClassic || layout==DashboardLayout::AnalogTwin;
 }
-constexpr int kSportRing=158,kSportRingWidth=22,kSportSegments=54;
+// Dial geometry taken from the approved ANALOG CLASSIC / ANALOG TWIN boards.
+struct SportDial {
+    int cx, cy;                    // centre, relative to the root object
+    int disc, disc_ring;           // outer disc and its inner hairline
+    int redline;                   // yellow/red zone arc
+    int ring, ring_width, segments;
+    int trail;                     // thin lit trail inside the segments
+    int major_in, major_out, minor_in, minor_out;
+    int numbers;                   // radius of the scale numbers
+    const lv_font_t* number_font;
+    int needle_in, needle_out;
+    int face, face_ring;           // centre disc
+    int rpm_baseline;              // RPM readout baseline, relative to centre
+    int scale_label_y;             // "RPM x1000" baseline, relative to centre
+};
+const SportDial& sportDial(DashboardLayout layout) {
+    static const SportDial classic{214, 218, 214, 206, 194, 170, 22, 54, 155,
+        200, 212, 205, 211, 138, &dash_italic_26, 108, 190, 104, 96, -58, 74};
+    static const SportDial twin{212, 206, 196, 188, 170, 148, 20, 48, 134,
+        175, 186, 180, 186, 116, &dash_italic_22, 96, 164, 86, 78, -44, 126};
+    return layout == DashboardLayout::AnalogTwin ? twin : classic;
+}
 lv_color_t sportColor(TachColor color) {
+    // Palette of the approved analog boards.
     switch(color) {
-        case TachColor::Yellow: return UiTheme::yellow();
-        case TachColor::Red: return UiTheme::red();
+        case TachColor::Yellow: return lv_color_hex(0xF5D000);
+        case TachColor::Red: return lv_color_hex(0xFF3B30);
         case TachColor::Off: return lv_color_hex(0x161C22);
         case TachColor::Normal: break;
     }
@@ -73,14 +95,15 @@ void RpmScaleView::apply(DashboardLayout layout,uint16_t maximum) {
     if(sport(layout)) {
         lv_obj_clear_flag(root_,LV_OBJ_FLAG_HIDDEN);
         const bool twin=layout==DashboardLayout::AnalogTwin;
-        lv_obj_set_pos(root_,twin ? 8:192,8);lv_obj_set_size(root_,twin ? 432:416,414);
+        lv_obj_set_pos(root_,twin ? 8:186,8);lv_obj_set_size(root_,twin ? 432:428,422);
         lv_obj_set_style_border_width(root_,0,0);
-        lv_obj_set_pos(indicator_,0,0);lv_obj_set_size(indicator_,twin ? 432:416,414);
+        lv_obj_set_pos(indicator_,0,0);lv_obj_set_size(indicator_,twin ? 432:428,422);
         lv_obj_clear_flag(value_,LV_OBJ_FLAG_HIDDEN);lv_obj_add_flag(caption_,LV_OBJ_FLAG_HIDDEN);
-        lv_obj_set_style_text_font(value_,&lv_font_montserrat_20,0);
+        lv_obj_set_style_text_font(value_,&dash_italic_22,0);
         lv_obj_set_width(value_,200);lv_label_set_text(value_,"--- RPM");
-        const auto c=sportCenter();lv_area_t r;lv_obj_get_coords(root_,&r);
-        lv_obj_set_pos(value_,c.x-r.x1-100,c.y-r.y1-94);
+        const SportDial& dial=sportDial(layout);
+        lv_obj_align(value_,LV_ALIGN_TOP_LEFT,dial.cx-100,
+                     dial.cy+dial.rpm_baseline-(dash_italic_22.line_height-dash_italic_22.base_line));
         sport_color_=TachColor::Normal;
         lv_obj_set_style_text_color(value_,sportColor(sport_color_),0);
         lv_obj_invalidate(root_);
@@ -316,14 +339,15 @@ void RpmScaleView::drawIndicator(lv_event_t* event) {
 
 lv_point_t RpmScaleView::sportCenter() const {
     lv_area_t a;lv_obj_get_coords(root_,&a);
-    return point(a.x1+(layout_==DashboardLayout::AnalogTwin ? 216:208),a.y1+206);
+    const SportDial& dial=sportDial(layout_);
+    return point(a.x1+dial.cx,a.y1+dial.cy);
 }
 void RpmScaleView::invalidateSportSweep(uint16_t previous,uint16_t current) {
-    const auto c=sportCenter();
+    const auto c=sportCenter();const SportDial& dial=sportDial(layout_);
     const float lo=135+270*std::min(previous,current)/1000.f,hi=135+270*std::max(previous,current)/1000.f;
     int x1=c.x,y1=c.y,x2=c.x,y2=c.y;bool first=true;
     for(float angle=lo;;angle=std::min(hi,angle+3.f)) {
-        for(int r:{100,kSportRing+kSportRingWidth/2+8}) {
+        for(int r:{dial.needle_in,dial.ring+dial.ring_width/2+4,dial.needle_out+4}) {
             const auto p=polar(c,r,angle);
             if(first){x1=x2=p.x;y1=y2=p.y;first=false;}
             x1=std::min(x1,static_cast<int>(p.x));x2=std::max(x2,static_cast<int>(p.x));
@@ -331,46 +355,106 @@ void RpmScaleView::invalidateSportSweep(uint16_t previous,uint16_t current) {
         }
         if(angle>=hi)break;
     }
-    lv_area_t dirty{static_cast<lv_coord_t>(x1-8),static_cast<lv_coord_t>(y1-8),static_cast<lv_coord_t>(x2+8),static_cast<lv_coord_t>(y2+8)};
+    lv_area_t dirty{static_cast<lv_coord_t>(x1-10),static_cast<lv_coord_t>(y1-10),static_cast<lv_coord_t>(x2+10),static_cast<lv_coord_t>(y2+10)};
     lv_obj_invalidate_area(indicator_,&dirty);
 }
+namespace {
+void filledCircle(lv_draw_ctx_t* ctx,lv_point_t c,int r,lv_color_t color,lv_color_t border=lv_color_black(),int border_width=0) {
+    lv_draw_rect_dsc_t d;lv_draw_rect_dsc_init(&d);d.radius=LV_RADIUS_CIRCLE;d.bg_color=color;
+    d.border_color=border;d.border_width=static_cast<lv_coord_t>(border_width);
+    const lv_area_t a{static_cast<lv_coord_t>(c.x-r),static_cast<lv_coord_t>(c.y-r),static_cast<lv_coord_t>(c.x+r),static_cast<lv_coord_t>(c.y+r)};
+    lv_draw_rect(ctx,&d,&a);
+}
+// Radial gradient approximated by a few concentric discs.
+void radialDisc(lv_draw_ctx_t* ctx,lv_point_t c,int r,lv_color_t outer,lv_color_t inner,int steps) {
+    for(int i=0;i<steps;i++) {
+        const int radius=r-(r*i)/(steps+1);
+        filledCircle(ctx,c,radius,lv_color_mix(inner,outer,static_cast<lv_opa_t>(255*i/steps)));
+    }
+}
+void spacedText(lv_draw_ctx_t* ctx,int cx,int baseline,const char* text,const lv_font_t* font,lv_color_t color,int space) {
+    lv_draw_label_dsc_t d;lv_draw_label_dsc_init(&d);d.font=font;d.color=color;d.letter_space=static_cast<lv_coord_t>(space);d.align=LV_TEXT_ALIGN_CENTER;
+    const int top=baseline-(font->line_height-font->base_line);
+    lv_area_t a{static_cast<lv_coord_t>(cx-90),static_cast<lv_coord_t>(top),static_cast<lv_coord_t>(cx+90),static_cast<lv_coord_t>(top+font->line_height)};
+    lv_draw_label(ctx,&d,&a,text,nullptr);
+}
+void polygon(lv_draw_ctx_t* ctx,const lv_point_t* p,int n,lv_color_t color,lv_opa_t opa=LV_OPA_COVER) {
+    lv_draw_rect_dsc_t d;lv_draw_rect_dsc_init(&d);d.bg_color=color;d.bg_opa=opa;lv_draw_polygon(ctx,&d,p,static_cast<uint16_t>(n));
+}
+}  // namespace
 void RpmScaleView::drawSportScale(lv_draw_ctx_t* ctx) {
-    const auto c=sportCenter();
-    // Bezel, inner face and the coloured redline arc outside the ticks.
-    arc(ctx,c,kSportRing+40,0,360,lv_color_hex(0x1A2027),2);
-    lv_draw_rect_dsc_t face;lv_draw_rect_dsc_init(&face);
-    face.radius=LV_RADIUS_CIRCLE;face.bg_color=lv_color_hex(0x0A0E12);
-    face.border_color=UiTheme::border();face.border_width=2;
-    const lv_area_t face_area{static_cast<lv_coord_t>(c.x-100),static_cast<lv_coord_t>(c.y-100),
-                              static_cast<lv_coord_t>(c.x+100),static_cast<lv_coord_t>(c.y+100)};
-    lv_draw_rect(ctx,&face,&face_area);
+    const auto c=sportCenter();const SportDial& dial=sportDial(layout_);
+    const bool classic=layout_==DashboardLayout::AnalogClassic;
+    // Disc with a soft centre glow, hairline rims.
+    radialDisc(ctx,c,dial.disc,lv_color_hex(0x000203),lv_color_hex(0x0E151C),6);
+    arc(ctx,c,dial.disc,0,360,lv_color_hex(0x262D35),2);
+    arc(ctx,c,dial.disc_ring,0,360,lv_color_hex(0x11171D),1);
     const float max=static_cast<float>(maximum_);
     const auto angleFor=[&](float rpm){ return 135+270*std::clamp(rpm/max,0.f,1.f); };
-    if(yellow_from_<maximum_) arc(ctx,c,kSportRing+30,std::lround(angleFor(yellow_from_)),std::lround(angleFor(std::min(red_from_,maximum_))),UiTheme::yellow(),3);
-    if(red_from_<maximum_) arc(ctx,c,kSportRing+30,std::lround(angleFor(red_from_)),405,UiTheme::red(),4);
-    for(int rpm=0;rpm<=maximum_;rpm+=200) {
+    if(yellow_from_<maximum_) arc(ctx,c,dial.redline,std::lround(angleFor(yellow_from_)),std::lround(angleFor(std::min(red_from_,maximum_))),lv_color_hex(0xF5D000),4);
+    if(red_from_<maximum_) arc(ctx,c,dial.redline,std::lround(angleFor(red_from_)),405,lv_color_hex(0xFF3B30),4);
+    for(int rpm=0;rpm<=maximum_;rpm+=250) {
         const bool major=rpm%1000==0;const float angle=angleFor(rpm);
-        line(ctx,polar(c,kSportRing+16,angle),polar(c,kSportRing+(major ? 28:22),angle),
-             major ? UiTheme::text():UiTheme::muted(),major ? 3:1);
+        line(ctx,polar(c,major ? dial.major_in:dial.minor_in,angle),polar(c,major ? dial.major_out:dial.minor_out,angle),
+             major ? lv_color_hex(0xE6EAEE):lv_color_hex(0x4A525B),major ? 3:1);
         if(major) {
             char text[4];std::snprintf(text,sizeof(text),"%d",rpm/1000);
-            const auto p=polar(c,kSportRing-36,angle);
-            label(ctx,p.x,p.y-12,text,&lv_font_montserrat_24,rpm>=red_from_ ? UiTheme::red():UiTheme::text());
+            const auto p=polar(c,dial.numbers,angle);
+            const lv_font_t* f=dial.number_font;
+            lv_draw_label_dsc_t d;lv_draw_label_dsc_init(&d);d.font=f;d.align=LV_TEXT_ALIGN_CENTER;
+            d.color=rpm>=red_from_ ? lv_color_hex(0xFF6A60):lv_color_hex(0xC9CED4);
+            const lv_area_t box{static_cast<lv_coord_t>(p.x-20),static_cast<lv_coord_t>(p.y-f->line_height/2),
+                                static_cast<lv_coord_t>(p.x+20),static_cast<lv_coord_t>(p.y+f->line_height/2)};
+            lv_draw_label(ctx,&d,&box,text,nullptr);
         }
     }
-    label(ctx,c.x,c.y+74,"RPM x1000",&lv_font_montserrat_12,UiTheme::muted());
+    // Centre face.
+    radialDisc(ctx,c,dial.face,lv_color_hex(0x030507),lv_color_hex(0x121A22),4);
+    arc(ctx,c,dial.face,0,360,lv_color_hex(0x2E363F),2);
+    arc(ctx,c,dial.face_ring,0,360,lv_color_hex(0x141B22),1);
+    spacedText(ctx,c.x,c.y+dial.scale_label_y,"RPM \xC3\x97" "1000",&dash_label_12,lv_color_hex(0x5E6872),2);
+    lv_area_t r;lv_obj_get_coords(root_,&r);
+    if(classic) {
+        // Gear hexagon and the base lines either side of it.
+        const lv_point_t hex[6]={point(c.x-42,c.y+152),point(c.x-21,c.y+117),point(c.x+21,c.y+117),
+                                 point(c.x+42,c.y+152),point(c.x+21,c.y+187),point(c.x-21,c.y+187)};
+        polygon(ctx,hex,6,lv_color_hex(0x070A0E));
+        for(int i=0;i<6;i++)line(ctx,hex[i],hex[(i+1)%6],lv_color_hex(0xC9CED4),2);
+        const int y=c.y+192;
+        line(ctx,point(c.x-186,y),point(c.x-70,y),lv_color_hex(0x262D35),2);
+        line(ctx,point(c.x-70,y),point(c.x-60,y-10),lv_color_hex(0x262D35),2);
+        line(ctx,point(c.x+186,y),point(c.x+70,y),lv_color_hex(0x262D35),2);
+        line(ctx,point(c.x+70,y),point(c.x+60,y-10),lv_color_hex(0x262D35),2);
+    } else {
+        const int y=c.y+198;const auto col=lv_color_hex(0x262D35);
+        line(ctx,point(c.x-70,y),point(c.x-20,y),col,2);line(ctx,point(c.x-20,y),point(c.x-10,y-10),col,2);
+        line(ctx,point(c.x-10,y-10),point(c.x+10,y-10),col,2);line(ctx,point(c.x+10,y-10),point(c.x+20,y),col,2);
+        line(ctx,point(c.x+20,y),point(c.x+70,y),col,2);
+    }
 }
 void RpmScaleView::drawSportIndicator(lv_draw_ctx_t* ctx) {
-    const auto c=sportCenter();const auto dim=lv_color_hex(0x161C22);
+    const auto c=sportCenter();const SportDial& dial=sportDial(layout_);
+    const auto unlit=lv_color_hex(0x1A2129);
     const auto lit_color=sportColor(sport_color_);
-    for(int i=0;i<kSportSegments;i++) {
-        const float at=(i+.5f)*1000.f/kSportSegments;
+    const float step=270.f/dial.segments,on=step*0.72f;
+    for(int i=0;i<dial.segments;i++) {
+        const float at=(i+.5f)*1000.f/dial.segments;
         const bool lit=flashing_ ? sport_color_!=TachColor::Off : valid_ && at<=fill_;
-        const int start=135+i*5;
-        arc(ctx,c,kSportRing,start,start+4,lit ? lit_color:dim,kSportRingWidth);
+        const float start=135+i*step;
+        arc(ctx,c,dial.ring,std::lround(start),std::lround(start+on),lit ? lit_color:unlit,dial.ring_width);
     }
     if(!valid_)return;
     const float angle=135+270*fill_/1000.f;
-    line(ctx,polar(c,104,angle),polar(c,kSportRing+26,angle),UiTheme::text(),5);
-    line(ctx,polar(c,kSportRing+12,angle),polar(c,kSportRing+26,angle),UiTheme::red(),5);
+    if(!flashing_) {
+        lv_draw_arc_dsc_t trail;lv_draw_arc_dsc_init(&trail);trail.color=lit_color;trail.width=3;trail.opa=140;
+        lv_draw_arc(ctx,&trail,&c,static_cast<uint16_t>(dial.trail),135,static_cast<uint16_t>(std::lround(angle))%360U);
+    }
+    // Needle: glow wedge in the stage colour under a slim white wedge.
+    const float rad=angle*kPi/180.f,nx=-std::sin(rad),ny=std::cos(rad);
+    const auto base=polar(c,dial.needle_in,angle),tip=polar(c,dial.needle_out,angle);
+    const auto at=[&](lv_point_t p,float w){ return point(std::lround(p.x+nx*w),std::lround(p.y+ny*w)); };
+    const lv_point_t glow[4]={at(base,9),at(tip,2.5f),at(tip,-2.5f),at(base,-9)};
+    polygon(ctx,glow,4,sport_color_==TachColor::Normal ? lv_color_hex(0x8E9AA6):lit_color,90);
+    const lv_point_t needle[4]={at(base,4.5f),at(tip,1),at(tip,-1),at(base,-4.5f)};
+    polygon(ctx,needle,4,lv_color_hex(0xFFFFFF));
 }

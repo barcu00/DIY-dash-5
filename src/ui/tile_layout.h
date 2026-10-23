@@ -10,6 +10,9 @@ struct TileGeometry {
     int16_t width = 0;
     int16_t height = 0;
     TileSize size = TileSize::Small;
+    // Chamfered analog-style panel: 0 none, 1 top-left/bottom-right cuts
+    // (left column), 2 top-right/bottom-left cuts (right column).
+    uint8_t chamfer = 0U;
 };
 
 namespace TileLayout {

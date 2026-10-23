@@ -164,22 +164,22 @@ TilePlacementList TileEngine::placements(PageId page,
     } else if (layout == DashboardLayout::AnalogClassic) {
         std::array<TileGeometry, 3> left{}, right{};
         for (int i = 0; i < 3; ++i) {
-            left[i] = {8, static_cast<int16_t>(16 + 136 * i), 176, 128, TileSize::Large};
-            right[i] = {616, static_cast<int16_t>(16 + 136 * i), 176, 128, TileSize::Large};
+            left[i] = {8, static_cast<int16_t>(16 + 136 * i), 176, 128, TileSize::Large, 1U};
+            right[i] = {616, static_cast<int16_t>(16 + 136 * i), 176, 128, TileSize::Large, 2U};
         }
         // Speed in the dial centre, gear in the hexagon below it.
-        const std::array<TileGeometry, 1> center{{{300, 152, 200, 128, TileSize::Hero}}};
-        const std::array<TileGeometry, 1> gear{{{350, 330, 100, 84, TileSize::Hero}}};
+        const std::array<TileGeometry, 1> center{{{300, 180, 200, 110, TileSize::DialCenter}}};
+        const std::array<TileGeometry, 1> gear{{{358, 343, 84, 70, TileSize::DialBadge}}};
         appendGroup(output, page, tiles, 0U, TileGroup::DashLeft, left);
         appendGroup(output, page, tiles, 3U, TileGroup::DashRight, right);
         appendGroup(output, page, tiles, 6U, TileGroup::DashCenterWide, center);
         appendGroup(output, page, tiles, 7U, TileGroup::DashCenterSmall, gear);
     } else if (layout == DashboardLayout::AnalogTwin) {
-        const std::array<TileGeometry, 1> center{{{144, 166, 160, 100, TileSize::Hero}}};
+        const std::array<TileGeometry, 1> center{{{140, 180, 160, 100, TileSize::DialCenter}}};
         const std::array<TileGeometry, 2> gauges{{
-            {448, 16, 344, 160, TileSize::Gauge}, {448, 184, 344, 160, TileSize::Gauge}}};
+            {448, 16, 344, 160, TileSize::Gauge, 2U}, {448, 184, 344, 160, TileSize::Gauge, 2U}}};
         const std::array<TileGeometry, 2> bottom{{
-            {448, 352, 168, 70, TileSize::Inline}, {624, 352, 168, 70, TileSize::Inline}}};
+            {448, 352, 168, 70, TileSize::Inline, 2U}, {624, 352, 168, 70, TileSize::Inline, 2U}}};
         appendGroup(output, page, tiles, 0U, TileGroup::DashCenterWide, center);
         appendGroup(output, page, tiles, 1U, TileGroup::DashRight, gauges);
         appendGroup(output, page, tiles, 3U, TileGroup::DashCenterSmall, bottom);

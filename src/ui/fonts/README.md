@@ -39,3 +39,23 @@ lv_font_conv --size 64 --bpp 4 --format lvgl \
 
 Use size/name 80 for the gear font. Generated C sources are committed so
 PlatformIO users do not need Node.js or the converter to compile firmware.
+
+
+## Analog layout fonts
+
+`dash_italic_*` (Barlow Condensed 600/700 italic, numbers; sizes 22 and 26
+also contain A-Z for the RPM readout) and `dash_label_*` (Barlow 600/500,
+printable ASCII plus ° and ×) style ANALOG CLASSIC and ANALOG TWIN. Both
+families are SIL OFL 1.1 (Google Fonts, npm `@fontsource/barlow-condensed`
+and `@fontsource/barlow` 5.3.0). Generated with lv_font_conv 1.5.3, e.g.:
+
+```sh
+lv_font_conv --size 48 --bpp 4 --format lvgl \
+  --font barlow-condensed-latin-600-italic.woff -r 0x20,0x2B-0x3A \
+  --no-compress --no-prefilter --lv-fallback lv_font_montserrat_24 \
+  --lv-font-name dash_italic_48 -o dash_italic_48.c
+lv_font_conv --size 12 --bpp 4 --format lvgl \
+  --font barlow-latin-600-normal.woff -r 0x20-0x7E,0xB0,0xD7 \
+  --no-compress --no-prefilter --lv-fallback lv_font_montserrat_12 \
+  --lv-font-name dash_label_12 -o dash_label_12.c
+```

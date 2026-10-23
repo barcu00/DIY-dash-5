@@ -53,18 +53,18 @@ void test_gauge_range_uses_temperature_bar_and_warning_side() {
     oil.parameter = ParameterId::OilPressure;
     oil.warning = {true, WarningDirection::Below, 1.0f, 0.2f, 0U};
     const GaugeRange pressure = gaugeRange(oil);
-    TEST_ASSERT_EQUAL_FLOAT(10.0f, pressure.maximum);
-    TEST_ASSERT_EQUAL_UINT16(100U, pressure.red_below_permille);
-    TEST_ASSERT_EQUAL_UINT16(500U, gaugeFill(5.0f, pressure));
+    TEST_ASSERT_EQUAL_FLOAT(8.0f, pressure.maximum);
+    TEST_ASSERT_EQUAL_UINT16(125U, pressure.red_below_permille);
+    TEST_ASSERT_EQUAL_UINT16(500U, gaugeFill(4.0f, pressure));
     TEST_ASSERT_EQUAL_UINT16(1000U, gaugeFill(50.0f, pressure));
 
     TileConfig coolant;
     coolant.parameter = ParameterId::Clt;
     coolant.temperature_bar = {true, 40.0f, 75.0f, 115.0f, 140.0f};
     const GaugeRange temperature = gaugeRange(coolant);
-    TEST_ASSERT_EQUAL_FLOAT(40.0f, temperature.minimum);
+    TEST_ASSERT_EQUAL_FLOAT(60.0f, temperature.minimum);
     TEST_ASSERT_EQUAL_FLOAT(140.0f, temperature.maximum);
-    TEST_ASSERT_EQUAL_UINT16(750U, temperature.red_from_permille);
+    TEST_ASSERT_EQUAL_UINT16(688U, temperature.red_from_permille);
 }
 
 int main(int, char**) {
