@@ -32,6 +32,12 @@ void TrendHistory::reset() {
     have_last_ = false;
 }
 
+void TrendHistory::release() {
+    std::free(values_);
+    values_ = nullptr;
+    reset();
+}
+
 void TrendHistory::setWindowSeconds(uint16_t seconds) {
     const uint32_t window_ms = static_cast<uint32_t>(std::max<uint16_t>(seconds, 5U)) * 1000U;
     const uint32_t interval = std::max<uint32_t>(50U, window_ms / kCapacity);

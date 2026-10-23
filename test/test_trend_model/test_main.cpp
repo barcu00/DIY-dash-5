@@ -27,6 +27,18 @@ void test_samples_once_per_interval_and_keeps_order_when_full() {
     TEST_ASSERT_EQUAL_UINT32(0U, history.size());
 }
 
+void test_release_frees_buffer_until_next_sample() {
+    TrendHistory history;
+    TEST_ASSERT_FALSE(history.hasStorage());
+    TEST_ASSERT_TRUE(history.sample(1.0f, true, 0U));
+    TEST_ASSERT_TRUE(history.hasStorage());
+    history.release();
+    TEST_ASSERT_FALSE(history.hasStorage());
+    TEST_ASSERT_EQUAL_UINT32(0U, history.size());
+    TEST_ASSERT_TRUE(history.sample(2.0f, true, 1U));
+    TEST_ASSERT_EQUAL_FLOAT(2.0f, history.at(0));
+}
+
 void test_range_includes_threshold_and_has_minimum_span() {
     TrendHistory history;
     for (int i = 0; i < 5; ++i) history.sample(98.0f, true, i * 1000U);
@@ -58,6 +70,7 @@ void test_direction_categories() {
 
 int main(int, char**) {
     UNITY_BEGIN();
+    RUN_TEST(test_release_frees_buffer_until_next_sample);
     RUN_TEST(test_samples_once_per_interval_and_keeps_order_when_full);
     RUN_TEST(test_range_includes_threshold_and_has_minimum_span);
     RUN_TEST(test_direction_categories);

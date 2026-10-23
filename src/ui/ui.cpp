@@ -682,6 +682,9 @@ void Ui::load(Page page) {
         beginSettingsSession();
     }
     if (page != Page::Settings) prepareDataPage(page);
+    // Trend buffers live only while their page is on screen.
+    if (page != Page::Dash) for (TileView& tile : dash_tiles_) tile.releaseTrend();
+    if (page != Page::Track) for (TileView& tile : track_tiles_) tile.releaseTrend();
     current_page_ = page;
     update_policy_.activate(page == Page::Dash ? PageId::Dash :
                             (page == Page::Track ? PageId::Track : PageId::Settings));

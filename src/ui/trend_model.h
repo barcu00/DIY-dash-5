@@ -25,6 +25,9 @@ public:
     TrendHistory& operator=(const TrendHistory&) = delete;
 
     void reset();
+    // Clears the history and returns its buffer to the heap.
+    void release();
+    bool hasStorage() const { return values_ != nullptr; }
     // Window length; the sample interval is window / capacity
     // (15 s -> 167 ms, i.e. ~6 sparkline updates per second).
     void setWindowSeconds(uint16_t seconds);

@@ -21,6 +21,9 @@ public:
                 bool warning_active,
                 uint32_t now_ms, bool data_lost = false);
     TileAddress address() const;
+    // Frees the ENDURANCE trend buffer while this tile's page is not shown;
+    // it is allocated again on the next sample.
+    void releaseTrend() { trend_.release(); }
     // ENDURANCE trend window (seconds), applied on the next apply().
     static void setTrendWindowSeconds(uint16_t seconds) { trend_window_s_ = seconds; }
 private:

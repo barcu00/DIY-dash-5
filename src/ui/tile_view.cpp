@@ -293,7 +293,7 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
     // Wide rows (ENDURANCE) replace the temperature bar with a trend.
     trend_mode_ = geometry.size == TileSize::CompactRow && geometry.width >= 400 && !is_flag;
     trend_.setWindowSeconds(trend_window_s_);
-    trend_.reset();
+    trend_.release();  // allocated on the first sample, in ENDURANCE rows only
     if (trend_mode_) {
         lv_obj_clear_flag(trend_view_, LV_OBJ_FLAG_HIDDEN);
         lv_obj_set_pos(trend_view_, geometry.width - 226, 3);
@@ -319,7 +319,10 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
     temperature_bar_initialized_ = false;
     flag_style_initialized_ = false;
 }
-void TileView::hide() { if (root_) lv_obj_add_flag(root_, LV_OBJ_FLAG_HIDDEN); }
+void TileView::hide() {
+    trend_.release();
+    if (root_) lv_obj_add_flag(root_, LV_OBJ_FLAG_HIDDEN);
+}
 void TileView::arrangeUnit(const char* text, bool is_flag) {
     const bool row = size_ == TileSize::CompactRow;
     if (!is_flag && (size_ == TileSize::Inline || size_ == TileSize::Gauge)) {
