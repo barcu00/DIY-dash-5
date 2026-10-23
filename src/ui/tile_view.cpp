@@ -670,20 +670,36 @@ void TileView::drawGauge(lv_event_t* event) {
                              static_cast<lv_coord_t>(c.x + 30), static_cast<lv_coord_t>(c.y + 42)};
     lv_draw_label(ctx, &unit, &unit_box, self->gauge_unit_.data(), nullptr);
     if (!self->gauge_valid_) return;
-    // Needle: a slim white wedge from just inside the segments to the red zone.
+    // Needle: tapered white pointer from the hub, ending just inside the
+    // segment ring so it never covers the coloured blocks; dark edge for
+    // contrast over the scale numbers, hub cap on top.
     const float angle = kStart + kSweep * self->gauge_fill_ / 1000.0f;
     const float radians = angle * kGaugePi / 180.0f;
     const float nx = -std::sin(radians), ny = std::cos(radians);
-    const lv_point_t base = gaugePoint(c, 49, angle), tip = gaugePoint(c, 73, angle);
-    const lv_point_t needle[4] = {
-        {static_cast<lv_coord_t>(std::lround(base.x + nx * 3)), static_cast<lv_coord_t>(std::lround(base.y + ny * 3))},
-        {static_cast<lv_coord_t>(std::lround(tip.x + nx * 1)), static_cast<lv_coord_t>(std::lround(tip.y + ny * 1))},
-        {static_cast<lv_coord_t>(std::lround(tip.x - nx * 1)), static_cast<lv_coord_t>(std::lround(tip.y - ny * 1))},
-        {static_cast<lv_coord_t>(std::lround(base.x - nx * 3)), static_cast<lv_coord_t>(std::lround(base.y - ny * 3))}};
+    const auto offset = [&](lv_point_t p, float w) {
+        return lv_point_t{static_cast<lv_coord_t>(std::lround(p.x + nx * w)),
+                          static_cast<lv_coord_t>(std::lround(p.y + ny * w))};
+    };
+    const lv_point_t tail = gaugePoint(c, -4, angle), tip = gaugePoint(c, 46, angle);
+    const lv_point_t edge[4] = {offset(tail, 4.5f), offset(tip, 2.0f), offset(tip, -2.0f), offset(tail, -4.5f)};
+    const lv_point_t needle[4] = {offset(tail, 3.0f), offset(tip, 0.8f), offset(tip, -0.8f), offset(tail, -3.0f)};
+    lv_draw_rect_dsc_t shade;
+    lv_draw_rect_dsc_init(&shade);
+    shade.bg_color = lv_color_hex(0x030507);
+    lv_draw_polygon(ctx, &shade, edge, 4);
     lv_draw_rect_dsc_t white;
     lv_draw_rect_dsc_init(&white);
-    white.bg_color = lv_color_hex(0xFFFFFF);
+    white.bg_color = lv_color_hex(0xF4F6F8);
     lv_draw_polygon(ctx, &white, needle, 4);
+    lv_draw_rect_dsc_t hub;
+    lv_draw_rect_dsc_init(&hub);
+    hub.radius = LV_RADIUS_CIRCLE;
+    hub.bg_color = lv_color_hex(0x1A2129);
+    hub.border_color = fill_red ? UiTheme::red() : lv_color_hex(0x8E9AA6);
+    hub.border_width = 2;
+    const lv_area_t cap{static_cast<lv_coord_t>(c.x - 6), static_cast<lv_coord_t>(c.y - 6),
+                        static_cast<lv_coord_t>(c.x + 6), static_cast<lv_coord_t>(c.y + 6)};
+    lv_draw_rect(ctx, &hub, &cap);
 }
 
 namespace {
