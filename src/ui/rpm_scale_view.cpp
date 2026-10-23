@@ -6,6 +6,7 @@
 #include "ui/dashboard_layout.h"
 #include "ui/ui_theme.h"
 #include "ui/fonts/numeric_fonts.h"
+#include "ui/round_geometry.h"
 
 namespace {
 constexpr float kPi=3.14159265358979323846f;
@@ -345,32 +346,21 @@ lv_point_t RpmScaleView::sportCenter() const {
 void RpmScaleView::invalidateSportSweep(uint16_t previous,uint16_t current) {
     const auto c=sportCenter();const SportDial& dial=sportDial(layout_);
     const float lo=135+270*std::min(previous,current)/1000.f,hi=135+270*std::max(previous,current)/1000.f;
-    int x1=c.x,y1=c.y,x2=c.x,y2=c.y;bool first=true;
-    for(float angle=lo;;angle=std::min(hi,angle+3.f)) {
-        for(int r:{dial.needle_in,dial.ring+dial.ring_width/2+4,dial.needle_out+4}) {
-            const auto p=polar(c,r,angle);
-            if(first){x1=x2=p.x;y1=y2=p.y;first=false;}
-            x1=std::min(x1,static_cast<int>(p.x));x2=std::max(x2,static_cast<int>(p.x));
-            y1=std::min(y1,static_cast<int>(p.y));y2=std::max(y2,static_cast<int>(p.y));
-        }
-        if(angle>=hi)break;
-    }
-    lv_area_t dirty{static_cast<lv_coord_t>(x1-10),static_cast<lv_coord_t>(y1-10),static_cast<lv_coord_t>(x2+10),static_cast<lv_coord_t>(y2+10)};
+    lv_area_t dirty=RoundGeometry::sectorBounds(c,dial.needle_in-6,dial.needle_out+8,lo-2,hi+2);
+    dirty.x1-=10;dirty.y1-=10;dirty.x2+=10;dirty.y2+=10;
     lv_obj_invalidate_area(indicator_,&dirty);
 }
 namespace {
-void filledCircle(lv_draw_ctx_t* ctx,lv_point_t c,int r,lv_color_t color,lv_color_t border=lv_color_black(),int border_width=0) {
-    lv_draw_rect_dsc_t d;lv_draw_rect_dsc_init(&d);d.radius=LV_RADIUS_CIRCLE;d.bg_color=color;
-    d.border_color=border;d.border_width=static_cast<lv_coord_t>(border_width);
-    const lv_area_t a{static_cast<lv_coord_t>(c.x-r),static_cast<lv_coord_t>(c.y-r),static_cast<lv_coord_t>(c.x+r),static_cast<lv_coord_t>(c.y+r)};
-    lv_draw_rect(ctx,&d,&a);
-}
-// Radial gradient approximated by a few concentric discs.
+// Radial gradient approximated by a few concentric discs (round on the panel).
 void radialDisc(lv_draw_ctx_t* ctx,lv_point_t c,int r,lv_color_t outer,lv_color_t inner,int steps) {
     for(int i=0;i<steps;i++) {
         const int radius=r-(r*i)/(steps+1);
-        filledCircle(ctx,c,radius,lv_color_mix(inner,outer,static_cast<lv_opa_t>(255*i/steps)));
+        RoundGeometry::disc(ctx,c,radius,lv_color_mix(inner,outer,static_cast<lv_opa_t>(255*i/steps)));
     }
+}
+// Ring of outer radius r and width w (same convention as lv_draw_arc).
+void ring(lv_draw_ctx_t* ctx,lv_point_t c,int r,float start,float end,lv_color_t color,int w,lv_opa_t opa=LV_OPA_COVER) {
+    RoundGeometry::arc(ctx,c,r-w/2.f,static_cast<float>(w),start,end,color,opa);
 }
 void spacedText(lv_draw_ctx_t* ctx,int cx,int baseline,const char* text,const lv_font_t* font,lv_color_t color,int space) {
     lv_draw_label_dsc_t d;lv_draw_label_dsc_init(&d);d.font=font;d.color=color;d.letter_space=static_cast<lv_coord_t>(space);d.align=LV_TEXT_ALIGN_CENTER;
@@ -387,19 +377,19 @@ void RpmScaleView::drawSportScale(lv_draw_ctx_t* ctx) {
     const bool classic=layout_==DashboardLayout::AnalogClassic;
     // Disc with a soft centre glow, hairline rims.
     radialDisc(ctx,c,dial.disc,lv_color_hex(0x000203),lv_color_hex(0x0E151C),6);
-    arc(ctx,c,dial.disc,0,360,lv_color_hex(0x262D35),2);
-    arc(ctx,c,dial.disc_ring,0,360,lv_color_hex(0x11171D),1);
+    ring(ctx,c,dial.disc,0,360,lv_color_hex(0x262D35),2);
+    ring(ctx,c,dial.disc_ring,0,360,lv_color_hex(0x11171D),1);
     const float max=static_cast<float>(maximum_);
     const auto angleFor=[&](float rpm){ return 135+270*std::clamp(rpm/max,0.f,1.f); };
-    if(yellow_from_<maximum_) arc(ctx,c,dial.redline,std::lround(angleFor(yellow_from_)),std::lround(angleFor(std::min(red_from_,maximum_))),lv_color_hex(0xF5D000),4);
-    if(red_from_<maximum_) arc(ctx,c,dial.redline,std::lround(angleFor(red_from_)),405,lv_color_hex(0xFF3B30),4);
+    if(yellow_from_<maximum_) ring(ctx,c,dial.redline,std::lround(angleFor(yellow_from_)),std::lround(angleFor(std::min(red_from_,maximum_))),lv_color_hex(0xF5D000),4);
+    if(red_from_<maximum_) ring(ctx,c,dial.redline,std::lround(angleFor(red_from_)),405,lv_color_hex(0xFF3B30),4);
     for(int rpm=0;rpm<=maximum_;rpm+=250) {
         const bool major=rpm%1000==0;const float angle=angleFor(rpm);
-        line(ctx,polar(c,major ? dial.major_in:dial.minor_in,angle),polar(c,major ? dial.major_out:dial.minor_out,angle),
+        line(ctx,RoundGeometry::point(c,major ? dial.major_in:dial.minor_in,angle),RoundGeometry::point(c,major ? dial.major_out:dial.minor_out,angle),
              major ? lv_color_hex(0xE6EAEE):lv_color_hex(0x4A525B),major ? 3:1);
         if(major) {
             char text[4];std::snprintf(text,sizeof(text),"%d",rpm/1000);
-            const auto p=polar(c,dial.numbers,angle);
+            const auto p=RoundGeometry::point(c,dial.numbers,angle);
             const lv_font_t* f=dial.number_font;
             lv_draw_label_dsc_t d;lv_draw_label_dsc_init(&d);d.font=f;d.align=LV_TEXT_ALIGN_CENTER;
             d.color=rpm>=red_from_ ? lv_color_hex(0xFF6A60):lv_color_hex(0xC9CED4);
@@ -410,21 +400,23 @@ void RpmScaleView::drawSportScale(lv_draw_ctx_t* ctx) {
     }
     // Centre face.
     radialDisc(ctx,c,dial.face,lv_color_hex(0x030507),lv_color_hex(0x121A22),4);
-    arc(ctx,c,dial.face,0,360,lv_color_hex(0x2E363F),2);
-    arc(ctx,c,dial.face_ring,0,360,lv_color_hex(0x141B22),1);
+    ring(ctx,c,dial.face,0,360,lv_color_hex(0x2E363F),2);
+    ring(ctx,c,dial.face_ring,0,360,lv_color_hex(0x141B22),1);
     spacedText(ctx,c.x,c.y+dial.scale_label_y,"RPM \xC3\x97" "1000",&dash_label_12,lv_color_hex(0x5E6872),2);
     lv_area_t r;lv_obj_get_coords(root_,&r);
     if(classic) {
         // Gear hexagon and the base lines either side of it.
-        const lv_point_t hex[6]={point(c.x-42,c.y+152),point(c.x-21,c.y+117),point(c.x+21,c.y+117),
-                                 point(c.x+42,c.y+152),point(c.x+21,c.y+187),point(c.x-21,c.y+187)};
+        const float k=RoundGeometry::scaleX();
+        const auto hx=[&](int dx){ return static_cast<int>(std::lround(c.x+dx*k)); };
+        const lv_point_t hex[6]={point(hx(-42),c.y+152),point(hx(-21),c.y+117),point(hx(21),c.y+117),
+                                 point(hx(42),c.y+152),point(hx(21),c.y+187),point(hx(-21),c.y+187)};
         polygon(ctx,hex,6,lv_color_hex(0x070A0E));
         for(int i=0;i<6;i++)line(ctx,hex[i],hex[(i+1)%6],lv_color_hex(0xC9CED4),2);
         const int y=c.y+192;
-        line(ctx,point(c.x-186,y),point(c.x-70,y),lv_color_hex(0x262D35),2);
-        line(ctx,point(c.x-70,y),point(c.x-60,y-10),lv_color_hex(0x262D35),2);
-        line(ctx,point(c.x+186,y),point(c.x+70,y),lv_color_hex(0x262D35),2);
-        line(ctx,point(c.x+70,y),point(c.x+60,y-10),lv_color_hex(0x262D35),2);
+        line(ctx,point(hx(-186),y),point(hx(-70),y),lv_color_hex(0x262D35),2);
+        line(ctx,point(hx(-70),y),point(hx(-60),y-10),lv_color_hex(0x262D35),2);
+        line(ctx,point(hx(186),y),point(hx(70),y),lv_color_hex(0x262D35),2);
+        line(ctx,point(hx(70),y),point(hx(60),y-10),lv_color_hex(0x262D35),2);
     } else {
         const int y=c.y+198;const auto col=lv_color_hex(0x262D35);
         line(ctx,point(c.x-70,y),point(c.x-20,y),col,2);line(ctx,point(c.x-20,y),point(c.x-10,y-10),col,2);
@@ -441,17 +433,16 @@ void RpmScaleView::drawSportIndicator(lv_draw_ctx_t* ctx) {
         const float at=(i+.5f)*1000.f/dial.segments;
         const bool lit=flashing_ ? sport_color_!=TachColor::Off : valid_ && at<=fill_;
         const float start=135+i*step;
-        arc(ctx,c,dial.ring,std::lround(start),std::lround(start+on),lit ? lit_color:unlit,dial.ring_width);
+        ring(ctx,c,dial.ring,std::lround(start),std::lround(start+on),lit ? lit_color:unlit,dial.ring_width);
     }
     if(!valid_)return;
     const float angle=135+270*fill_/1000.f;
     if(!flashing_) {
-        lv_draw_arc_dsc_t trail;lv_draw_arc_dsc_init(&trail);trail.color=lit_color;trail.width=3;trail.opa=140;
-        lv_draw_arc(ctx,&trail,&c,static_cast<uint16_t>(dial.trail),135,static_cast<uint16_t>(std::lround(angle))%360U);
+        ring(ctx,c,dial.trail,135,angle,lit_color,3,140);
     }
     // Needle: glow wedge in the stage colour under a slim white wedge.
-    const float rad=angle*kPi/180.f,nx=-std::sin(rad),ny=std::cos(rad);
-    const auto base=polar(c,dial.needle_in,angle),tip=polar(c,dial.needle_out,angle);
+    const float rad=angle*kPi/180.f,nx=-std::sin(rad)*RoundGeometry::scaleX(),ny=std::cos(rad);
+    const auto base=RoundGeometry::point(c,dial.needle_in,angle),tip=RoundGeometry::point(c,dial.needle_out,angle);
     const auto at=[&](lv_point_t p,float w){ return point(std::lround(p.x+nx*w),std::lround(p.y+ny*w)); };
     const lv_point_t glow[4]={at(base,9),at(tip,2.5f),at(tip,-2.5f),at(base,-9)};
     polygon(ctx,glow,4,sport_color_==TachColor::Normal ? lv_color_hex(0x8E9AA6):lit_color,90);

@@ -11,6 +11,7 @@
 #include "ui/tile_view_policy.h"
 #include "ui/fonts/numeric_fonts.h"
 #include "ui/tile_value_format.h"
+#include "ui/round_geometry.h"
 namespace {
 lv_color_t temperatureBarColor(TemperatureBarZone zone) {
     switch (zone) {
@@ -596,11 +597,6 @@ void TileView::arrangeRow(bool is_flag) {
 
 namespace {
 constexpr float kGaugePi = 3.14159265358979323846f;
-lv_point_t gaugePoint(lv_point_t center, float radius, float degrees) {
-    const float a = degrees * kGaugePi / 180.0f;
-    return {static_cast<lv_coord_t>(std::lround(center.x + radius * std::cos(a))),
-            static_cast<lv_coord_t>(std::lround(center.y + radius * std::sin(a)))};
-}
 }  // namespace
 
 // Mini needle gauge (ANALOG TWIN): 240 degree segmented arc lit up to the
@@ -620,15 +616,9 @@ void TileView::drawGauge(lv_event_t* event) {
     const lv_color_t lit = fill_red ? UiTheme::red()
                          : self->gauge_celsius_ ? lv_color_hex(0x22C55E) : lv_color_hex(0xE6EAEE);
     const auto arcDeg = [&](int radius, float from, float to, lv_color_t color, int width, lv_opa_t opa) {
-        if (to <= from) return;
-        lv_draw_arc_dsc_t d;
-        lv_draw_arc_dsc_init(&d);
-        d.color = color;
-        d.width = static_cast<lv_coord_t>(width);
-        d.opa = opa;
-        lv_draw_arc(ctx, &d, &c, static_cast<uint16_t>(radius),
-                    static_cast<uint16_t>(std::lround(from)) % 360U,
-                    static_cast<uint16_t>(std::lround(to)) % 360U);
+        // Outer radius + width as with lv_draw_arc; round on any panel.
+        RoundGeometry::arc(ctx, c, radius - width / 2.0f, static_cast<float>(width),
+                           from, to, color, opa);
     };
     // Red zone(s) outside the segments.
     if (range.red_from_permille <= 1000U)
@@ -648,7 +638,7 @@ void TileView::drawGauge(lv_event_t* event) {
     // Outer ticks at the five scale positions.
     for (int k = 0; k <= 4; ++k) {
         const float a = kStart + kSweep * k / 4.0f;
-        const lv_point_t t0 = gaugePoint(c, 77, a), t1 = gaugePoint(c, 83, a);
+        const lv_point_t t0 = RoundGeometry::point(c, 77, a), t1 = RoundGeometry::point(c, 83, a);
         lv_draw_line_dsc_t tick;
         lv_draw_line_dsc_init(&tick);
         tick.color = lv_color_hex(0xE6EAEE);
@@ -665,7 +655,7 @@ void TileView::drawGauge(lv_event_t* event) {
         const float value = self->gauge_label_min_ + (self->gauge_label_max_ - self->gauge_label_min_) * k / 4.0f;
         char text[8];
         std::snprintf(text, sizeof(text), "%.0f", static_cast<double>(value));
-        const lv_point_t p = gaugePoint(c, 40, kStart + kSweep * k / 4.0f);
+        const lv_point_t p = RoundGeometry::point(c, 40, kStart + kSweep * k / 4.0f);
         const lv_area_t box{static_cast<lv_coord_t>(p.x - 16), static_cast<lv_coord_t>(p.y - 8),
                             static_cast<lv_coord_t>(p.x + 16), static_cast<lv_coord_t>(p.y + 9)};
         lv_draw_label(ctx, &number, &box, text, nullptr);
@@ -685,12 +675,12 @@ void TileView::drawGauge(lv_event_t* event) {
     // edge of the blocks), no long needle across the face.
     const float angle = kStart + kSweep * self->gauge_fill_ / 1000.0f;
     const float radians = angle * kGaugePi / 180.0f;
-    const float nx = -std::sin(radians), ny = std::cos(radians);
+    const float nx = -std::sin(radians) * RoundGeometry::scaleX(), ny = std::cos(radians);
     const auto offset = [&](lv_point_t p, float w) {
         return lv_point_t{static_cast<lv_coord_t>(std::lround(p.x + nx * w)),
                           static_cast<lv_coord_t>(std::lround(p.y + ny * w))};
     };
-    const lv_point_t inner = gaugePoint(c, 48, angle), outer = gaugePoint(c, 68, angle);
+    const lv_point_t inner = RoundGeometry::point(c, 48, angle), outer = RoundGeometry::point(c, 68, angle);
     const lv_point_t edge[4] = {offset(inner, 2.5f), offset(outer, 3.5f), offset(outer, -3.5f), offset(inner, -2.5f)};
     const lv_point_t pointer[4] = {offset(inner, 1.2f), offset(outer, 2.2f), offset(outer, -2.2f), offset(inner, -1.2f)};
     lv_draw_rect_dsc_t shade;
