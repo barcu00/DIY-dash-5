@@ -177,12 +177,15 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
         lv_obj_set_style_text_align(value_, LV_TEXT_ALIGN_CENTER, 0);
         const bool gear = geometry.size == TileSize::GearHero;
         const bool compact = geometry.height < 200;
+        const bool hide_title = !gear &&
+            (config.parameter == ParameterId::Rpm || config.parameter == ParameterId::Speed ||
+             geometry.height < 110);
         lv_obj_align(value_, LV_ALIGN_TOP_MID, 0,
-                     gear ? (compact ? 28 : 100) : geometry.height > 200 ? 60 : 10);
-        lv_obj_align(title_, LV_ALIGN_TOP_MID, 0, gear ? (compact ? 6 : 26) : 2);
-        if (!gear && (config.parameter == ParameterId::Rpm || config.parameter == ParameterId::Speed ||
-                      geometry.height < 110))
-            lv_obj_add_flag(title_, LV_OBJ_FLAG_HIDDEN);
+                     gear ? (compact ? 34 : 100)
+                          : geometry.height > 200 ? 60 : hide_title ? 10 : 30);
+        lv_obj_align(title_, LV_ALIGN_TOP_MID, 0, gear ? (compact ? 4 : 26) : 2);
+        if (gear && compact) lv_obj_set_style_text_font(title_, &lv_font_montserrat_16, 0);
+        if (hide_title) lv_obj_add_flag(title_, LV_OBJ_FLAG_HIDDEN);
         lv_obj_set_style_text_font(unit_, &lv_font_montserrat_24, 0);
         lv_obj_align(unit_, LV_ALIGN_BOTTOM_MID, 0, gear ? -18 : geometry.height > 200 ? -43 : -12);
     } else {
@@ -222,10 +225,11 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
             lv_obj_align(title_, LV_ALIGN_TOP_LEFT, 15, 7);
             const auto native_unit = parameterDescriptor(config.parameter).native_unit;
             const bool has_unit = native_unit != NativeUnit::None && native_unit != NativeUnit::Lambda;
-            lv_obj_set_width(value_, has_unit ? 96 : geometry.width - 24);
+            const int unit_x = std::min(108, geometry.width - 34);
+            lv_obj_set_width(value_, has_unit ? unit_x - 12 : geometry.width - 24);
             lv_obj_set_style_text_align(value_, LV_TEXT_ALIGN_CENTER, 0);
             lv_obj_align(value_, LV_ALIGN_TOP_LEFT, 12, 26);
-            lv_obj_align(unit_, LV_ALIGN_TOP_LEFT, 108, 43);
+            lv_obj_align(unit_, LV_ALIGN_TOP_LEFT, unit_x, 43);
         } else if (!is_flag) {
             lv_obj_set_width(value_, geometry.width - 24);
             lv_obj_set_style_text_align(value_, LV_TEXT_ALIGN_CENTER, 0);
@@ -234,15 +238,20 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
         }
     }
     if (inline_tile && !is_flag) {
-        // One line: label left, value and unit right (status bands, strips).
+        // Short: one line, label left and value right (status band rows).
+        // Tall: label on top, value below right-aligned (strips).
+        const bool stacked = geometry.height >= 50;
         lv_obj_set_style_text_font(title_, &lv_font_montserrat_12, 0);
         lv_obj_set_style_text_color(title_, UiTheme::muted(), 0);
-        lv_obj_set_width(title_, geometry.width / 2);
+        lv_obj_set_width(title_, stacked ? geometry.width - 8 : geometry.width * 2 / 5);
         lv_obj_set_style_text_align(title_, LV_TEXT_ALIGN_LEFT, 0);
-        lv_obj_align(title_, LV_ALIGN_LEFT_MID, 4, 0);
-        lv_obj_set_width(value_, geometry.width / 2);
+        if (stacked) lv_obj_align(title_, LV_ALIGN_TOP_LEFT, 4, 2);
+        else lv_obj_align(title_, LV_ALIGN_LEFT_MID, 4, 0);
+        lv_obj_set_width(value_, stacked ? geometry.width - 52
+                                         : geometry.width * 3 / 5 - 48);
         lv_obj_set_style_text_align(value_, LV_TEXT_ALIGN_RIGHT, 0);
-        lv_obj_align(value_, LV_ALIGN_RIGHT_MID, -44, 0);
+        lv_obj_align(value_, stacked ? LV_ALIGN_BOTTOM_RIGHT : LV_ALIGN_RIGHT_MID,
+                     -44, stacked ? 2 : 0);
         lv_obj_set_style_text_font(unit_, &lv_font_montserrat_12, 0);
         lv_obj_set_width(unit_, 40);
         lv_obj_set_style_text_align(unit_, LV_TEXT_ALIGN_LEFT, 0);
@@ -287,11 +296,22 @@ void TileView::arrangeUnit(const char* text, bool is_flag) {
         lv_obj_set_width(unit_, status ? 120 : 40);
         lv_obj_set_style_text_align(unit_, status ? LV_TEXT_ALIGN_RIGHT
                                                   : LV_TEXT_ALIGN_LEFT, 0);
-        if (size_ == TileSize::Inline)
+        if (size_ == TileSize::Inline) {
             lv_obj_align(unit_, LV_ALIGN_RIGHT_MID, 0, 2);
-        else
+            // Times carry no unit: give the value the unit's room too.
+            const bool stacked = geometry_.height >= 50;
+            const int reserve = text[0] ? 44 : 4;
+            lv_obj_set_width(value_, (stacked ? geometry_.width - 8 : geometry_.width * 3 / 5 - 4) - reserve);
+            lv_obj_align(value_, stacked ? LV_ALIGN_BOTTOM_RIGHT : LV_ALIGN_RIGHT_MID,
+                         -reserve, stacked ? 2 : 0);
+        } else {
             lv_obj_align(unit_, LV_ALIGN_TOP_RIGHT, -12, status ? 126 : 96);
+        }
         return;
+    }
+    if (!is_flag && !text[0] && (size_ == TileSize::Wide || size_ == TileSize::Large ||
+                                 (size_ == TileSize::Small && geometry_.height >= 90))) {
+        lv_obj_set_width(value_, geometry_.width - 24);
     }
     lv_obj_set_width(unit_, LV_SIZE_CONTENT);
     if (statusText(text)) {
@@ -320,8 +340,10 @@ void TileView::arrangeUnit(const char* text, bool is_flag) {
         lv_obj_align(unit_, LV_ALIGN_TOP_RIGHT, -8, 56);
     } else if (geometry_.height < 90) {
         lv_obj_set_style_text_font(unit_, &lv_font_montserrat_16, 0);
-        lv_obj_align(unit_, LV_ALIGN_TOP_LEFT, 108, 43);
-        lv_obj_set_width(value_, text[0] ? 96 : geometry_.width - 24);
+        const int unit_x = std::min(108, geometry_.width - 34);
+        if (geometry_.width < 150) lv_obj_set_style_text_font(unit_, &lv_font_montserrat_12, 0);
+        lv_obj_align(unit_, LV_ALIGN_TOP_LEFT, unit_x, 43);
+        lv_obj_set_width(value_, text[0] ? unit_x - 12 : geometry_.width - 24);
         lv_obj_align(value_, LV_ALIGN_TOP_LEFT, 12, 26);
     } else {
         lv_obj_set_style_text_font(unit_, &lv_font_montserrat_16, 0);
@@ -374,7 +396,8 @@ void TileView::update(const TileConfig& config, const UnitSettings& units,
         : display_filter_.sample(raw, now_ms, interval_ms * 2U);
     const TemperatureBarState temperature = temperatureBarState(
         config.parameter, signal, config.temperature_bar);
-    const bool bar_visible = temperature.visible && supported;
+    const bool bar_visible = temperature.visible && supported &&
+                             size_ != TileSize::Gauge && size_ != TileSize::Inline;
     if (bar_visible == lv_obj_has_flag(temperature_bar_, LV_OBJ_FLAG_HIDDEN)) {
         if (bar_visible) lv_obj_clear_flag(temperature_bar_, LV_OBJ_FLAG_HIDDEN);
         else lv_obj_add_flag(temperature_bar_, LV_OBJ_FLAG_HIDDEN);
@@ -480,7 +503,12 @@ void TileView::update(const TileConfig& config, const UnitSettings& units,
                 if (font->line_height > default_value_font_->line_height) continue;
                 lv_point_t measured;
                 lv_txt_get_size(&measured,value_text,font,0,0,LV_COORD_MAX,LV_TEXT_FLAG_NONE);
-                const int capacity=size_==TileSize::CompactRow ? 123:lv_obj_get_width(value_);
+                // The style width is current even before LVGL recomputes
+                // the layout (first frame, freshly re-arranged unit).
+                const lv_coord_t styled=lv_obj_get_style_width(value_,LV_PART_MAIN);
+                const int capacity=size_==TileSize::CompactRow ? geometry_.width-205
+                    : (styled>0 && !LV_COORD_IS_SPEC(styled)) ? styled
+                    : lv_obj_get_width(value_);
                 if (measured.x <= capacity) { fitted=font; break; }
             }
             if (lv_obj_get_style_text_font(value_,LV_PART_MAIN) != fitted)

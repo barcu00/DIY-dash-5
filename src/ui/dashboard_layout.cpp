@@ -184,7 +184,8 @@ void initializeExtraLayouts(AppConfig& config) {
             tiles[slot] = makeTile(preset.slots[slot]);
             tiles[slot].visible = (preset.hidden_mask & (1U << slot)) == 0U;
             // Lap data reads best as 1:42.38; race time as 2:31:08.
-            if (preset.slots[slot] == P::RcTotalRaceTime) tiles[slot].decimals = 0U;
+            if (preset.slots[slot] == P::RcTotalRaceTime ||
+                preset.slots[slot] == P::RcGpsSpeed) tiles[slot].decimals = 0U;
             else if (parameterDescriptor(preset.slots[slot]).native_unit == NativeUnit::Seconds)
                 tiles[slot].decimals = 2U;
         }
