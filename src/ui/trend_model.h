@@ -13,7 +13,7 @@ enum class TrendDirection : uint8_t {
 };
 
 // Short value history for the ENDURANCE rows: a fixed number of samples
-// spread over the configured window (15 s .. 2 min), drawn as a sparkline
+// spread over the configured window (5 .. 20 s), drawn as a sparkline
 // with a direction arrow next to the value.
 class TrendHistory {
 public:

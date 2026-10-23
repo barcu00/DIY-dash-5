@@ -227,8 +227,8 @@ ValidationResult AppConfig::validate() {
     if (!validDashboardLayout(dash_layout)) dash_layout = DashboardLayout::ClassicDash;
     if (!validDashboardLayout(track_layout)) track_layout = DashboardLayout::ClassicTrack;
     rpm_scale_max = normalizedRpmScale(rpm_scale_max);
-    if (trend_window_s != 15U && trend_window_s != 30U &&
-        trend_window_s != 60U && trend_window_s != 120U) {
+    if (trend_window_s != 5U && trend_window_s != 10U &&
+        trend_window_s != 15U && trend_window_s != 20U) {
         trend_window_s = 15U;
     }
 

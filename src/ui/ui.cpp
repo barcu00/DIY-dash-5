@@ -302,10 +302,10 @@ void Ui::createDisplaySettings(lv_obj_t* panel) {
     trend_window_dropdown_ = lv_dropdown_create(panel);
     lv_obj_set_pos(trend_window_dropdown_, 300, 240);
     lv_obj_set_size(trend_window_dropdown_, 160, 44);
-    lv_dropdown_set_options(trend_window_dropdown_, "15 s\n30 s\n60 s\n2 min");
+    lv_dropdown_set_options(trend_window_dropdown_, "5 s\n10 s\n15 s\n20 s");
     const uint16_t window = settings.trend_window_s;
     lv_dropdown_set_selected(trend_window_dropdown_,
-        window == 30U ? 1 : window == 60U ? 2 : window == 120U ? 3 : 0);
+        window == 5U ? 0 : window == 10U ? 1 : window == 20U ? 3 : 2);
     lv_obj_add_event_cb(trend_window_dropdown_, settingsEvent, LV_EVENT_VALUE_CHANGED,
                         reinterpret_cast<void*>(TrendWindowChanged));
 }
@@ -1073,9 +1073,9 @@ void Ui::settingsEvent(lv_event_t* event) {
         return;
     }
     if (action == TrendWindowChanged) {
-        constexpr uint16_t windows[] = {15U, 30U, 60U, 120U};
+        constexpr uint16_t windows[] = {5U, 10U, 15U, 20U};
         const uint16_t index = lv_dropdown_get_selected(instance_->trend_window_dropdown_);
-        candidate.trend_window_s = windows[index < 4U ? index : 0U];
+        candidate.trend_window_s = windows[index < 4U ? index : 2U];
         if (instance_->stageSettings(candidate, false))
             instance_->update_policy_.markLayoutDirty();
         return;

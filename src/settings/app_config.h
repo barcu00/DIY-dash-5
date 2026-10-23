@@ -147,7 +147,7 @@ struct AppConfig {
     RaceChronoSettings racechrono{};
     std::array<ExtraTileBank, kExtraLayoutCount> dash_extra_tiles{};
     std::array<ExtraTileBank, kExtraLayoutCount> track_extra_tiles{};
-    // ENDURANCE trend window in seconds: 15, 30, 60 or 120 (schema 11).
+    // ENDURANCE trend window in seconds: 5, 10, 15 or 20 (schema 11).
     uint16_t trend_window_s = 15U;
 
     static AppConfig defaults();

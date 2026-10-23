@@ -22,8 +22,8 @@ void test_samples_once_per_interval_and_keeps_order_when_full() {
     TEST_ASSERT_EQUAL_UINT32(TrendHistory::kCapacity, history.size());
     TEST_ASSERT_EQUAL_FLOAT(120.0f - TrendHistory::kCapacity + 1.0f, history.at(0));
     TEST_ASSERT_EQUAL_FLOAT(120.0f, history.at(TrendHistory::kCapacity - 1U));
-    history.setWindowSeconds(120U);
-    TEST_ASSERT_EQUAL_UINT32(1333U, history.intervalMs());
+    history.setWindowSeconds(20U);
+    TEST_ASSERT_EQUAL_UINT32(222U, history.intervalMs());
     TEST_ASSERT_EQUAL_UINT32(0U, history.size());
 }
 
