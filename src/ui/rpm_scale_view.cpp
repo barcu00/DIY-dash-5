@@ -200,18 +200,31 @@ void RpmScaleView::update(const SignalValue& raw,uint32_t now_ms,const ShiftLigh
         yellow_from_=shift.start_rpm;red_from_=shift.red_rpm;lv_obj_invalidate(root_);
     }
     if(sport(layout_)) {
+        // Same cadence as the other dials: at most one needle step per
+        // 25 ms frame, colour/flash changes immediately.
         const bool due=!initialized_ || now_ms-last_update_ms_>=25U || raw.valid!=valid_;
+        const TachBarState probe=tachBarState(raw.value,raw.valid,maximum_,shift,now_ms);
+        if(!due && probe.flashing==flashing_ && (!probe.flashing || probe.color==sport_color_))return;
+        if(due)last_update_ms_=now_ms;
         const auto rpm=filter_.sample(raw,now_ms,50U);
         const TachBarState state=tachBarState(rpm.value,rpm.valid,maximum_,shift,now_ms);
         // Needle follows the real value even while the ring flashes full.
         const uint16_t fill=rpmScaleFill(rpm.value,rpm.valid,maximum_);
-        if(!initialized_ || rpm.valid!=valid_ || state.color!=sport_color_ || state.flashing!=flashing_) {
+        if(!initialized_) {
             lv_obj_invalidate(indicator_);
+            lv_obj_set_style_text_color(value_,sportColor(state.color==TachColor::Off ? TachColor::Red:state.color),0);
+        } else if(rpm.valid!=valid_ || state.color!=sport_color_ || state.flashing!=flashing_) {
+            // Repaint the segment ring only, never the static centre face.
+            invalidateSportRing();
+            invalidateSportSweep(fill_,fill);
             if(state.color!=sport_color_ && state.color!=TachColor::Off)
                 lv_obj_set_style_text_color(value_,sportColor(state.color),0);
         } else if(fill!=fill_) invalidateSportSweep(fill_,fill);
         sport_color_=state.color;flashing_=state.flashing;fill_=fill;valid_=rpm.valid;
-        if(due) {
+        // The numeric readout is for reading, not tracking: 10 Hz keeps it
+        // legible and avoids repainting the dial face every frame.
+        if(!initialized_ || now_ms-last_text_ms_>=100U || rpm.valid!=last_text_valid_) {
+            last_text_ms_=now_ms;last_text_valid_=rpm.valid;
             char text[24]="--- RPM";
             if(rpm.valid) {
                 const unsigned value=static_cast<unsigned>(std::lround(rpm.value/50.f)*50);
@@ -219,7 +232,6 @@ void RpmScaleView::update(const SignalValue& raw,uint32_t now_ms,const ShiftLigh
                 else std::snprintf(text,sizeof(text),"%u RPM",value);
             }
             if(std::strcmp(text,last_text_.data())) { lv_label_set_text(value_,text);std::snprintf(last_text_.data(),last_text_.size(),"%s",text); }
-            last_update_ms_=now_ms;
         }
         initialized_=true;return;
     }
@@ -343,6 +355,17 @@ lv_point_t RpmScaleView::sportCenter() const {
     const SportDial& dial=sportDial(layout_);
     return point(a.x1+dial.cx,a.y1+dial.cy);
 }
+void RpmScaleView::invalidateSportRing() {
+    const auto c=sportCenter();const SportDial& dial=sportDial(layout_);
+    const float k=RoundGeometry::scaleX();
+    const int r=dial.ring+dial.ring_width/2+4,face=dial.face+2;
+    const int rx=static_cast<int>(std::lround(r*k))+2,fx=static_cast<int>(std::lround(face*k));
+    const lv_area_t bands[3]={
+        {static_cast<lv_coord_t>(c.x-rx),static_cast<lv_coord_t>(c.y-r),static_cast<lv_coord_t>(c.x+rx),static_cast<lv_coord_t>(c.y-face)},
+        {static_cast<lv_coord_t>(c.x-rx),static_cast<lv_coord_t>(c.y-face),static_cast<lv_coord_t>(c.x-fx),static_cast<lv_coord_t>(c.y+r)},
+        {static_cast<lv_coord_t>(c.x+fx),static_cast<lv_coord_t>(c.y-face),static_cast<lv_coord_t>(c.x+rx),static_cast<lv_coord_t>(c.y+r)}};
+    for(const auto& band:bands){lv_area_t a=band;lv_obj_invalidate_area(indicator_,&a);}
+}
 void RpmScaleView::invalidateSportSweep(uint16_t previous,uint16_t current) {
     const auto c=sportCenter();const SportDial& dial=sportDial(layout_);
     const float lo=135+270*std::min(previous,current)/1000.f,hi=135+270*std::max(previous,current)/1000.f;
@@ -376,7 +399,9 @@ void RpmScaleView::drawSportScale(lv_draw_ctx_t* ctx) {
     const auto c=sportCenter();const SportDial& dial=sportDial(layout_);
     const bool classic=layout_==DashboardLayout::AnalogClassic;
     // Disc with a soft centre glow, hairline rims.
-    radialDisc(ctx,c,dial.disc,lv_color_hex(0x000203),lv_color_hex(0x0E151C),6);
+    // Two tones only: every redraw of a dirty band repaints these layers,
+    // and on the 7 inch panel each ellipse layer costs one rect per row.
+    radialDisc(ctx,c,dial.disc,lv_color_hex(0x03070A),lv_color_hex(0x0B1117),2);
     ring(ctx,c,dial.disc,0,360,lv_color_hex(0x262D35),2);
     ring(ctx,c,dial.disc_ring,0,360,lv_color_hex(0x11171D),1);
     const float max=static_cast<float>(maximum_);
@@ -399,7 +424,7 @@ void RpmScaleView::drawSportScale(lv_draw_ctx_t* ctx) {
         }
     }
     // Centre face.
-    radialDisc(ctx,c,dial.face,lv_color_hex(0x030507),lv_color_hex(0x121A22),4);
+    radialDisc(ctx,c,dial.face,lv_color_hex(0x070B0F),lv_color_hex(0x0F161D),2);
     ring(ctx,c,dial.face,0,360,lv_color_hex(0x2E363F),2);
     ring(ctx,c,dial.face_ring,0,360,lv_color_hex(0x141B22),1);
     spacedText(ctx,c.x,c.y+dial.scale_label_y,"RPM \xC3\x97" "1000",&dash_label_12,lv_color_hex(0x5E6872),2);

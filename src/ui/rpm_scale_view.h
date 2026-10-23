@@ -26,9 +26,12 @@ private:
     // Segmented needle dials (ANALOG CLASSIC / ANALOG TWIN).
     lv_point_t sportCenter() const;
     void invalidateSportSweep(uint16_t previous, uint16_t current);
+    void invalidateSportRing();
     void drawSportScale(lv_draw_ctx_t* ctx);
     void drawSportIndicator(lv_draw_ctx_t* ctx);
     TachColor sport_color_ = TachColor::Normal;
+    uint32_t last_text_ms_ = 0U;
+    bool last_text_valid_ = false;
     std::array<std::array<lv_point_t, 4>, 36> strip_blocks_{};
     lv_obj_t* root_ = nullptr;
     lv_obj_t* indicator_ = nullptr;

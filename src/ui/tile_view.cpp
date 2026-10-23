@@ -232,7 +232,8 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
             lv_obj_align(title_, LV_ALIGN_TOP_LEFT, 15, 7);
             const auto native_unit = parameterDescriptor(config.parameter).native_unit;
             const bool has_unit = native_unit != NativeUnit::None && native_unit != NativeUnit::Lambda;
-            const int unit_x = std::min(108, geometry.width - 34);
+            const int unit_x = geometry.width > 200 ? geometry.width - 54
+                                                    : std::min(108, geometry.width - 34);
             lv_obj_set_width(value_, has_unit ? unit_x - 12 : geometry.width - 24);
             lv_obj_set_style_text_align(value_, LV_TEXT_ALIGN_CENTER, 0);
             lv_obj_align(value_, LV_ALIGN_TOP_LEFT, 12, 26);
@@ -349,7 +350,8 @@ void TileView::arrangeUnit(const char* text, bool is_flag) {
         lv_obj_align(unit_, LV_ALIGN_TOP_RIGHT, -8, 56);
     } else if (geometry_.height < 90) {
         lv_obj_set_style_text_font(unit_, &lv_font_montserrat_16, 0);
-        const int unit_x = std::min(108, geometry_.width - 34);
+        const int unit_x = geometry_.width > 200 ? geometry_.width - 54
+                                                 : std::min(108, geometry_.width - 34);
         if (geometry_.width < 150) lv_obj_set_style_text_font(unit_, &lv_font_montserrat_12, 0);
         lv_obj_align(unit_, LV_ALIGN_TOP_LEFT, unit_x, 43);
         lv_obj_set_width(value_, text[0] ? unit_x - 12 : geometry_.width - 24);
@@ -534,7 +536,10 @@ void TileView::update(const TileConfig& config, const UnitSettings& units,
     if (!value_text_initialized_ ||
         std::strcmp(last_value_text_.data(), value_text) != 0) {
         if (!is_flag) {
-            // Fit the actual presented text, including decimals and unit conversion.
+            // Fit the presented text, including decimals and unit conversion.
+            char widest[sizeof(value_text)];
+            std::snprintf(widest, sizeof(widest), "%s", value_text);
+            for (char* ch = widest; *ch; ++ch) if (*ch >= '0' && *ch <= '9') *ch = '8';
             const lv_font_t* candidates[]={default_value_font_,&race_digits_96,&race_digits_64,
                 &race_digits_48,&lv_font_montserrat_24,&lv_font_montserrat_16};
             const lv_font_t* fitted=&lv_font_montserrat_16;
@@ -542,7 +547,9 @@ void TileView::update(const TileConfig& config, const UnitSettings& units,
                 if (!supported && font->line_height > lv_font_montserrat_24.line_height) continue;
                 if (font->line_height > default_value_font_->line_height) continue;
                 lv_point_t measured;
-                lv_txt_get_size(&measured,value_text,font,0,0,LV_COORD_MAX,LV_TEXT_FLAG_NONE);
+                // Measure the widest text of this shape (every digit an 8) so
+                // a changing value never flips between font sizes.
+                lv_txt_get_size(&measured,widest,font,0,0,LV_COORD_MAX,LV_TEXT_FLAG_NONE);
                 // The style width is current even before LVGL recomputes
                 // the layout (first frame, freshly re-arranged unit).
                 const lv_coord_t styled=lv_obj_get_style_width(value_,LV_PART_MAIN);
