@@ -19,6 +19,11 @@ class TrendHistory {
 public:
     static constexpr std::size_t kCapacity = 90U;
 
+    TrendHistory() = default;
+    ~TrendHistory();
+    TrendHistory(const TrendHistory&) = delete;
+    TrendHistory& operator=(const TrendHistory&) = delete;
+
     void reset();
     // Window length; the sample interval is window / capacity
     // (15 s -> 167 ms, i.e. ~6 sparkline updates per second).
@@ -35,7 +40,9 @@ public:
     TrendDirection direction(float span) const;
 
 private:
-    std::array<float, kCapacity> values_{};
+    // Allocated on the first sample (PSRAM on the device): only the
+    // ENDURANCE rows keep a history, so idle tiles cost no internal RAM.
+    float* values_ = nullptr;
     std::size_t start_ = 0U;
     std::size_t count_ = 0U;
     uint32_t last_ms_ = 0U;

@@ -47,6 +47,10 @@ bool BoardDisplay::begin() {
                   ESP_ARDUINO_VERSION_STR);
     Serial.printf("[DIY Dash] PSRAM: %u bytes\n", static_cast<unsigned>(ESP.getPsramSize()));
     Serial.printf("[DIY Dash] Flash: %u bytes\n", static_cast<unsigned>(ESP.getFlashChipSize()));
+    Serial.printf("[DIY Dash] Internal RAM free=%u largest=%u DMA free=%u\n",
+                  static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL)),
+                  static_cast<unsigned>(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL)),
+                  static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL)));
     if (ESP.getPsramSize() == 0U) {
         Serial.println("[DIY Dash] WARNING: PSRAM not detected");
     }

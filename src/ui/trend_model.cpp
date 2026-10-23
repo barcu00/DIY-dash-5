@@ -2,7 +2,29 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <limits>
+
+#if defined(ESP_PLATFORM)
+#include <esp_heap_caps.h>
+#endif
+
+namespace {
+float* allocateSamples() {
+    const std::size_t bytes = TrendHistory::kCapacity * sizeof(float);
+#if defined(ESP_PLATFORM)
+    void* memory = heap_caps_malloc(bytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (memory == nullptr) memory = std::malloc(bytes);
+#else
+    void* memory = std::malloc(bytes);
+#endif
+    return static_cast<float*>(memory);
+}
+}  // namespace
+
+TrendHistory::~TrendHistory() {
+    std::free(values_);  // heap_caps_malloc memory is released by free()
+}
 
 void TrendHistory::reset() {
     start_ = 0U;
@@ -22,6 +44,7 @@ void TrendHistory::setWindowSeconds(uint16_t seconds) {
 bool TrendHistory::sample(float value, bool valid, uint32_t now_ms) {
     if (!valid || !std::isfinite(value)) return false;
     if (have_last_ && now_ms - last_ms_ < interval_ms_) return false;
+    if (values_ == nullptr && (values_ = allocateSamples()) == nullptr) return false;
     have_last_ = true;
     last_ms_ = now_ms;
     if (count_ < kCapacity) {
