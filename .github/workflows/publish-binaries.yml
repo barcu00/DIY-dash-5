@@ -5,6 +5,8 @@ name: Publish flashable binaries
 # (useful where Actions artifacts cannot be downloaded).
 on:
   workflow_dispatch:
+  push:
+    branches: [feature/tach-bar-layouts]
 
 permissions:
   contents: write
