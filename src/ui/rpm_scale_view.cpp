@@ -200,12 +200,9 @@ void RpmScaleView::update(const SignalValue& raw,uint32_t now_ms,const ShiftLigh
         yellow_from_=shift.start_rpm;red_from_=shift.red_rpm;lv_obj_invalidate(root_);
     }
     if(sport(layout_)) {
-        // Same cadence as the other dials: at most one needle step per
-        // 25 ms frame, colour/flash changes immediately.
-        const bool due=!initialized_ || now_ms-last_update_ms_>=25U || raw.valid!=valid_;
-        const TachBarState probe=tachBarState(raw.value,raw.valid,maximum_,shift,now_ms);
-        if(!due && probe.flashing==flashing_ && (!probe.flashing || probe.color==sport_color_))return;
-        if(due)last_update_ms_=now_ms;
+        // The needle follows every shift-light tick (5 ms): LVGL merges the
+        // small dirty sectors into its next frame, which keeps the sweep
+        // smooth. Only the 10 Hz RPM readout and colour changes are limited.
         const auto rpm=filter_.sample(raw,now_ms,50U);
         const TachBarState state=tachBarState(rpm.value,rpm.valid,maximum_,shift,now_ms);
         // Needle follows the real value even while the ring flashes full.
