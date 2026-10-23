@@ -5,8 +5,18 @@ Google Fonts' Rajdhani-Bold.ttf using lv_font_conv 1.5.3. License:
 `Rajdhani-OFL.txt` (SIL OFL 1.1). The size names are the converter input sizes;
 actual line heights are smaller because these subsets contain only numeric
 glyphs. Montserrat 24 is the fallback for unavailable values and text.
-Regenerate with the command below, replacing font, size and name with
-`Rajdhani-Bold.ttf`, `48/64/96/140`, and `race_digits_<size>`.
+The race digits also contain `:` for lap times (`1:42.38`). They are
+regenerated from `rajdhani-latin-700-normal.woff` (npm `@fontsource/rajdhani`
+5.3.0, same Rajdhani Bold outlines) with:
+
+```sh
+lv_font_conv --size 96 --bpp 4 --format lvgl \
+  --font rajdhani-latin-700-normal.woff -r 0x20,0x2B-0x2E,0x30-0x3A \
+  --no-compress --no-prefilter --lv-fallback lv_font_montserrat_24 \
+  --lv-font-name race_digits_96 -o race_digits_96.c
+```
+
+Use sizes/names 48, 64 and 140 for the other race digit fonts.
 Generated sources are committed; no converter is needed for compilation.
 
 The older `dash_numeric_64/80` sources below remain available but are no longer

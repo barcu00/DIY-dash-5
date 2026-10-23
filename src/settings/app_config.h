@@ -20,6 +20,9 @@ enum class TileSize : uint8_t {
     Hero,
     GearHero,
     CenteredSmall,
+    Large,    // bordered, 96 px value, title and temperature bar
+    Inline,   // borderless one-line label/value (status bands)
+    Gauge,    // bordered mini needle gauge with value
 };
 
 enum class DashboardLayout : uint8_t {
@@ -29,6 +32,12 @@ enum class DashboardLayout : uint8_t {
     SideGear,
     StripStyle,
     ModernMotorsport,
+    // Appended in schema 10; stored by value.
+    OemSport,
+    TrackFocus,
+    Endurance,
+    AnalogClassic,
+    AnalogTwin,
 };
 
 enum class WarningDirection : uint8_t {
@@ -108,11 +117,15 @@ struct RaceChronoSettings {
 };
 
 struct AppConfig {
-    static constexpr uint32_t kSchemaVersion = 9U;
+    static constexpr uint32_t kSchemaVersion = 10U;
     static constexpr std::size_t kDashTileCount = 14U;
     static constexpr std::size_t kTrackTileCount = 12U;
     static constexpr std::size_t kLayoutTileCapacity = 14U;
     using TileBank = std::array<TileConfig, kLayoutTileCapacity>;
+    // Layouts added in schema 10 (OEM SPORT .. ANALOG TWIN) use smaller banks.
+    static constexpr std::size_t kExtraLayoutCount = 5U;
+    static constexpr std::size_t kExtraTileCapacity = 12U;
+    using ExtraTileBank = std::array<TileConfig, kExtraTileCapacity>;
 
     uint32_t schema_version = kSchemaVersion;
     DataSource data_source = DataSource::Demo;
@@ -130,6 +143,8 @@ struct AppConfig {
     std::array<TileBank, 5> track_alternate_tiles{};
     bool warning_sound_enabled = true;
     RaceChronoSettings racechrono{};
+    std::array<ExtraTileBank, kExtraLayoutCount> dash_extra_tiles{};
+    std::array<ExtraTileBank, kExtraLayoutCount> track_extra_tiles{};
 
     static AppConfig defaults();
     ValidationResult validate();

@@ -211,6 +211,8 @@ ValidationResult AppConfig::validate() {
     validateTiles(track_tiles);
     for (auto& tiles : dash_alternate_tiles) validateTiles(tiles);
     for (auto& tiles : track_alternate_tiles) validateTiles(tiles);
+    for (auto& tiles : dash_extra_tiles) validateTiles(tiles);
+    for (auto& tiles : track_extra_tiles) validateTiles(tiles);
     if (!validDashboardLayout(dash_layout)) dash_layout = DashboardLayout::ClassicDash;
     if (!validDashboardLayout(track_layout)) track_layout = DashboardLayout::ClassicTrack;
     rpm_scale_max = normalizedRpmScale(rpm_scale_max);
