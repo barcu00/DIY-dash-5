@@ -6,6 +6,8 @@
 #include "telemetry/composite_telemetry_view.h"
 #include "ui/display_signal_filter.h"
 #include "ui/flag_tile_model.h"
+#include "ui/gauge_model.h"
+#include "ui/tile_value_format.h"
 #include "ui/tile_layout.h"
 #include "ui/temperature_bar_model.h"
 class TileView {
@@ -25,6 +27,12 @@ private:
     lv_obj_t* value_ = nullptr;
     lv_obj_t* unit_ = nullptr;
     lv_obj_t* temperature_bar_ = nullptr;
+    lv_obj_t* gauge_ = nullptr;
+    GaugeRange gauge_range_{};
+    uint16_t gauge_fill_ = 0U;
+    bool gauge_valid_ = false;
+    DeltaTone last_tone_ = DeltaTone::Neutral;
+    static void drawGauge(lv_event_t* event);
     TileAddress address_{};
     bool base_border_ = true;
     TileSize size_ = TileSize::Small;

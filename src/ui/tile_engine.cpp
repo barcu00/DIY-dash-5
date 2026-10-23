@@ -168,14 +168,14 @@ TilePlacementList TileEngine::placements(PageId page,
             right[i] = {616, static_cast<int16_t>(16 + 136 * i), 176, 128, TileSize::Large};
         }
         // Speed in the dial centre, gear in the hexagon below it.
-        const std::array<TileGeometry, 1> center{{{300, 176, 200, 92, TileSize::Hero}}};
-        const std::array<TileGeometry, 1> gear{{{352, 340, 96, 72, TileSize::Hero}}};
+        const std::array<TileGeometry, 1> center{{{300, 152, 200, 128, TileSize::Hero}}};
+        const std::array<TileGeometry, 1> gear{{{350, 330, 100, 84, TileSize::Hero}}};
         appendGroup(output, page, tiles, 0U, TileGroup::DashLeft, left);
         appendGroup(output, page, tiles, 3U, TileGroup::DashRight, right);
         appendGroup(output, page, tiles, 6U, TileGroup::DashCenterWide, center);
         appendGroup(output, page, tiles, 7U, TileGroup::DashCenterSmall, gear);
     } else if (layout == DashboardLayout::AnalogTwin) {
-        const std::array<TileGeometry, 1> center{{{140, 168, 160, 100, TileSize::Hero}}};
+        const std::array<TileGeometry, 1> center{{{144, 166, 160, 100, TileSize::Hero}}};
         const std::array<TileGeometry, 2> gauges{{
             {448, 16, 344, 160, TileSize::Gauge}, {448, 184, 344, 160, TileSize::Gauge}}};
         const std::array<TileGeometry, 2> bottom{{

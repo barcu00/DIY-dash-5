@@ -101,6 +101,7 @@ void Ui::createDataPage(Page page, const AppConfig& config) {
     screen = lv_obj_create(nullptr); styleScreen(screen);
     (page == Page::Dash ? dash_shift_ : track_shift_).create(screen);
     (page == Page::Dash ? dash_rpm_ : track_rpm_).create(screen);
+    (page == Page::Dash ? dash_band_ : track_band_).create(screen);
     if (page == Page::Dash) {
         for (std::size_t i = 0U; i < dash_tiles_.size(); ++i)
             dash_tiles_[i].create(screen, {PageId::Dash, static_cast<uint8_t>(i)}, tileEvent);
@@ -117,8 +118,9 @@ void Ui::applyLayout(Page page, const AppConfig& config) {
     const PageId id = page == Page::Dash ? PageId::Dash : PageId::Track;
     const auto layout = selectedLayout(config, id);
     const auto tiles = activeTiles(config, id);
-    (page == Page::Dash ? dash_shift_ : track_shift_).apply(layout);
+    (page == Page::Dash ? dash_shift_ : track_shift_).apply(layout, config.rpm_scale_max);
     (page == Page::Dash ? dash_rpm_ : track_rpm_).apply(layout, config.rpm_scale_max);
+    (page == Page::Dash ? dash_band_ : track_band_).apply(layout);
     const TilePlacementList placements = TileEngine::placements(id, config);
     if (page == Page::Dash) {
         for (TileView& tile : dash_tiles_) tile.hide();
@@ -417,7 +419,7 @@ void Ui::createUnitSettings(lv_obj_t* panel) {
 
 void Ui::createLayoutSettings(lv_obj_t* panel) {
     const AppConfig& settings = settingsConfig();
-    constexpr const char* options = "CLASSIC DASH\nCLASSIC TRACK\nANALOG STYLE\nSIDE GEAR\nSTRIP STYLE\nMODERN MOTORSPORT";
+    constexpr const char* options = "CLASSIC DASH\nCLASSIC TRACK\nANALOG STYLE\nSIDE GEAR\nSTRIP STYLE\nMODERN MOTORSPORT\nOEM SPORT\nTRACK FOCUS\nENDURANCE\nANALOG CLASSIC\nANALOG TWIN";
     makeLabel(panel, "DASH", 12, 12, &lv_font_montserrat_12, UiTheme::text());
     makeLabel(panel, "TRACK", 392, 12, &lv_font_montserrat_12, UiTheme::text());
     dash_layout_dropdown_ = lv_dropdown_create(panel);
@@ -548,6 +550,13 @@ void Ui::update(const CompositeTelemetryView& state,
                     capabilities_.supports(tiles[i].parameter),
                 track_highlights_[i], diagnostics.uptime_ms, track_data_lost_[i]);
     }
+    if (diagnostics.uptime_ms - band_refresh_ms_ >= 250U) {
+        band_refresh_ms_ = diagnostics.uptime_ms;
+        if (update_policy_.shouldUpdateData(PageId::Dash))
+            updateStatusBand(PageId::Dash, state, status, config, warnings);
+        if (update_policy_.shouldUpdateData(PageId::Track))
+            updateStatusBand(PageId::Track, state, status, config, warnings);
+    }
     if (settings_status_ &&
         update_policy_.shouldUpdateSettingsStatus(diagnostics.uptime_ms)) {
         char buffer[256];
@@ -606,15 +615,12 @@ void Ui::updateShiftLight(const VehicleState& state, uint32_t now_ms,
     latest_state_ms_ = now_ms;
     if (!update_policy_.allowShiftLightUpdates()) return;
     const SignalValue& rpm = state.get(ParameterId::Rpm);
-    const uint16_t rpm_value = rpm.valid && rpm.value > 0.0f
-                                   ? static_cast<uint16_t>(rpm.value)
-                                   : 0U;
     if (update_policy_.shouldUpdateData(PageId::Dash)) {
-        dash_shift_.update(rpm_value, rpm.valid, now_ms, config);
+        dash_shift_.update(rpm, now_ms, config);
         dash_rpm_.update(rpm, now_ms, config);
     }
     if (update_policy_.shouldUpdateData(PageId::Track)) {
-        track_shift_.update(rpm_value, rpm.valid, now_ms, config);
+        track_shift_.update(rpm, now_ms, config);
         track_rpm_.update(rpm, now_ms, config);
     }
 }
@@ -653,9 +659,8 @@ void Ui::prepareDataPage(Page page) {
     if (page == Page::Dash) refresh(dash_tiles_, dash_highlights_, dash_data_lost_);
     else refresh(track_tiles_, track_highlights_, track_data_lost_);
     const auto& rpm = latest_state_.get(ParameterId::Rpm);
-    const uint16_t rpm_value = rpm.valid && rpm.value > 0 ? static_cast<uint16_t>(rpm.value) : 0;
     (page == Page::Dash ? dash_rpm_ : track_rpm_).update(rpm, latest_state_ms_, config_->shift);
-    (page == Page::Dash ? dash_shift_ : track_shift_).update(rpm_value, rpm.valid, latest_state_ms_, config_->shift);
+    (page == Page::Dash ? dash_shift_ : track_shift_).update(rpm, latest_state_ms_, config_->shift);
     lv_obj_update_layout(page == Page::Dash ? dash_ : track_);
 }
 void Ui::load(Page page) {
@@ -1249,4 +1254,79 @@ void Ui::warningEvent(lv_event_t*) {
     if (instance_->warning_panel_) {
         lv_obj_del(instance_->warning_panel_); instance_->warning_panel_ = nullptr;
     }
+}
+
+// Priority: unacknowledged warning > acknowledged warning > lost data >
+// warm-up > RaceChrono state (TRACK) > all normal.
+void Ui::updateStatusBand(PageId page, const CompositeTelemetryView& state,
+                          const UiRuntimeStatus& status, const AppConfig& config,
+                          TileWarningEngine& warnings) {
+    StatusBandView& band = page == PageId::Dash ? dash_band_ : track_band_;
+    if (!band.visible()) return;
+    char title[96];
+    char detail[128];
+    const auto modal = warnings.nextModal();
+    if (modal.has_value()) {
+        const PresentedValue value = UnitPresenter::present(modal->parameter, modal->current_native, config.units);
+        const PresentedValue limit = UnitPresenter::present(modal->parameter, modal->threshold_native, config.units);
+        std::snprintf(title, sizeof(title), "%s %.1f %s  LIMIT %.1f",
+                      parameterDescriptor(modal->parameter).short_name,
+                      static_cast<double>(value.value), value.unit,
+                      static_cast<double>(limit.value));
+        std::snprintf(detail, sizeof(detail), "%s%s",
+                      modal->data_lost ? "DATA LOST - last value shown | " : "",
+                      modal->remaining_count ? "More warnings pending - acknowledge on screen"
+                                             : "Active - acknowledge on screen");
+        band.show(StatusTone::Alert, title, detail);
+        return;
+    }
+    const auto tiles = activeTiles(config, page);
+    for (std::size_t i = 0U; i < tiles.size(); ++i) {
+        const TileAddress address{page, static_cast<uint8_t>(i)};
+        if (!warnings.isHighlighted(address)) continue;
+        std::snprintf(title, sizeof(title), "%s WARNING ACTIVE",
+                      parameterDescriptor(tiles[i].parameter).short_name);
+        std::snprintf(detail, sizeof(detail), "%s",
+                      warnings.isDataLost(address)
+                          ? "Acknowledged | sensor data lost, last value kept"
+                          : "Acknowledged | clears after the reset value is reached");
+        band.show(StatusTone::Caution, title, detail);
+        return;
+    }
+    for (std::size_t i = 0U; i < tiles.size(); ++i) {
+        const TileConfig& tile = tiles[i];
+        if (!tile.visible || !tile.temperature_bar.enabled ||
+            parameterDescriptor(tile.parameter).native_unit != NativeUnit::Celsius) continue;
+        const SignalValue& signal = state.get(tile.parameter);
+        if (!signal.valid || signal.value >= tile.temperature_bar.ready_native) continue;
+        const PresentedValue ready = UnitPresenter::present(tile.parameter, tile.temperature_bar.ready_native, config.units);
+        std::snprintf(title, sizeof(title), "ENGINE WARMING UP");
+        std::snprintf(detail, sizeof(detail), "Keep revs moderate until %s reaches %.0f %s",
+                      parameterDescriptor(tile.parameter).short_name,
+                      static_cast<double>(ready.value), ready.unit);
+        band.show(StatusTone::Caution, title, detail);
+        return;
+    }
+    if (page == PageId::Track) {
+        const char* state_text = "OFF";
+        StatusTone tone = StatusTone::Info;
+        switch (status.racechrono_connection) {
+            case RaceChronoConnectionState::Disabled: state_text = "DISABLED"; break;
+            case RaceChronoConnectionState::Advertising: state_text = "WAITING FOR PHONE"; break;
+            case RaceChronoConnectionState::Connected: state_text = "CONNECTED"; break;
+            case RaceChronoConnectionState::Configuring: state_text = "CONFIGURING"; break;
+            case RaceChronoConnectionState::Active: state_text = "ACTIVE"; tone = StatusTone::Normal; break;
+            case RaceChronoConnectionState::NoData: state_text = "NO DATA"; tone = StatusTone::Caution; break;
+            case RaceChronoConnectionState::Error: state_text = "ERROR"; tone = StatusTone::Alert; break;
+        }
+        std::snprintf(title, sizeof(title), "RACECHRONO %s", state_text);
+        std::snprintf(detail, sizeof(detail), "GPS %s | %u satellites | %u channels active",
+                      status.racechrono.gps_fix_type >= 3U ? "3D FIX"
+                      : status.racechrono.gps_fix_type == 2U ? "2D FIX" : "NO FIX",
+                      static_cast<unsigned>(status.racechrono.satellites),
+                      static_cast<unsigned>(status.racechrono.active_channels));
+        band.show(tone, title, detail);
+        return;
+    }
+    band.show(StatusTone::Normal, "ALL SYSTEMS NORMAL", "No active warnings");
 }

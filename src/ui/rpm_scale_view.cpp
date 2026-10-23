@@ -38,6 +38,19 @@ lv_color_t zone(float rpm,uint16_t yellow,uint16_t red) {
 bool dial(DashboardLayout layout) {
     return layout==DashboardLayout::AnalogStyle || layout==DashboardLayout::ModernMotorsport;
 }
+bool sport(DashboardLayout layout) {
+    return layout==DashboardLayout::AnalogClassic || layout==DashboardLayout::AnalogTwin;
+}
+constexpr int kSportRing=158,kSportRingWidth=22,kSportSegments=54;
+lv_color_t sportColor(TachColor color) {
+    switch(color) {
+        case TachColor::Yellow: return UiTheme::yellow();
+        case TachColor::Red: return UiTheme::red();
+        case TachColor::Off: return lv_color_hex(0x161C22);
+        case TachColor::Normal: break;
+    }
+    return lv_color_hex(0xE4E8EC);
+}
 void transparent(lv_obj_t* obj) {
     lv_obj_set_style_bg_opa(obj,LV_OPA_TRANSP,0);lv_obj_set_style_border_width(obj,0,0);lv_obj_set_style_pad_all(obj,0,0);
     lv_obj_clear_flag(obj,LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_CLICKABLE);
@@ -57,6 +70,23 @@ void RpmScaleView::create(lv_obj_t* parent) {
 void RpmScaleView::apply(DashboardLayout layout,uint16_t maximum) {
     layout_=layout;maximum_=normalizedRpmScale(maximum);fill_=0;
     valid_=flashing_=red_phase_=initialized_=false;last_text_.fill('\0');filter_.reset();
+    if(sport(layout)) {
+        lv_obj_clear_flag(root_,LV_OBJ_FLAG_HIDDEN);
+        const bool twin=layout==DashboardLayout::AnalogTwin;
+        lv_obj_set_pos(root_,twin ? 8:192,8);lv_obj_set_size(root_,twin ? 432:416,414);
+        lv_obj_set_style_border_width(root_,0,0);
+        lv_obj_set_pos(indicator_,0,0);lv_obj_set_size(indicator_,twin ? 432:416,414);
+        lv_obj_clear_flag(value_,LV_OBJ_FLAG_HIDDEN);lv_obj_add_flag(caption_,LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_style_text_font(value_,&lv_font_montserrat_20,0);
+        lv_obj_set_width(value_,200);lv_label_set_text(value_,"--- RPM");
+        const auto c=sportCenter();lv_area_t r;lv_obj_get_coords(root_,&r);
+        lv_obj_set_pos(value_,c.x-r.x1-100,c.y-r.y1-94);
+        sport_color_=TachColor::Normal;
+        lv_obj_set_style_text_color(value_,sportColor(sport_color_),0);
+        lv_obj_invalidate(root_);
+        return;
+    }
+    lv_obj_set_style_text_font(value_,&race_digits_96,0);
     if(!dial(layout) && layout!=DashboardLayout::SideGear && layout!=DashboardLayout::StripStyle) {
         lv_obj_add_flag(root_,LV_OBJ_FLAG_HIDDEN);return;
     }
@@ -145,6 +175,30 @@ void RpmScaleView::update(const SignalValue& raw,uint32_t now_ms,const ShiftLigh
     if(yellow_from_!=shift.start_rpm || red_from_!=shift.red_rpm) {
         yellow_from_=shift.start_rpm;red_from_=shift.red_rpm;lv_obj_invalidate(root_);
     }
+    if(sport(layout_)) {
+        const bool due=!initialized_ || now_ms-last_update_ms_>=25U || raw.valid!=valid_;
+        const auto rpm=filter_.sample(raw,now_ms,50U);
+        const TachBarState state=tachBarState(rpm.value,rpm.valid,maximum_,shift,now_ms);
+        // Needle follows the real value even while the ring flashes full.
+        const uint16_t fill=rpmScaleFill(rpm.value,rpm.valid,maximum_);
+        if(!initialized_ || rpm.valid!=valid_ || state.color!=sport_color_ || state.flashing!=flashing_) {
+            lv_obj_invalidate(indicator_);
+            if(state.color!=sport_color_ && state.color!=TachColor::Off)
+                lv_obj_set_style_text_color(value_,sportColor(state.color),0);
+        } else if(fill!=fill_) invalidateSportSweep(fill_,fill);
+        sport_color_=state.color;flashing_=state.flashing;fill_=fill;valid_=rpm.valid;
+        if(due) {
+            char text[24]="--- RPM";
+            if(rpm.valid) {
+                const unsigned value=static_cast<unsigned>(std::lround(rpm.value/50.f)*50);
+                if(value>=1000)std::snprintf(text,sizeof(text),"%u %03u RPM",value/1000,value%1000);
+                else std::snprintf(text,sizeof(text),"%u RPM",value);
+            }
+            if(std::strcmp(text,last_text_.data())) { lv_label_set_text(value_,text);std::snprintf(last_text_.data(),last_text_.size(),"%s",text); }
+            last_update_ms_=now_ms;
+        }
+        initialized_=true;return;
+    }
     const bool flashing=raw.valid && shift.flash_enabled && raw.value>=shift.flash_rpm,red=flashing && now_ms%250U<125U;
     const bool due=!initialized_ || now_ms-last_update_ms_>=25U || raw.valid!=valid_;
     if(!due && flashing==flashing_ && red==red_phase_)return;
@@ -172,6 +226,7 @@ void RpmScaleView::update(const SignalValue& raw,uint32_t now_ms,const ShiftLigh
 }
 void RpmScaleView::drawScale(lv_event_t* event) {
     auto* self=static_cast<RpmScaleView*>(lv_event_get_user_data(event));auto* ctx=lv_event_get_draw_ctx(event);
+    if(sport(self->layout_)) { self->drawSportScale(ctx);return; }
     lv_area_t a,root;lv_obj_get_coords(self->indicator_,&a);lv_obj_get_coords(self->root_,&root);
     const bool analog=self->layout_==DashboardLayout::AnalogStyle,e=self->layout_==DashboardLayout::ModernMotorsport,curved=self->layout_==DashboardLayout::StripStyle;
     const auto center=point(a.x1+220,a.y1+(e ? 272:212)),strip_center=point(a.x1+392,a.y1+1226);
@@ -209,6 +264,7 @@ void RpmScaleView::drawScale(lv_event_t* event) {
 }
 void RpmScaleView::drawIndicator(lv_event_t* event) {
     auto* self=static_cast<RpmScaleView*>(lv_event_get_user_data(event));auto* ctx=lv_event_get_draw_ctx(event);
+    if(sport(self->layout_)) { self->drawSportIndicator(ctx);return; }
     lv_area_t a;lv_obj_get_coords(self->indicator_,&a);const auto dim=lv_color_hex(0x151D22);
     if(self->layout_==DashboardLayout::AnalogStyle) {
         const auto center=point(a.x1+220,a.y1+212);
@@ -256,4 +312,65 @@ void RpmScaleView::drawIndicator(lv_event_t* event) {
         lv_draw_rect_dsc_t d;lv_draw_rect_dsc_init(&d);d.bg_color=lv_color_mix(color,dim,static_cast<lv_opa_t>(std::lround(lit*255)));
         const lv_area_t block{p[0].x,p[0].y,p[2].x,p[2].y};lv_draw_rect(ctx,&d,&block);
     }
+}
+
+lv_point_t RpmScaleView::sportCenter() const {
+    lv_area_t a;lv_obj_get_coords(root_,&a);
+    return point(a.x1+(layout_==DashboardLayout::AnalogTwin ? 216:208),a.y1+206);
+}
+void RpmScaleView::invalidateSportSweep(uint16_t previous,uint16_t current) {
+    const auto c=sportCenter();
+    const float lo=135+270*std::min(previous,current)/1000.f,hi=135+270*std::max(previous,current)/1000.f;
+    int x1=c.x,y1=c.y,x2=c.x,y2=c.y;bool first=true;
+    for(float angle=lo;;angle=std::min(hi,angle+3.f)) {
+        for(int r:{100,kSportRing+kSportRingWidth/2+8}) {
+            const auto p=polar(c,r,angle);
+            if(first){x1=x2=p.x;y1=y2=p.y;first=false;}
+            x1=std::min(x1,static_cast<int>(p.x));x2=std::max(x2,static_cast<int>(p.x));
+            y1=std::min(y1,static_cast<int>(p.y));y2=std::max(y2,static_cast<int>(p.y));
+        }
+        if(angle>=hi)break;
+    }
+    lv_area_t dirty{static_cast<lv_coord_t>(x1-8),static_cast<lv_coord_t>(y1-8),static_cast<lv_coord_t>(x2+8),static_cast<lv_coord_t>(y2+8)};
+    lv_obj_invalidate_area(indicator_,&dirty);
+}
+void RpmScaleView::drawSportScale(lv_draw_ctx_t* ctx) {
+    const auto c=sportCenter();
+    // Bezel, inner face and the coloured redline arc outside the ticks.
+    arc(ctx,c,kSportRing+40,0,360,lv_color_hex(0x1A2027),2);
+    lv_draw_rect_dsc_t face;lv_draw_rect_dsc_init(&face);
+    face.radius=LV_RADIUS_CIRCLE;face.bg_color=lv_color_hex(0x0A0E12);
+    face.border_color=UiTheme::border();face.border_width=2;
+    const lv_area_t face_area{static_cast<lv_coord_t>(c.x-100),static_cast<lv_coord_t>(c.y-100),
+                              static_cast<lv_coord_t>(c.x+100),static_cast<lv_coord_t>(c.y+100)};
+    lv_draw_rect(ctx,&face,&face_area);
+    const float max=static_cast<float>(maximum_);
+    const auto angleFor=[&](float rpm){ return 135+270*std::clamp(rpm/max,0.f,1.f); };
+    if(yellow_from_<maximum_) arc(ctx,c,kSportRing+30,std::lround(angleFor(yellow_from_)),std::lround(angleFor(std::min(red_from_,maximum_))),UiTheme::yellow(),3);
+    if(red_from_<maximum_) arc(ctx,c,kSportRing+30,std::lround(angleFor(red_from_)),405,UiTheme::red(),4);
+    for(int rpm=0;rpm<=maximum_;rpm+=200) {
+        const bool major=rpm%1000==0;const float angle=angleFor(rpm);
+        line(ctx,polar(c,kSportRing+16,angle),polar(c,kSportRing+(major ? 28:22),angle),
+             major ? UiTheme::text():UiTheme::muted(),major ? 3:1);
+        if(major) {
+            char text[4];std::snprintf(text,sizeof(text),"%d",rpm/1000);
+            const auto p=polar(c,kSportRing-36,angle);
+            label(ctx,p.x,p.y-12,text,&lv_font_montserrat_24,rpm>=red_from_ ? UiTheme::red():UiTheme::text());
+        }
+    }
+    label(ctx,c.x,c.y+74,"RPM x1000",&lv_font_montserrat_12,UiTheme::muted());
+}
+void RpmScaleView::drawSportIndicator(lv_draw_ctx_t* ctx) {
+    const auto c=sportCenter();const auto dim=lv_color_hex(0x161C22);
+    const auto lit_color=sportColor(sport_color_);
+    for(int i=0;i<kSportSegments;i++) {
+        const float at=(i+.5f)*1000.f/kSportSegments;
+        const bool lit=flashing_ ? sport_color_!=TachColor::Off : valid_ && at<=fill_;
+        const int start=135+i*5;
+        arc(ctx,c,kSportRing,start,start+4,lit ? lit_color:dim,kSportRingWidth);
+    }
+    if(!valid_)return;
+    const float angle=135+270*fill_/1000.f;
+    line(ctx,polar(c,104,angle),polar(c,kSportRing+26,angle),UiTheme::text(),5);
+    line(ctx,polar(c,kSportRing+12,angle),polar(c,kSportRing+26,angle),UiTheme::red(),5);
 }

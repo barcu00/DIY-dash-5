@@ -1,5 +1,6 @@
 #include "tile_view.h"
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include "telemetry/parameter_registry.h"
@@ -9,6 +10,7 @@
 #include "ui/unit_presenter.h"
 #include "ui/tile_view_policy.h"
 #include "ui/fonts/numeric_fonts.h"
+#include "ui/tile_value_format.h"
 namespace {
 lv_color_t temperatureBarColor(TemperatureBarZone zone) {
     switch (zone) {
@@ -79,6 +81,13 @@ void TileView::create(lv_obj_t* parent, TileAddress address, lv_event_cb_t callb
     lv_obj_set_style_radius(temperature_bar_, 4, LV_PART_MAIN);
     lv_obj_set_style_radius(temperature_bar_, 4, LV_PART_INDICATOR);
     lv_obj_add_flag(temperature_bar_, LV_OBJ_FLAG_HIDDEN);
+    gauge_ = lv_obj_create(root_);
+    lv_obj_set_style_bg_opa(gauge_, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(gauge_, 0, 0);
+    lv_obj_set_style_pad_all(gauge_, 0, 0);
+    lv_obj_clear_flag(gauge_, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(gauge_, drawGauge, LV_EVENT_DRAW_MAIN, this);
+    lv_obj_add_flag(gauge_, LV_OBJ_FLAG_HIDDEN);
 }
 void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
     const bool hero = geometry.size == TileSize::Hero || geometry.size == TileSize::GearHero;
@@ -87,9 +96,12 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
                           geometry.size == TileSize::CenteredSmall;
     const bool is_flag = parameterDescriptor(config.parameter).kind ==
                          ParameterKind::Flag;
+    const bool inline_tile = geometry.size == TileSize::Inline;
+    const bool gauge = geometry.size == TileSize::Gauge;
+    const bool large = geometry.size == TileSize::Large;
     size_ = geometry.size;
     geometry_ = geometry;
-    base_border_ = geometry.size != TileSize::Hero;
+    base_border_ = geometry.size != TileSize::Hero && !inline_tile;
     lv_obj_clear_flag(root_, LV_OBJ_FLAG_HIDDEN);
     lv_obj_set_pos(root_, geometry.x, geometry.y);
     lv_obj_set_size(root_, geometry.width, geometry.height);
@@ -101,14 +113,19 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
     lv_obj_set_size(stripe_, 4, geometry.height - (row ? 14 : 10));
     lv_obj_set_style_radius(stripe_, 2, 0);
     lv_obj_set_style_bg_color(stripe_, UiTheme::border(), 0);
-    if (hero) lv_obj_add_flag(stripe_, LV_OBJ_FLAG_HIDDEN);
+    if (hero || inline_tile) lv_obj_add_flag(stripe_, LV_OBJ_FLAG_HIDDEN);
     else lv_obj_clear_flag(stripe_, LV_OBJ_FLAG_HIDDEN);
     const lv_font_t* value_font = &race_digits_48;
     if (geometry.size == TileSize::Wide) value_font = &race_digits_64;
     else if (geometry.size == TileSize::Hero)
         value_font = &race_digits_96;
     else if (geometry.size == TileSize::GearHero)
-        value_font = config.parameter == ParameterId::Gear ? &race_digits_140 : &race_digits_64;
+        value_font = config.parameter == ParameterId::Gear
+            ? (geometry.height >= 200 ? &race_digits_140 : &race_digits_96)
+            : &race_digits_64;
+    else if (large) value_font = geometry.height >= 150 ? &race_digits_96 : &race_digits_64;
+    else if (gauge) value_font = &race_digits_64;
+    else if (inline_tile) value_font = geometry.height >= 50 ? &race_digits_48 : &lv_font_montserrat_24;
     if (is_flag) value_font = row ? &lv_font_montserrat_20 : geometry.height < 90 ? &lv_font_montserrat_16 : &lv_font_montserrat_24;
     default_value_font_ = value_font;
     lv_obj_set_style_text_font(value_, value_font, 0);
@@ -159,9 +176,12 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
         lv_obj_set_width(value_,geometry.size == TileSize::Hero ? geometry.width : geometry.width - 24);
         lv_obj_set_style_text_align(value_, LV_TEXT_ALIGN_CENTER, 0);
         const bool gear = geometry.size == TileSize::GearHero;
-        lv_obj_align(value_, LV_ALIGN_TOP_MID, 0, gear ? 100 : geometry.height > 200 ? 60 : 10);
-        lv_obj_align(title_, LV_ALIGN_TOP_MID, 0, gear ? 26 : 2);
-        if (!gear && (config.parameter == ParameterId::Rpm || config.parameter == ParameterId::Speed))
+        const bool compact = geometry.height < 200;
+        lv_obj_align(value_, LV_ALIGN_TOP_MID, 0,
+                     gear ? (compact ? 28 : 100) : geometry.height > 200 ? 60 : 10);
+        lv_obj_align(title_, LV_ALIGN_TOP_MID, 0, gear ? (compact ? 6 : 26) : 2);
+        if (!gear && (config.parameter == ParameterId::Rpm || config.parameter == ParameterId::Speed ||
+                      geometry.height < 110))
             lv_obj_add_flag(title_, LV_OBJ_FLAG_HIDDEN);
         lv_obj_set_style_text_font(unit_, &lv_font_montserrat_24, 0);
         lv_obj_align(unit_, LV_ALIGN_BOTTOM_MID, 0, gear ? -18 : geometry.height > 200 ? -43 : -12);
@@ -213,6 +233,40 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
             lv_obj_align(unit_, LV_ALIGN_BOTTOM_MID, 0, -11);
         }
     }
+    if (inline_tile && !is_flag) {
+        // One line: label left, value and unit right (status bands, strips).
+        lv_obj_set_style_text_font(title_, &lv_font_montserrat_12, 0);
+        lv_obj_set_style_text_color(title_, UiTheme::muted(), 0);
+        lv_obj_set_width(title_, geometry.width / 2);
+        lv_obj_set_style_text_align(title_, LV_TEXT_ALIGN_LEFT, 0);
+        lv_obj_align(title_, LV_ALIGN_LEFT_MID, 4, 0);
+        lv_obj_set_width(value_, geometry.width / 2);
+        lv_obj_set_style_text_align(value_, LV_TEXT_ALIGN_RIGHT, 0);
+        lv_obj_align(value_, LV_ALIGN_RIGHT_MID, -44, 0);
+        lv_obj_set_style_text_font(unit_, &lv_font_montserrat_12, 0);
+        lv_obj_set_width(unit_, 40);
+        lv_obj_set_style_text_align(unit_, LV_TEXT_ALIGN_LEFT, 0);
+        lv_obj_align(unit_, LV_ALIGN_RIGHT_MID, 0, 2);
+    }
+    if (gauge && !is_flag) {
+        lv_obj_clear_flag(gauge_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_pos(gauge_, 8, 6);
+        lv_obj_set_size(gauge_, 172, geometry.height - 12);
+        lv_obj_set_width(title_, geometry.width - 196);
+        lv_obj_align(title_, LV_ALIGN_TOP_RIGHT, -12, 34);
+        lv_obj_set_width(value_, geometry.width - 196 - 40);
+        lv_obj_set_style_text_align(value_, LV_TEXT_ALIGN_RIGHT, 0);
+        lv_obj_align(value_, LV_ALIGN_TOP_RIGHT, -52, 64);
+        lv_obj_set_style_text_font(unit_, &lv_font_montserrat_16, 0);
+        lv_obj_align(unit_, LV_ALIGN_TOP_RIGHT, -12, 96);
+        gauge_range_ = gaugeRange(config);
+        lv_obj_add_flag(temperature_bar_, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_add_flag(gauge_, LV_OBJ_FLAG_HIDDEN);
+    }
+    gauge_valid_ = false;
+    gauge_fill_ = 0U;
+    last_tone_ = DeltaTone::Neutral;
     display_filter_.reset();
     refresh_initialized_ = false;
     value_text_initialized_ = false;
@@ -226,6 +280,19 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
 void TileView::hide() { if (root_) lv_obj_add_flag(root_, LV_OBJ_FLAG_HIDDEN); }
 void TileView::arrangeUnit(const char* text, bool is_flag) {
     const bool row = size_ == TileSize::CompactRow;
+    if (!is_flag && (size_ == TileSize::Inline || size_ == TileSize::Gauge)) {
+        const bool status = statusText(text);
+        lv_obj_set_style_text_font(unit_, status || size_ == TileSize::Inline
+            ? &lv_font_montserrat_12 : &lv_font_montserrat_16, 0);
+        lv_obj_set_width(unit_, status ? 120 : 40);
+        lv_obj_set_style_text_align(unit_, status ? LV_TEXT_ALIGN_RIGHT
+                                                  : LV_TEXT_ALIGN_LEFT, 0);
+        if (size_ == TileSize::Inline)
+            lv_obj_align(unit_, LV_ALIGN_RIGHT_MID, 0, 2);
+        else
+            lv_obj_align(unit_, LV_ALIGN_TOP_RIGHT, -12, status ? 126 : 96);
+        return;
+    }
     lv_obj_set_width(unit_, LV_SIZE_CONTENT);
     if (statusText(text)) {
         lv_obj_set_style_text_font(unit_, &lv_font_montserrat_12, 0);
@@ -373,14 +440,28 @@ void TileView::update(const TileConfig& config, const UnitSettings& units,
     } else if (signal.valid) {
         const PresentedValue p = UnitPresenter::present(
             config.parameter, signal.value, units);
-        char format[8]; char buffer[32];
-        std::snprintf(format, sizeof(format), "%%.%uf", static_cast<unsigned>(config.decimals));
-        std::snprintf(buffer, sizeof(buffer), format, static_cast<double>(p.value));
-        std::snprintf(value_text, sizeof(value_text), "%s", buffer);
+        formatTileValue(config.parameter, p.value, config.decimals,
+                        value_text, sizeof(value_text));
         unit_text = std::strcmp(p.unit,"lambda") == 0 ? "" : p.unit;
+        if (std::strchr(value_text, ':') != nullptr) unit_text = "";
+        const DeltaTone tone = deltaTone(config.parameter, p.value);
+        if (tone != last_tone_) {
+            last_tone_ = tone;
+            lv_obj_set_style_text_color(value_, tone == DeltaTone::Better ? UiTheme::green()
+                : tone == DeltaTone::Worse ? UiTheme::yellow() : UiTheme::text(), 0);
+        }
         if (size_ == TileSize::Hero && config.parameter == ParameterId::Rpm) unit_text = "RPM";
     }
 
+    if (size_ == TileSize::Gauge && !is_flag) {
+        const bool gauge_valid = supported && signal.valid;
+        const uint16_t fill = gauge_valid ? gaugeFill(signal.value, gauge_range_) : 0U;
+        if (gauge_valid != gauge_valid_ || fill != gauge_fill_) {
+            gauge_valid_ = gauge_valid;
+            gauge_fill_ = fill;
+            lv_obj_invalidate(gauge_);
+        }
+    }
     const bool row_changed = !value_text_initialized_ || !unit_text_initialized_ ||
         std::strcmp(last_value_text_.data(), value_text) != 0 ||
         std::strcmp(last_unit_text_.data(), unit_text) != 0 ||
@@ -444,4 +525,73 @@ void TileView::arrangeRow(bool is_flag) {
         lv_obj_set_width(unit_,u.x+1);
         lv_obj_align(unit_,LV_ALIGN_TOP_LEFT,x+v.x+gap,opticalTextY(lv_label_get_text(unit_),&lv_font_montserrat_16,center));
     }
+}
+
+namespace {
+constexpr float kGaugePi = 3.14159265358979323846f;
+lv_point_t gaugePoint(lv_point_t center, float radius, float degrees) {
+    const float a = degrees * kGaugePi / 180.0f;
+    return {static_cast<lv_coord_t>(std::lround(center.x + radius * std::cos(a))),
+            static_cast<lv_coord_t>(std::lround(center.y + radius * std::sin(a)))};
+}
+}  // namespace
+
+// Mini needle gauge: 240 degree segmented arc, lit up to the value, red zone
+// from the tile's warning threshold or temperature red mark.
+void TileView::drawGauge(lv_event_t* event) {
+    auto* self = static_cast<TileView*>(lv_event_get_user_data(event));
+    if (self == nullptr || self->gauge_ == nullptr) return;
+    lv_draw_ctx_t* ctx = lv_event_get_draw_ctx(event);
+    lv_area_t area;
+    lv_obj_get_coords(self->gauge_, &area);
+    const int width = area.x2 - area.x1 + 1;
+    const int height = area.y2 - area.y1 + 1;
+    const int radius = std::min(width / 2 - 14, height / 2 - 4);
+    const lv_point_t center{static_cast<lv_coord_t>(area.x1 + width / 2),
+                            static_cast<lv_coord_t>(area.y1 + height / 2 + 8)};
+    constexpr int kSegments = 24;
+    constexpr float kStart = 150.0f, kSweep = 240.0f;
+    const lv_color_t dim = lv_color_hex(0x1C2228);
+    for (int i = 0; i < kSegments; ++i) {
+        const uint16_t at = static_cast<uint16_t>((i * 1000 + 500) / kSegments);
+        const bool red = at >= self->gauge_range_.red_from_permille ||
+                         at < self->gauge_range_.red_below_permille;
+        const bool lit = self->gauge_valid_ && at <= self->gauge_fill_;
+        lv_draw_arc_dsc_t d;
+        lv_draw_arc_dsc_init(&d);
+        d.width = 12;
+        d.color = lit ? (red ? UiTheme::red() : UiTheme::text()) : dim;
+        const float a0 = kStart + kSweep * i / kSegments;
+        const float a1 = kStart + kSweep * (i + 1) / kSegments - 2.0f;
+        lv_draw_arc(ctx, &d, &center, static_cast<uint16_t>(radius),
+                    static_cast<uint16_t>(std::lround(a0)) % 360U,
+                    static_cast<uint16_t>(std::lround(a1)) % 360U);
+    }
+    // Red zone marks just outside the segments.
+    lv_draw_arc_dsc_t zone;
+    lv_draw_arc_dsc_init(&zone);
+    zone.width = 2;
+    zone.color = UiTheme::red();
+    if (self->gauge_range_.red_from_permille <= 1000U) {
+        const float a0 = kStart + kSweep * self->gauge_range_.red_from_permille / 1000.0f;
+        lv_draw_arc(ctx, &zone, &center, static_cast<uint16_t>(radius + 6),
+                    static_cast<uint16_t>(std::lround(a0)) % 360U,
+                    static_cast<uint16_t>(std::lround(kStart + kSweep)) % 360U);
+    }
+    if (self->gauge_range_.red_below_permille > 0U) {
+        const float a1 = kStart + kSweep * self->gauge_range_.red_below_permille / 1000.0f;
+        lv_draw_arc(ctx, &zone, &center, static_cast<uint16_t>(radius + 6),
+                    static_cast<uint16_t>(kStart),
+                    static_cast<uint16_t>(std::lround(a1)) % 360U);
+    }
+    if (!self->gauge_valid_) return;
+    const float angle = kStart + kSweep * self->gauge_fill_ / 1000.0f;
+    lv_draw_line_dsc_t needle;
+    lv_draw_line_dsc_init(&needle);
+    needle.color = UiTheme::text();
+    needle.width = 3;
+    needle.round_start = needle.round_end = 1;
+    const lv_point_t tip = gaugePoint(center, radius + 8, angle);
+    const lv_point_t tail = gaugePoint(center, radius - 26, angle);
+    lv_draw_line(ctx, &needle, &tail, &tip);
 }

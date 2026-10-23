@@ -15,7 +15,8 @@
 #include "ui/settings_commit_model.h"
 #include "ui/parameter_options.h"
 #include "ui/tile_editor_model.h"
-#include "ui/shift_light_view.h"
+#include "ui/tach_bar_view.h"
+#include "ui/status_band_view.h"
 #include "ui/settings_flow_model.h"
 #include "ui/tile_view.h"
 #include "ui/ui_update_policy.h"
@@ -146,8 +147,14 @@ private:
     std::array<TileView, AppConfig::kLayoutTileCapacity> track_tiles_{};
     RpmScaleView dash_rpm_{};
     RpmScaleView track_rpm_{};
-    ShiftLightView dash_shift_{};
-    ShiftLightView track_shift_{};
+    TachBarView dash_shift_{};
+    TachBarView track_shift_{};
+    StatusBandView dash_band_{};
+    StatusBandView track_band_{};
+    uint32_t band_refresh_ms_ = 0U;
+    void updateStatusBand(PageId page, const CompositeTelemetryView& state,
+                          const UiRuntimeStatus& status, const AppConfig& config,
+                          TileWarningEngine& warnings);
     UiUpdatePolicy update_policy_{};
     VehicleState latest_state_{};
     RaceChronoTelemetry latest_racechrono_{};
