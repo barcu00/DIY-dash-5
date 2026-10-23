@@ -21,6 +21,8 @@ public:
                 bool warning_active,
                 uint32_t now_ms, bool data_lost = false);
     TileAddress address() const;
+    // ENDURANCE trend window (seconds), applied on the next apply().
+    static void setTrendWindowSeconds(uint16_t seconds) { trend_window_s_ = seconds; }
 private:
     lv_obj_t* root_ = nullptr;
     lv_obj_t* stripe_ = nullptr;
@@ -44,6 +46,7 @@ private:
     static void drawTrend(lv_event_t* event);
     void arrangeTrendRow();
     lv_obj_t* trend_view_ = nullptr;
+    static inline uint16_t trend_window_s_ = 15U;
     TrendHistory trend_{};
     bool trend_mode_ = false;
     float trend_marker_ = 0.0f;
@@ -53,6 +56,7 @@ private:
     void arrangeStyled();
     uint8_t chamfer_ = 0U;
     bool styled_ = false;
+    std::array<char, 32> styled_shape_{};
     bool styled_warning_ = false;
     bool styled_data_lost_ = false;
     const lv_font_t* styled_value_font_ = nullptr;

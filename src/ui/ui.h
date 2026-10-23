@@ -202,6 +202,7 @@ private:
     uint32_t commit_toast_until_ms_ = 0U;
     lv_obj_t* brightness_slider_ = nullptr;
     lv_obj_t* brightness_value_ = nullptr;
+    lv_obj_t* trend_window_dropdown_ = nullptr;
     lv_obj_t* source_dropdown_ = nullptr;
     lv_obj_t* profile_dropdown_ = nullptr;
     lv_obj_t* profile_recommendation_ = nullptr;

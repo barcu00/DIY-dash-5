@@ -292,6 +292,7 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
     if (styled_) setupStyled(config);
     // Wide rows (ENDURANCE) replace the temperature bar with a trend.
     trend_mode_ = geometry.size == TileSize::CompactRow && geometry.width >= 400 && !is_flag;
+    trend_.setWindowSeconds(trend_window_s_);
     trend_.reset();
     if (trend_mode_) {
         lv_obj_clear_flag(trend_view_, LV_OBJ_FLAG_HIDDEN);
@@ -546,12 +547,23 @@ void TileView::update(const TileConfig& config, const UnitSettings& units,
             std::strcmp(last_value_text_.data(), value_text) != 0 ||
             std::strcmp(last_unit_text_.data(), unit_text) != 0;
         if (changed) {
+            // Re-layout only when the shape changes (digit count, unit,
+            // status); otherwise the digits change inside a fixed box, as
+            // on the other layouts, so nothing slides sideways.
+            char shape[sizeof(value_text)];
+            std::snprintf(shape, sizeof(shape), "%s", value_text);
+            for (char* ch = shape; *ch; ++ch) if (*ch >= '0' && *ch <= '9') *ch = '8';
+            const bool relayout = !value_text_initialized_ || !unit_text_initialized_ ||
+                std::strcmp(last_unit_text_.data(), unit_text) != 0 ||
+                std::strcmp(styled_shape_.data(), shape) != 0;
             lv_label_set_text(value_, value_text);
-            lv_label_set_text(unit_, unit_text);
+            if (std::strcmp(last_unit_text_.data(), unit_text) != 0 || !unit_text_initialized_)
+                lv_label_set_text(unit_, unit_text);
             std::snprintf(last_value_text_.data(), last_value_text_.size(), "%s", value_text);
             std::snprintf(last_unit_text_.data(), last_unit_text_.size(), "%s", unit_text);
+            std::snprintf(styled_shape_.data(), styled_shape_.size(), "%s", shape);
             value_text_initialized_ = unit_text_initialized_ = true;
-            arrangeStyled();
+            if (relayout) arrangeStyled();
         }
         return;
     }
@@ -785,7 +797,10 @@ void TileView::setupStyled(const TileConfig&) {
 void TileView::arrangeStyled() {
     const int w = geometry_.width;
     const int h = geometry_.height;
-    const char* value = lv_label_get_text(value_);
+    // Size and place for the widest text of this shape (digits as 8).
+    char value[32];
+    std::snprintf(value, sizeof(value), "%s", lv_label_get_text(value_));
+    for (char* ch = value; *ch; ++ch) if (*ch >= '0' && *ch <= '9') *ch = '8';
     const char* unit = lv_label_get_text(unit_);
     const bool status = statusText(unit);
     const lv_font_t* vf = styled_value_font_ ? styled_value_font_ : &dash_italic_48;
@@ -796,6 +811,12 @@ void TileView::arrangeStyled() {
     const lv_font_t* uf = &dash_label_14;
     const lv_font_t* tf = &dash_label_12;
     const int vw = textWidth(value, vf);
+    // Fixed box with a little room for the italic overhang; digits are
+    // right-aligned in it (centred in the dial), so the unit never moves.
+    lv_label_set_long_mode(value_, LV_LABEL_LONG_CLIP);
+    lv_obj_set_width(value_, vw + 6);
+    lv_obj_set_style_text_align(value_, size_ == TileSize::DialCenter || size_ == TileSize::DialBadge
+        ? LV_TEXT_ALIGN_CENTER : LV_TEXT_ALIGN_RIGHT, 0);
     const int uw = unit[0] ? textWidth(unit, uf, size_ == TileSize::DialCenter ? 2 : 0) : 0;
     const int tw = textWidth(lv_label_get_text(title_), tf, 2);
     const int gap = unit[0] && !status ? 5 : 0;
@@ -805,7 +826,7 @@ void TileView::arrangeStyled() {
 
     if (size_ == TileSize::DialCenter) {
         const int baseline = 62;
-        placeOnBaseline(value_, vf, (w - vw) / 2, baseline);
+        placeOnBaseline(value_, vf, (w - vw) / 2 - 3, baseline);
         const bool show_unit = unit[0] != '\0';
         if (show_unit) {
             // Dial centre shows the unit in capitals (KM/H).
@@ -824,7 +845,7 @@ void TileView::arrangeStyled() {
         return;
     }
     if (size_ == TileSize::DialBadge) {
-        placeOnBaseline(value_, vf, (w - vw) / 2, (h + cap) / 2 - 2);
+        placeOnBaseline(value_, vf, (w - vw) / 2 - 3, (h + cap) / 2 - 2);
         return;
     }
     if (size_ == TileSize::Inline) {
@@ -832,7 +853,7 @@ void TileView::arrangeStyled() {
         const int x0 = std::max(4, (w - total) / 2);
         const int baseline = (h + cap) / 2;
         placeOnBaseline(title_, tf, x0, h / 2 + capHeight(tf) / 2);
-        placeOnBaseline(value_, vf, x0 + tw + 10, baseline);
+        placeOnBaseline(value_, vf, x0 + tw + 10 - 6, baseline);
         if (status) placeOnBaseline(unit_, &dash_label_12, (w - uw) / 2, h - 6);
         else placeOnBaseline(unit_, uf, x0 + tw + 10 + vw + gap, baseline);
         return;
@@ -846,7 +867,7 @@ void TileView::arrangeStyled() {
     const int baseline = top + title_h + 10 + cap;
     const int row = vw + (status ? 0 : gap + uw);
     const int x0 = cx - row / 2;
-    placeOnBaseline(value_, vf, x0, baseline);
+    placeOnBaseline(value_, vf, x0 - 6, baseline);
     if (status) placeOnBaseline(unit_, &dash_label_12, cx - uw / 2, baseline + 16);
     else placeOnBaseline(unit_, uf, x0 + vw + gap, baseline);
     if (bar) {

@@ -10,9 +10,18 @@ void TrendHistory::reset() {
     have_last_ = false;
 }
 
+void TrendHistory::setWindowSeconds(uint16_t seconds) {
+    const uint32_t window_ms = static_cast<uint32_t>(std::max<uint16_t>(seconds, 5U)) * 1000U;
+    const uint32_t interval = std::max<uint32_t>(50U, window_ms / kCapacity);
+    if (interval != interval_ms_) {
+        interval_ms_ = interval;
+        reset();
+    }
+}
+
 bool TrendHistory::sample(float value, bool valid, uint32_t now_ms) {
     if (!valid || !std::isfinite(value)) return false;
-    if (have_last_ && now_ms - last_ms_ < kIntervalMs) return false;
+    if (have_last_ && now_ms - last_ms_ < interval_ms_) return false;
     have_last_ = true;
     last_ms_ = now_ms;
     if (count_ < kCapacity) {
@@ -55,7 +64,7 @@ void TrendHistory::range(float marker, float& low, float& high) const {
 
 TrendDirection TrendHistory::direction(float span) const {
     if (count_ < 3U || !(span > 0.0f)) return TrendDirection::Steady;
-    constexpr std::size_t kBack = 12U;  // ~30 s
+    constexpr std::size_t kBack = kCapacity / 4U;  // a quarter of the window
     const std::size_t newest = count_ - 1U;
     const std::size_t older = newest >= kBack ? newest - kBack : 0U;
     const float delta = at(newest) - at(older);

@@ -121,6 +121,7 @@ void Ui::applyLayout(Page page, const AppConfig& config) {
     (page == Page::Dash ? dash_shift_ : track_shift_).apply(layout, config.rpm_scale_max);
     (page == Page::Dash ? dash_rpm_ : track_rpm_).apply(layout, config.rpm_scale_max);
     (page == Page::Dash ? dash_band_ : track_band_).apply(layout);
+    TileView::setTrendWindowSeconds(config.trend_window_s);
     const TilePlacementList placements = TileEngine::placements(id, config);
     if (page == Page::Dash) {
         for (TileView& tile : dash_tiles_) tile.hide();
@@ -153,6 +154,7 @@ void Ui::clearSettingsWidgets() {
     settings_back_ = nullptr;
     brightness_slider_ = nullptr;
     brightness_value_ = nullptr;
+    trend_window_dropdown_ = nullptr;
     source_dropdown_ = nullptr;
     profile_dropdown_ = nullptr;
     profile_recommendation_ = nullptr;
@@ -294,6 +296,18 @@ void Ui::createDisplaySettings(lv_obj_t* panel) {
                         reinterpret_cast<void*>(BrightnessPreview));
     settings_status_ = makeLabel(panel, "", 28, 125,
                                  &lv_font_montserrat_14, UiTheme::muted());
+    makeLabel(panel, "ENDURANCE TREND", 28, 248, &lv_font_montserrat_14, UiTheme::text());
+    makeLabel(panel, "History shown next to each value", 28, 270,
+              &lv_font_montserrat_12, UiTheme::muted());
+    trend_window_dropdown_ = lv_dropdown_create(panel);
+    lv_obj_set_pos(trend_window_dropdown_, 300, 240);
+    lv_obj_set_size(trend_window_dropdown_, 160, 44);
+    lv_dropdown_set_options(trend_window_dropdown_, "15 s\n30 s\n60 s\n2 min");
+    const uint16_t window = settings.trend_window_s;
+    lv_dropdown_set_selected(trend_window_dropdown_,
+        window == 30U ? 1 : window == 60U ? 2 : window == 120U ? 3 : 0);
+    lv_obj_add_event_cb(trend_window_dropdown_, settingsEvent, LV_EVENT_VALUE_CHANGED,
+                        reinterpret_cast<void*>(TrendWindowChanged));
 }
 
 void Ui::createDataCanSettings(lv_obj_t* panel) {
@@ -1053,6 +1067,14 @@ void Ui::settingsEvent(lv_event_t* event) {
         candidate.brightness_percent = static_cast<uint8_t>(
             lv_slider_get_value(instance_->brightness_slider_));
         instance_->stageSettings(candidate, false);
+        return;
+    }
+    if (action == TrendWindowChanged) {
+        constexpr uint16_t windows[] = {15U, 30U, 60U, 120U};
+        const uint16_t index = lv_dropdown_get_selected(instance_->trend_window_dropdown_);
+        candidate.trend_window_s = windows[index < 4U ? index : 0U];
+        if (instance_->stageSettings(candidate, false))
+            instance_->update_policy_.markLayoutDirty();
         return;
     }
     if (action == SourceChanged) {

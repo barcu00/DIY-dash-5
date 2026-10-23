@@ -119,7 +119,7 @@ struct RaceChronoSettings {
 };
 
 struct AppConfig {
-    static constexpr uint32_t kSchemaVersion = 10U;
+    static constexpr uint32_t kSchemaVersion = 11U;
     static constexpr std::size_t kDashTileCount = 14U;
     static constexpr std::size_t kTrackTileCount = 12U;
     static constexpr std::size_t kLayoutTileCapacity = 14U;
@@ -147,6 +147,8 @@ struct AppConfig {
     RaceChronoSettings racechrono{};
     std::array<ExtraTileBank, kExtraLayoutCount> dash_extra_tiles{};
     std::array<ExtraTileBank, kExtraLayoutCount> track_extra_tiles{};
+    // ENDURANCE trend window in seconds: 15, 30, 60 or 120 (schema 11).
+    uint16_t trend_window_s = 15U;
 
     static AppConfig defaults();
     static void setDefaults(AppConfig& config);
