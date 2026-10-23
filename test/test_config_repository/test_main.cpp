@@ -967,9 +967,20 @@ void test_schema_v9_migration_keeps_everything_and_adds_new_layout_banks() {
                              loaded.track_alternate_tiles.data(),
                              sizeof(old.track_alternate_tiles));
     static const AppConfig defaults = AppConfig::defaults();
-    TEST_ASSERT_EQUAL_MEMORY(defaults.dash_extra_tiles.data(),
-                             loaded.dash_extra_tiles.data(),
-                             sizeof(defaults.dash_extra_tiles));
+    // Field-wise: struct padding is not part of the contract.
+    for (std::size_t bank = 0U; bank < AppConfig::kExtraLayoutCount; ++bank) {
+        for (std::size_t slot = 0U; slot < AppConfig::kExtraTileCapacity; ++slot) {
+            const TileConfig& expected = defaults.dash_extra_tiles[bank][slot];
+            const TileConfig& actual = loaded.dash_extra_tiles[bank][slot];
+            TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(expected.parameter),
+                                    static_cast<uint8_t>(actual.parameter));
+            TEST_ASSERT_EQUAL(expected.visible, actual.visible);
+            TEST_ASSERT_EQUAL_UINT8(expected.decimals, actual.decimals);
+            TEST_ASSERT_EQUAL(expected.warning.enabled, actual.warning.enabled);
+            TEST_ASSERT_EQUAL(expected.temperature_bar.enabled,
+                              actual.temperature_bar.enabled);
+        }
+    }
     TEST_ASSERT_EQUAL_UINT32(sizeof(AppConfig), backend.storedSize());
 }
 
