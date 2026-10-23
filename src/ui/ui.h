@@ -15,7 +15,8 @@
 #include "ui/settings_commit_model.h"
 #include "ui/parameter_options.h"
 #include "ui/tile_editor_model.h"
-#include "ui/shift_light_view.h"
+#include "ui/tach_bar_view.h"
+#include "ui/status_band_view.h"
 #include "ui/settings_flow_model.h"
 #include "ui/tile_view.h"
 #include "ui/ui_update_policy.h"
@@ -146,8 +147,14 @@ private:
     std::array<TileView, AppConfig::kLayoutTileCapacity> track_tiles_{};
     RpmScaleView dash_rpm_{};
     RpmScaleView track_rpm_{};
-    ShiftLightView dash_shift_{};
-    ShiftLightView track_shift_{};
+    TachBarView dash_shift_{};
+    TachBarView track_shift_{};
+    StatusBandView dash_band_{};
+    StatusBandView track_band_{};
+    uint32_t band_refresh_ms_ = 0U;
+    void updateStatusBand(PageId page, const CompositeTelemetryView& state,
+                          const UiRuntimeStatus& status, const AppConfig& config,
+                          TileWarningEngine& warnings);
     UiUpdatePolicy update_policy_{};
     VehicleState latest_state_{};
     RaceChronoTelemetry latest_racechrono_{};
@@ -162,7 +169,7 @@ private:
     const CanProfile* active_profile_ = nullptr;
     SettingsFlowModel settings_flow_{};
     AppConfig* config_ = nullptr;
-    AppConfig settings_draft_ = AppConfig::defaults();
+    AppConfig settings_draft_{};  // set from the runtime config in begin()
     // Heap (PSRAM) working copy for event handlers; keeps ~7 KB AppConfig
     // copies off the LVGL call stack. Handlers are not re-entrant.
     std::unique_ptr<AppConfig> candidate_scratch_;
@@ -195,6 +202,7 @@ private:
     uint32_t commit_toast_until_ms_ = 0U;
     lv_obj_t* brightness_slider_ = nullptr;
     lv_obj_t* brightness_value_ = nullptr;
+    lv_obj_t* trend_window_dropdown_ = nullptr;
     lv_obj_t* source_dropdown_ = nullptr;
     lv_obj_t* profile_dropdown_ = nullptr;
     lv_obj_t* profile_recommendation_ = nullptr;

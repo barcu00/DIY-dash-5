@@ -34,7 +34,7 @@ void test_defaults_define_approved_dash_and_track_slots() {
 
 void test_tiles_default_and_normalize_to_yellow_flag_color() {
     AppConfig config = AppConfig::defaults();
-    TEST_ASSERT_EQUAL_UINT32(9U, AppConfig::kSchemaVersion);
+    TEST_ASSERT_EQUAL_UINT32(11U, AppConfig::kSchemaVersion);
     TEST_ASSERT_FALSE(config.racechrono.enabled);
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(FlagActiveColor::Yellow),
                             static_cast<uint8_t>(

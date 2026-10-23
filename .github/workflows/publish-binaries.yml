@@ -1,0 +1,67 @@
+name: Publish flashable binaries
+
+# Builds both boards and commits the ready-to-flash images to the
+# `firmware-builds` branch, so they can be fetched with plain git
+# (useful where Actions artifacts cannot be downloaded).
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/tach-bar-layouts]
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Cache PlatformIO packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio/.cache
+            ~/.platformio/packages
+            ~/.platformio/platforms
+          key: ${{ runner.os }}-platformio-${{ hashFiles('platformio.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-platformio-
+      - name: Install PlatformIO
+        run: python -m pip install --disable-pip-version-check platformio==6.1.18
+      - name: Build both boards
+        run: |
+          pio run -e waveshare_5
+          pio run -e waveshare_7
+      - name: Commit images to firmware-builds
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha=$(git rev-parse --short HEAD)
+          branch=$(git rev-parse --abbrev-ref HEAD)
+          out=$(mktemp -d)
+          for size in 5 7; do
+            env=waveshare_$size
+            mkdir -p "$out/$size-inch"
+            cp .pio/build/$env/DIY-Dash-ESP32-S3-Touch-LCD-$size-full.bin \
+               .pio/build/$env/DIY-Dash-ESP32-S3-Touch-LCD-$size-app-update.bin \
+               .pio/build/$env/flash-layout.json "$out/$size-inch/"
+          done
+          printf 'source: %s @ %s\nbuilt: %s\n' "$branch" "$sha" "$(date -u +%FT%TZ)" > "$out/BUILD.txt"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code origin firmware-builds >/dev/null; then
+            git fetch origin firmware-builds
+            git checkout -f -B firmware-builds origin/firmware-builds
+          else
+            git checkout --orphan firmware-builds
+            git rm -rf --quiet .
+          fi
+          git clean -fdx -e .pio >/dev/null
+          rm -rf 5-inch 7-inch BUILD.txt
+          cp -r "$out"/* .
+          git add 5-inch 7-inch BUILD.txt
+          git commit -m "firmware: $branch @ $sha"
+          git push origin firmware-builds

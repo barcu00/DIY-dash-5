@@ -14,7 +14,11 @@ struct TileBankView {
     Tile* end() const { return data ? data + count : nullptr; }
 };
 
-constexpr std::size_t kDashboardLayoutCount = 6U;
+constexpr std::size_t kDashboardLayoutCount = 11U;
+// Layouts with a top tachometer bar (shift light colours on the bar).
+bool layoutHasTachBar(DashboardLayout layout);
+// Needle dial layouts drawn by RpmScaleView.
+bool layoutIsDial(DashboardLayout layout);
 bool validDashboardLayout(DashboardLayout layout);
 const char* dashboardLayoutName(DashboardLayout layout);
 std::size_t dashboardLayoutSlotCount(DashboardLayout layout);
@@ -26,6 +30,7 @@ TileBankView<const TileConfig> layoutTiles(const AppConfig& config, PageId page,
 TileBankView<TileConfig> activeTiles(AppConfig& config, PageId page);
 TileBankView<const TileConfig> activeTiles(const AppConfig& config, PageId page);
 void initializeAlternateLayouts(AppConfig& config);
+void initializeExtraLayouts(AppConfig& config);
 void resetPageLayouts(AppConfig& config, PageId page);
 uint16_t normalizedRpmScale(uint16_t requested);
 uint16_t rpmScaleFill(float rpm, bool valid, uint16_t maximum);

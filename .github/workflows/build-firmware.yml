@@ -72,9 +72,13 @@ jobs:
         run: python -m pip install --disable-pip-version-check platformio==6.1.18 Pillow==11.3.0
 
       - name: Build Waveshare ${{ matrix.display_size }} inch firmware
+        shell: bash
         run: |
           grep -F 'h2zero/NimBLE-Arduino@2.5.1' platformio.ini
-          pio run -e ${{ matrix.environment }}
+          set -o pipefail
+          pio run -e ${{ matrix.environment }} 2>&1 | tee build.log
+          # Memory budget as an annotation (readable without the raw log).
+          grep -E "^(RAM|Flash):" build.log | sed 's/^/::notice title=${{ matrix.environment }} memory::/' || true
 
       - name: Verify firmware partition table
         shell: bash
