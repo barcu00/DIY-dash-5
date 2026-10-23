@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <new>
+#include <type_traits>
 
 #include "telemetry/parameter_registry.h"
 #include "ui/dashboard_layout.h"
@@ -151,6 +153,16 @@ TemperatureBarConfig defaultTemperatureBarConfig(ParameterId parameter) {
 
 AppConfig AppConfig::defaults() {
     AppConfig config;
+    setDefaults(config);
+    return config;
+}
+
+// Fills `config` in place: AppConfig is ~12 KB, so callers on small task
+// stacks must not build a temporary copy.
+void AppConfig::setDefaults(AppConfig& config) {
+    static_assert(std::is_trivially_destructible<AppConfig>::value,
+                  "in-place reset relies on a trivial destructor");
+    new (&config) AppConfig();
     setProfileId(config.can, "none");
 
     config.dash_tiles = {{
@@ -185,7 +197,6 @@ AppConfig AppConfig::defaults() {
         tile(ParameterId::BatteryVoltage),
     }};
     initializeAlternateLayouts(config);
-    return config;
 }
 
 ValidationResult AppConfig::validate() {

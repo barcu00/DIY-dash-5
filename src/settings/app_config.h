@@ -149,5 +149,6 @@ struct AppConfig {
     std::array<ExtraTileBank, kExtraLayoutCount> track_extra_tiles{};
 
     static AppConfig defaults();
+    static void setDefaults(AppConfig& config);
     ValidationResult validate();
 };

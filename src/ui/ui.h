@@ -169,7 +169,7 @@ private:
     const CanProfile* active_profile_ = nullptr;
     SettingsFlowModel settings_flow_{};
     AppConfig* config_ = nullptr;
-    AppConfig settings_draft_ = AppConfig::defaults();
+    AppConfig settings_draft_{};  // set from the runtime config in begin()
     // Heap (PSRAM) working copy for event handlers; keeps ~7 KB AppConfig
     // copies off the LVGL call stack. Handlers are not re-entrant.
     std::unique_ptr<AppConfig> candidate_scratch_;

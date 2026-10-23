@@ -566,14 +566,14 @@ LoadResult ConfigRepository::load(AppConfig& config) {
     if (!candidate_storage || stored_size != sizeof(AppConfig) ||
         !backend_.read(candidate_storage.get(), sizeof(AppConfig)) ||
         candidate_storage->schema_version != AppConfig::kSchemaVersion) {
-        config = AppConfig::defaults();
+        AppConfig::setDefaults(config);
         return LoadResult::DefaultsUsed;
     }
     AppConfig& candidate = *candidate_storage;
 
     const bool normalized = normalizeLegacyShiftRange(candidate.shift);
     if (!candidate.validate().valid) {
-        config = AppConfig::defaults();
+        AppConfig::setDefaults(config);
         return LoadResult::DefaultsUsed;
     }
 
@@ -629,6 +629,6 @@ bool ConfigRepository::reset(AppConfig& runtime_config) {
     if (!backend_.erase()) {
         return false;
     }
-    runtime_config = AppConfig::defaults();
+    AppConfig::setDefaults(runtime_config);
     return true;
 }
