@@ -90,6 +90,13 @@ void TileView::create(lv_obj_t* parent, TileAddress address, lv_event_cb_t callb
     lv_obj_clear_flag(gauge_, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(gauge_, drawGauge, LV_EVENT_DRAW_MAIN, this);
     lv_obj_add_flag(gauge_, LV_OBJ_FLAG_HIDDEN);
+    trend_view_ = lv_obj_create(root_);
+    lv_obj_set_style_bg_opa(trend_view_, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(trend_view_, 0, 0);
+    lv_obj_set_style_pad_all(trend_view_, 0, 0);
+    lv_obj_clear_flag(trend_view_, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(trend_view_, drawTrend, LV_EVENT_DRAW_MAIN, this);
+    lv_obj_add_flag(trend_view_, LV_OBJ_FLAG_HIDDEN);
 }
 void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
     const bool hero = geometry.size == TileSize::Hero || geometry.size == TileSize::GearHero;
@@ -283,6 +290,21 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
         lv_obj_add_flag(gauge_, LV_OBJ_FLAG_HIDDEN);
     }
     if (styled_) setupStyled(config);
+    // Wide rows (ENDURANCE) replace the temperature bar with a trend.
+    trend_mode_ = geometry.size == TileSize::CompactRow && geometry.width >= 400 && !is_flag;
+    trend_.reset();
+    if (trend_mode_) {
+        lv_obj_clear_flag(trend_view_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_pos(trend_view_, geometry.width - 226, 3);
+        lv_obj_set_size(trend_view_, 214, geometry.height - 8);
+        lv_obj_add_flag(temperature_bar_, LV_OBJ_FLAG_HIDDEN);
+        trend_has_marker_ = config.warning.enabled;
+        trend_marker_ = config.warning.threshold_native;
+        const GaugeRange scale = gaugeRange(config);
+        trend_span_ = std::max(1e-3f, scale.maximum - scale.minimum);
+    } else {
+        lv_obj_add_flag(trend_view_, LV_OBJ_FLAG_HIDDEN);
+    }
     gauge_valid_ = false;
     gauge_fill_ = 0U;
     last_tone_ = DeltaTone::Neutral;
@@ -372,6 +394,10 @@ void TileView::update(const TileConfig& config, const UnitSettings& units,
     if (!warning_initialized_ || warning_active != last_warning_active_ ||
         data_lost != last_data_lost_) {
         styled_warning_ = warning_active;
+        if (trend_mode_) {
+            lv_obj_set_style_text_color(title_, warning_active ? UiTheme::red() : UiTheme::muted(), 0);
+            lv_obj_invalidate(trend_view_);
+        }
         styled_data_lost_ = data_lost;
         if (chamfer_ != 0U) lv_obj_invalidate(root_);
         lv_obj_set_style_border_width(root_, chamfer_ != 0U ? 0
@@ -386,6 +412,8 @@ void TileView::update(const TileConfig& config, const UnitSettings& units,
 
     const SignalValue& source = state.get(config.parameter);
     const SignalValue raw = supported ? source : SignalValue{};
+    if (trend_mode_ && trend_.sample(raw.value, raw.valid, now_ms))
+        lv_obj_invalidate(trend_view_);
     const bool validity_changed = !raw_valid_initialized_ ||
                                   raw.valid != last_raw_valid_;
     const uint32_t interval_ms = tileRefreshIntervalMs(config.parameter);
@@ -411,7 +439,7 @@ void TileView::update(const TileConfig& config, const UnitSettings& units,
         : display_filter_.sample(raw, now_ms, interval_ms * 2U);
     const TemperatureBarState temperature = temperatureBarState(
         config.parameter, signal, config.temperature_bar);
-    const bool bar_visible = temperature.visible && supported &&
+    const bool bar_visible = temperature.visible && supported && !trend_mode_ &&
                              size_ != TileSize::Gauge && size_ != TileSize::Inline;
     if (bar_visible == lv_obj_has_flag(temperature_bar_, LV_OBJ_FLAG_HIDDEN)) {
         if (bar_visible) lv_obj_clear_flag(temperature_bar_, LV_OBJ_FLAG_HIDDEN);
@@ -578,6 +606,7 @@ void TileView::update(const TileConfig& config, const UnitSettings& units,
 TileAddress TileView::address() const { return address_; }
 void TileView::arrangeRow(bool is_flag) {
     if(size_!=TileSize::CompactRow || is_flag)return;
+    if(trend_mode_) { arrangeTrendRow(); return; }
     const int border=lv_obj_get_style_border_width(root_,0);
     last_row_border_=border;
     const int center=geometry_.height/2-border;
@@ -872,4 +901,109 @@ void TileView::drawChamfer(lv_event_t* event) {
     fill.bg_grad.stops[1].color = lv_color_hex(0x030507);
     fill.bg_grad.stops[1].frac = 255;
     lv_draw_polygon(ctx, &fill, inner, 6);
+}
+
+// ENDURANCE row: label left, value right-aligned at a fixed column, unit
+// next to it, trend arrow and sparkline in the right part of the row.
+void TileView::arrangeTrendRow() {
+    const int border = lv_obj_get_style_border_width(root_, 0);
+    last_row_border_ = border;
+    const int center = geometry_.height / 2 - border;
+    lv_obj_set_style_text_font(title_, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_letter_space(title_, 1, 0);
+    lv_obj_set_width(title_, 130);
+    lv_obj_set_style_text_align(title_, LV_TEXT_ALIGN_LEFT, 0);
+    lv_obj_align(title_, LV_ALIGN_TOP_LEFT, 14 - border,
+                 opticalTextY(lv_label_get_text(title_), &lv_font_montserrat_14, center));
+    const lv_font_t* font = lv_obj_get_style_text_font(value_, 0);
+    lv_point_t v, u;
+    lv_txt_get_size(&v, lv_label_get_text(value_), font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    const bool unavailable = statusText(lv_label_get_text(unit_));
+    lv_txt_get_size(&u, lv_label_get_text(unit_), &lv_font_montserrat_16, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    const int value_right = 206 - border;
+    lv_obj_set_width(value_, v.x + 1);
+    lv_obj_set_style_text_align(value_, LV_TEXT_ALIGN_LEFT, 0);
+    lv_obj_align(value_, LV_ALIGN_TOP_LEFT, value_right - v.x,
+                 opticalTextY(lv_label_get_text(value_), font, center - (unavailable ? 7 : 0)));
+    lv_obj_set_width(unit_, unavailable ? 130 : u.x + 1);
+    if (unavailable) {
+        lv_obj_align(unit_, LV_ALIGN_BOTTOM_LEFT, value_right - 120, -2);
+    } else {
+        lv_obj_align(unit_, LV_ALIGN_TOP_LEFT, value_right + 8,
+                     opticalTextY(lv_label_get_text(unit_), &lv_font_montserrat_16, center));
+    }
+}
+
+void TileView::drawTrend(lv_event_t* event) {
+    auto* self = static_cast<TileView*>(lv_event_get_user_data(event));
+    if (self == nullptr || !self->trend_mode_) return;
+    lv_draw_ctx_t* ctx = lv_event_get_draw_ctx(event);
+    lv_area_t a;
+    lv_obj_get_coords(self->trend_view_, &a);
+    const TrendHistory& history = self->trend_;
+    const bool warning = self->last_warning_active_;
+    // Direction arrow.
+    const TrendDirection direction = history.direction(self->trend_span_);
+    float angle = 0.0f;
+    lv_color_t arrow_color = lv_color_hex(0x8E9AA6);
+    switch (direction) {
+        case TrendDirection::RisingFast: angle = -90.0f; arrow_color = UiTheme::red(); break;
+        case TrendDirection::Rising: angle = -45.0f; arrow_color = UiTheme::yellow(); break;
+        case TrendDirection::FallingFast: angle = 90.0f; break;
+        case TrendDirection::Falling: angle = 45.0f; break;
+        case TrendDirection::Steady: break;
+    }
+    const float rad = angle * 3.14159265f / 180.0f;
+    const float dx = std::cos(rad), dy = std::sin(rad);
+    const lv_point_t mid{static_cast<lv_coord_t>(a.x1 + 12), static_cast<lv_coord_t>((a.y1 + a.y2) / 2)};
+    const lv_point_t tail{static_cast<lv_coord_t>(std::lround(mid.x - dx * 7)), static_cast<lv_coord_t>(std::lround(mid.y - dy * 7))};
+    const lv_point_t tip{static_cast<lv_coord_t>(std::lround(mid.x + dx * 7)), static_cast<lv_coord_t>(std::lround(mid.y + dy * 7))};
+    lv_draw_line_dsc_t arrow;
+    lv_draw_line_dsc_init(&arrow);
+    arrow.color = arrow_color;
+    arrow.width = 2;
+    arrow.round_start = arrow.round_end = 1;
+    lv_draw_line(ctx, &arrow, &tail, &tip);
+    for (float side : {135.0f, -135.0f}) {
+        const float r2 = rad + side * 3.14159265f / 180.0f;
+        const lv_point_t wing{static_cast<lv_coord_t>(std::lround(tip.x + std::cos(r2) * 6)),
+                              static_cast<lv_coord_t>(std::lround(tip.y + std::sin(r2) * 6))};
+        lv_draw_line(ctx, &arrow, &tip, &wing);
+    }
+    // Sparkline.
+    if (history.size() < 2U) return;
+    float low = 0.0f, high = 1.0f;
+    history.range(self->trend_has_marker_ ? self->trend_marker_ : NAN, low, high);
+    const int x0 = a.x1 + 34, x1 = a.x2 - 2;
+    const int y0 = a.y1 + 3, y1 = a.y2 - 3;
+    const auto yFor = [&](float v) {
+        return static_cast<lv_coord_t>(std::lround(y1 - (v - low) / (high - low) * (y1 - y0)));
+    };
+    if (self->trend_has_marker_) {
+        lv_draw_line_dsc_t dash;
+        lv_draw_line_dsc_init(&dash);
+        dash.color = UiTheme::red();
+        dash.opa = warning ? LV_OPA_COVER : LV_OPA_60;
+        dash.width = 1;
+        dash.dash_width = 4;
+        dash.dash_gap = 3;
+        const lv_coord_t y = yFor(self->trend_marker_);
+        const lv_point_t p0{static_cast<lv_coord_t>(x0), y}, p1{static_cast<lv_coord_t>(x1), y};
+        lv_draw_line(ctx, &dash, &p0, &p1);
+    }
+    lv_draw_line_dsc_t line;
+    lv_draw_line_dsc_init(&line);
+    line.color = warning ? UiTheme::red() : lv_color_hex(0x9AA4AE);
+    line.width = 2;
+    line.round_start = line.round_end = 1;
+    const std::size_t n = history.size();
+    // Newest sample at the right edge; the line grows from the left.
+    const float step = static_cast<float>(x1 - x0) / static_cast<float>(TrendHistory::kCapacity - 1U);
+    const int start_x = static_cast<int>(std::lround(x1 - step * (n - 1U)));
+    lv_point_t previous{static_cast<lv_coord_t>(start_x), yFor(history.at(0))};
+    for (std::size_t i = 1U; i < n; ++i) {
+        const lv_point_t next{static_cast<lv_coord_t>(std::lround(start_x + step * i)), yFor(history.at(i))};
+        lv_draw_line(ctx, &line, &previous, &next);
+        previous = next;
+    }
 }
