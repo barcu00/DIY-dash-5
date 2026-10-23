@@ -645,6 +645,16 @@ void TileView::drawGauge(lv_event_t* event) {
     }
     if (self->gauge_valid_)
         arcDeg(47, kStart, kStart + kSweep * self->gauge_fill_ / 1000.0f, lit, 2, LV_OPA_50);
+    // Outer ticks at the five scale positions.
+    for (int k = 0; k <= 4; ++k) {
+        const float a = kStart + kSweep * k / 4.0f;
+        const lv_point_t t0 = gaugePoint(c, 77, a), t1 = gaugePoint(c, 83, a);
+        lv_draw_line_dsc_t tick;
+        lv_draw_line_dsc_init(&tick);
+        tick.color = lv_color_hex(0xE6EAEE);
+        tick.width = 2;
+        lv_draw_line(ctx, &tick, &t0, &t1);
+    }
     // Scale numbers at 0/25/50/75/100 %.
     lv_draw_label_dsc_t number;
     lv_draw_label_dsc_init(&number);
@@ -670,9 +680,9 @@ void TileView::drawGauge(lv_event_t* event) {
                              static_cast<lv_coord_t>(c.x + 30), static_cast<lv_coord_t>(c.y + 42)};
     lv_draw_label(ctx, &unit, &unit_box, self->gauge_unit_.data(), nullptr);
     if (!self->gauge_valid_) return;
-    // Needle: tapered white pointer from the hub, ending just inside the
-    // segment ring so it never covers the coloured blocks; dark edge for
-    // contrast over the scale numbers, hub cap on top.
+    // Pointer as on the approved board: a slim white wedge lying on the
+    // segment ring at the current value (inner edge to just past the outer
+    // edge of the blocks), no long needle across the face.
     const float angle = kStart + kSweep * self->gauge_fill_ / 1000.0f;
     const float radians = angle * kGaugePi / 180.0f;
     const float nx = -std::sin(radians), ny = std::cos(radians);
@@ -680,26 +690,17 @@ void TileView::drawGauge(lv_event_t* event) {
         return lv_point_t{static_cast<lv_coord_t>(std::lround(p.x + nx * w)),
                           static_cast<lv_coord_t>(std::lround(p.y + ny * w))};
     };
-    const lv_point_t tail = gaugePoint(c, -4, angle), tip = gaugePoint(c, 46, angle);
-    const lv_point_t edge[4] = {offset(tail, 4.5f), offset(tip, 2.0f), offset(tip, -2.0f), offset(tail, -4.5f)};
-    const lv_point_t needle[4] = {offset(tail, 3.0f), offset(tip, 0.8f), offset(tip, -0.8f), offset(tail, -3.0f)};
+    const lv_point_t inner = gaugePoint(c, 48, angle), outer = gaugePoint(c, 68, angle);
+    const lv_point_t edge[4] = {offset(inner, 2.5f), offset(outer, 3.5f), offset(outer, -3.5f), offset(inner, -2.5f)};
+    const lv_point_t pointer[4] = {offset(inner, 1.2f), offset(outer, 2.2f), offset(outer, -2.2f), offset(inner, -1.2f)};
     lv_draw_rect_dsc_t shade;
     lv_draw_rect_dsc_init(&shade);
     shade.bg_color = lv_color_hex(0x030507);
     lv_draw_polygon(ctx, &shade, edge, 4);
     lv_draw_rect_dsc_t white;
     lv_draw_rect_dsc_init(&white);
-    white.bg_color = lv_color_hex(0xF4F6F8);
-    lv_draw_polygon(ctx, &white, needle, 4);
-    lv_draw_rect_dsc_t hub;
-    lv_draw_rect_dsc_init(&hub);
-    hub.radius = LV_RADIUS_CIRCLE;
-    hub.bg_color = lv_color_hex(0x1A2129);
-    hub.border_color = fill_red ? UiTheme::red() : lv_color_hex(0x8E9AA6);
-    hub.border_width = 2;
-    const lv_area_t cap{static_cast<lv_coord_t>(c.x - 6), static_cast<lv_coord_t>(c.y - 6),
-                        static_cast<lv_coord_t>(c.x + 6), static_cast<lv_coord_t>(c.y + 6)};
-    lv_draw_rect(ctx, &hub, &cap);
+    white.bg_color = lv_color_hex(0xFFFFFF);
+    lv_draw_polygon(ctx, &white, pointer, 4);
 }
 
 namespace {
