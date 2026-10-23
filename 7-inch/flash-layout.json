@@ -1,0 +1,31 @@
+{
+  "chip": "esp32s3",
+  "flash_size": "8MB",
+  "merged_image": "DIY-Dash-ESP32-S3-Touch-LCD-7-full.bin",
+  "app_update_image": {
+    "offset": "0x10000",
+    "file": "DIY-Dash-ESP32-S3-Touch-LCD-7-app-update.bin",
+    "preserves": [
+      "dashcfg settings",
+      "odometer"
+    ]
+  },
+  "images": [
+    {
+      "offset": "0x0000",
+      "file": "bootloader.bin"
+    },
+    {
+      "offset": "0x8000",
+      "file": "partitions.bin"
+    },
+    {
+      "offset": "0xe000",
+      "file": "boot_app0.bin"
+    },
+    {
+      "offset": "0x10000",
+      "file": "firmware.bin"
+    }
+  ]
+}
