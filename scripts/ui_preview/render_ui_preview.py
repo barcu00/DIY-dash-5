@@ -31,6 +31,7 @@ EXPECTED_PREVIEWS = (
 )
 ROOT = Path(__file__).resolve().parent
 CONTRACT = json.loads((ROOT / "ui_contract.json").read_text(encoding="utf-8"))
+TILE_H = CONTRACT["tile_height"]
 C = CONTRACT["colors"]
 
 
@@ -55,11 +56,20 @@ def base():
     return Image.new("RGB", (CONTRACT["width"], CONTRACT["height"]), C["background"])
 
 
-def shift(draw):
-    colors = [C["green"]] * 4 + [C["yellow"]] * 4 + [C["red"]] * 4
-    for index, color in enumerate(colors):
-        x = 8 + index * 66
-        draw.rounded_rectangle((x, 8, x + 60, 24), 4, fill=color)
+def shift(draw, rpm=6840, scale=8000, yellow=5500, red=7000):
+    """Tachometer bar doubling as the shift light (TachBarView)."""
+    draw.rounded_rectangle((8, 8, 791, 31), 4, fill="#12171C")
+    color = C["red"] if rpm >= red else C["yellow"] if rpm >= yellow else "#E4E8EC"
+    draw.rounded_rectangle((8, 8, 8 + int(783 * min(rpm, scale) / scale), 31), 4,
+                           fill=color)
+    for value in range(0, scale + 1, 1000):
+        x = 8 + int(783 * value / scale)
+        draw.line((x, 33, x, 38), fill=C["muted"], width=1)
+        draw.text((min(max(x, 14), 784), 47), str(value // 1000),
+                  fill=C["muted"], font=F12, anchor="mm")
+    for mark, mark_color in ((yellow, C["yellow"]), (red, C["red"])):
+        x = 8 + int(783 * mark / scale)
+        draw.rectangle((x - 1, 33, x + 1, 42), fill=mark_color)
 
 
 def navigation(draw, active):
@@ -159,23 +169,23 @@ def data_page(track=False):
     right = [("TPS", "78", "%"), ("IAT", "31", "°C"),
              ("OIL TEMP", "103", "°C"), ("BATTERY", "13.9", "V")]
     for index, entry in enumerate(left):
-        tile(draw, (8, rows[index], 176, 90), *entry)
+        tile(draw, (8, rows[index], 176, TILE_H), *entry)
     for index, entry in enumerate(right):
-        tile(draw, (616, rows[index], 176, 90), *entry)
+        tile(draw, (616, rows[index], 176, TILE_H), *entry)
     if track:
         centers = [("RPM", "6840", "rpm"), ("GEAR", "4", ""),
                    ("MAP", "1.42", "bar"), ("FUEL PRESS", "3.8", "bar")]
         for index, entry in enumerate(centers):
-            tile(draw, (192, rows[index], 416, 90), *entry, centered=True)
+            tile(draw, (192, rows[index], 416, TILE_H), *entry, centered=True)
         navigation(draw, "TRACK")
     else:
-        tile(draw, (192, rows[0], 416, 90), "RPM", "6840", "rpm", centered=True)
-        tile(draw, (192, rows[1], 416, 90), "GEAR", "4", "", centered=True)
+        tile(draw, (192, rows[0], 416, TILE_H), "RPM", "6840", "rpm", centered=True)
+        tile(draw, (192, rows[1], 416, TILE_H), "GEAR", "4", "", centered=True)
         small = [("MAP", "1.42", "bar"), ("FUEL PRESS", "3.8", "bar"),
                  ("TPS", "78", "%"), ("BATTERY", "13.9", "V")]
         positions = ((192, rows[2]), (404, rows[2]), (192, rows[3]), (404, rows[3]))
         for (title, value, unit), (x, y) in zip(small, positions):
-            tile(draw, (x, y, 204, 90), title, value, unit)
+            tile(draw, (x, y, 204, TILE_H), title, value, unit)
         navigation(draw, "DASH")
     return image
 
@@ -190,12 +200,12 @@ def flag_tiles_page():
     right = [("TPS", "78", "%"), ("MAP", "1.42", "bar"),
              ("OIL PRESS", "4.2", "bar"), ("LAMBDA", "0.88", "lambda")]
     for index, entry in enumerate(left):
-        tile(draw, (8, rows[index], 176, 90), *entry)
+        tile(draw, (8, rows[index], 176, TILE_H), *entry)
     for index, entry in enumerate(right):
-        tile(draw, (616, rows[index], 176, 90), *entry)
-    tile(draw, (192, rows[0], 416, 90), "BMW MS43 STOCK", "6840", "rpm",
+        tile(draw, (616, rows[index], 176, TILE_H), *entry)
+    tile(draw, (192, rows[0], 416, TILE_H), "BMW MS43 STOCK", "6840", "rpm",
          centered=True)
-    tile(draw, (192, rows[1], 416, 90), "GEAR", "4", "", centered=True)
+    tile(draw, (192, rows[1], 416, TILE_H), "GEAR", "4", "", centered=True)
     flags = (("CHECK ENGINE", "ON", C["red"]),
              ("ENGINE RUN", "ON", C["green"]),
              ("IDLE", "OFF", None),
@@ -203,7 +213,7 @@ def flag_tiles_page():
     positions = ((192, rows[2]), (404, rows[2]),
                  (192, rows[3]), (404, rows[3]))
     for entry, (x, y) in zip(flags, positions):
-        flag_tile(draw, (x, y, 204, 90), *entry)
+        flag_tile(draw, (x, y, 204, TILE_H), *entry)
     navigation(draw, "DASH")
     return image
 
@@ -413,10 +423,10 @@ def settings_shift_page():
     values = (("RPM SCALE MAX", "10000 RPM", 1.00),
               ("YELLOW FROM", "5500 RPM", 0.55),
               ("RED FROM", "7000 RPM", 0.70),
-              ("FLASH FROM", "7500 RPM", 0.75),
-              ("12-LED FILL MAX", "8000 RPM", 0.80))
+              ("FLASH FROM", "7500 RPM", 0.75))
+    assert len(values) == CONTRACT["settings"]["shift_slider_count"]
     for index, (label, value, progress) in enumerate(values):
-        y = 78 + index * 49
+        y = 78 + index * 58
         draw.text((40, y), label, fill=C["muted"], font=F14, anchor="lm")
         draw.rounded_rectangle((176, y - 7, 616, y + 7), 7,
                                fill=C["border"])
@@ -430,7 +440,7 @@ def settings_shift_page():
               anchor="lm")
     draw.rounded_rectangle((176, 315, 232, 345), 15, fill=C["blue"])
     draw.ellipse((204, 317, 230, 343), fill=C["text"])
-    draw.text((430, 330), "4 Hz full-strip blink", fill=C["muted"],
+    draw.text((430, 330), "4 Hz full-bar red blink", fill=C["muted"],
               font=F12, anchor="lm")
     return image
 

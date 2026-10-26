@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <memory>
+#include <new>
 #include <type_traits>
 #include "telemetry/parameter_registry.h"
 
@@ -14,13 +16,17 @@ auto bank(Config& config, PageId page, DashboardLayout layout) {
     if ((page == PageId::Dash || page == PageId::Track) &&
         validDashboardLayout(layout)) {
         count = dashboardLayoutSlotCount(layout);
+        const auto value = static_cast<std::size_t>(layout);
         const auto default_layout = page == PageId::Dash
             ? DashboardLayout::ClassicDash : DashboardLayout::ClassicTrack;
-        if (layout == default_layout) {
+        if (value >= static_cast<std::size_t>(DashboardLayout::OemSport)) {
+            auto& extra = page == PageId::Dash ? config.dash_extra_tiles
+                                               : config.track_extra_tiles;
+            data = extra[value - static_cast<std::size_t>(DashboardLayout::OemSport)].data();
+        } else if (layout == default_layout) {
             data = page == PageId::Dash ? config.dash_tiles.data()
                                         : config.track_tiles.data();
         } else {
-            const auto value = static_cast<std::size_t>(layout);
             const auto index = value - (value > static_cast<std::size_t>(default_layout) ? 1U : 0U);
             auto& alternatives = page == PageId::Dash
                 ? config.dash_alternate_tiles : config.track_alternate_tiles;
@@ -43,15 +49,42 @@ bool validDashboardLayout(DashboardLayout layout) {
     return static_cast<std::size_t>(layout) < kDashboardLayoutCount;
 }
 
+bool layoutHasTachBar(DashboardLayout layout) {
+    switch (layout) {
+        case DashboardLayout::ClassicDash:
+        case DashboardLayout::ClassicTrack:
+        case DashboardLayout::OemSport:
+        case DashboardLayout::TrackFocus:
+        case DashboardLayout::Endurance:
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool layoutIsDial(DashboardLayout layout) {
+    return layout == DashboardLayout::AnalogStyle ||
+           layout == DashboardLayout::ModernMotorsport ||
+           layout == DashboardLayout::AnalogClassic ||
+           layout == DashboardLayout::AnalogTwin;
+}
+
 const char* dashboardLayoutName(DashboardLayout layout) {
     constexpr const char* names[] = {"CLASSIC DASH", "CLASSIC TRACK",
-        "ANALOG STYLE", "SIDE GEAR", "STRIP STYLE", "MODERN MOTORSPORT"};
+        "ANALOG STYLE", "SIDE GEAR", "STRIP STYLE", "MODERN MOTORSPORT",
+        "OEM SPORT", "TRACK FOCUS", "ENDURANCE", "ANALOG CLASSIC",
+        "ANALOG TWIN"};
+    static_assert(sizeof(names) / sizeof(names[0]) == kDashboardLayoutCount,
+                  "every layout needs a name");
     return validDashboardLayout(layout) ? names[static_cast<std::size_t>(layout)]
                                         : names[0];
 }
 
 std::size_t dashboardLayoutSlotCount(DashboardLayout layout) {
-    constexpr std::size_t counts[] = {14U, 12U, 7U, 8U, 8U, 6U};
+    constexpr std::size_t counts[] = {14U, 12U, 7U, 8U, 8U, 6U,
+                                      10U, 11U, 9U, 8U, 5U};
+    static_assert(sizeof(counts) / sizeof(counts[0]) == kDashboardLayoutCount,
+                  "every layout needs a slot count");
     return validDashboardLayout(layout) ? counts[static_cast<std::size_t>(layout)] : 0U;
 }
 
@@ -76,7 +109,7 @@ TileBankView<const TileConfig> activeTiles(const AppConfig& config, PageId page)
 
 void initializeAlternateLayouts(AppConfig& config) {
     for (const PageId page : {PageId::Dash, PageId::Track}) {
-        for (std::size_t i = 0; i < kDashboardLayoutCount; ++i) {
+        for (std::size_t i = 0; i < static_cast<std::size_t>(DashboardLayout::OemSport); ++i) {
             const auto layout = static_cast<DashboardLayout>(i);
             if ((page == PageId::Dash && layout == DashboardLayout::ClassicDash) ||
                 (page == PageId::Track && layout == DashboardLayout::ClassicTrack)) continue;
@@ -104,18 +137,75 @@ void initializeAlternateLayouts(AppConfig& config) {
             }
         }
     }
+    initializeExtraLayouts(config);
+}
+
+void initializeExtraLayouts(AppConfig& config) {
+    using P = ParameterId;
+    // Defaults per layout and page, in slot order (see TileEngine geometry).
+    struct Preset { DashboardLayout layout; PageId page; P slots[12]; uint16_t hidden_mask; };
+    static const Preset presets[] = {
+        {DashboardLayout::OemSport, PageId::Dash,
+         {P::Clt, P::Speed, P::OilTemperature, P::BatteryVoltage, P::Gear, P::Map,
+          P::OilPressure, P::Odometer, P::TripA, P::TripB}, 0U},
+        {DashboardLayout::OemSport, PageId::Track,
+         {P::Clt, P::RcLapTime, P::OilTemperature, P::RcBestLapTime, P::Gear,
+          P::RcPreviousLapTime, P::OilPressure, P::RcLapNumber, P::RcDeltaLapTime,
+          P::RcGpsSpeed}, 0U},
+        {DashboardLayout::TrackFocus, PageId::Dash,
+         {P::OilPressure, P::OilTemperature, P::Clt, P::Speed, P::RcDeltaLapTime,
+          P::RcLapTime, P::Gear, P::Rpm, P::RcSectorTime, P::RcLapNumber,
+          P::RcBestLapTime}, 0U},
+        {DashboardLayout::TrackFocus, PageId::Track,
+         {P::OilPressure, P::OilTemperature, P::Clt, P::RcLapNumber, P::RcBestLapTime,
+          P::RcPreviousLapTime, P::RcDeltaLapTime, P::RcLapTime, P::Gear, P::Rpm,
+          P::Speed}, 0U},
+        {DashboardLayout::Endurance, PageId::Dash,
+         {P::OilTemperature, P::OilPressure, P::Clt, P::BatteryVoltage, P::FuelPressure,
+          P::Iat, P::Gear, P::Speed, P::Rpm}, 0U},
+        {DashboardLayout::Endurance, PageId::Track,
+         {P::OilTemperature, P::OilPressure, P::Clt, P::BatteryVoltage,
+          P::RcPreviousLapTime, P::RcBestLapTime, P::RcDeltaLapTime, P::RcLapTime,
+          P::RcLapNumber}, 0U},
+        {DashboardLayout::AnalogClassic, PageId::Dash,
+         {P::OilPressure, P::OilTemperature, P::Clt, P::Lambda, P::Map,
+          P::BatteryVoltage, P::Speed, P::Gear}, 0U},
+        {DashboardLayout::AnalogClassic, PageId::Track,
+         {P::OilPressure, P::OilTemperature, P::Clt, P::RcDeltaLapTime, P::RcLapTime,
+          P::RcBestLapTime, P::Speed, P::Gear}, 0U},
+        {DashboardLayout::AnalogTwin, PageId::Dash,
+         {P::Gear, P::OilPressure, P::Clt, P::Speed, P::BatteryVoltage}, 0U},
+        {DashboardLayout::AnalogTwin, PageId::Track,
+         {P::Gear, P::OilPressure, P::Clt, P::Speed, P::BatteryVoltage}, 0U},
+    };
+    for (const Preset& preset : presets) {
+        auto tiles = layoutTiles(config, preset.page, preset.layout);
+        for (std::size_t slot = 0; slot < tiles.size(); ++slot) {
+            tiles[slot] = makeTile(preset.slots[slot]);
+            tiles[slot].visible = (preset.hidden_mask & (1U << slot)) == 0U;
+            // Lap data reads best as 1:42.38; race time as 2:31:08.
+            if (preset.slots[slot] == P::RcTotalRaceTime ||
+                preset.slots[slot] == P::RcGpsSpeed) tiles[slot].decimals = 0U;
+            else if (parameterDescriptor(preset.slots[slot]).native_unit == NativeUnit::Seconds)
+                tiles[slot].decimals = 2U;
+        }
+    }
 }
 
 void resetPageLayouts(AppConfig& config, PageId page) {
-    const AppConfig defaults = AppConfig::defaults();
+    // ~12 KB: keep the defaults off the LVGL/loop stack.
+    std::unique_ptr<AppConfig> defaults(new (std::nothrow) AppConfig(AppConfig::defaults()));
+    if (!defaults) return;
     if (page == PageId::Dash) {
-        config.dash_tiles = defaults.dash_tiles;
-        config.dash_alternate_tiles = defaults.dash_alternate_tiles;
-        config.dash_layout = defaults.dash_layout;
+        config.dash_tiles = defaults->dash_tiles;
+        config.dash_alternate_tiles = defaults->dash_alternate_tiles;
+        config.dash_extra_tiles = defaults->dash_extra_tiles;
+        config.dash_layout = defaults->dash_layout;
     } else if (page == PageId::Track) {
-        config.track_tiles = defaults.track_tiles;
-        config.track_alternate_tiles = defaults.track_alternate_tiles;
-        config.track_layout = defaults.track_layout;
+        config.track_tiles = defaults->track_tiles;
+        config.track_alternate_tiles = defaults->track_alternate_tiles;
+        config.track_extra_tiles = defaults->track_extra_tiles;
+        config.track_layout = defaults->track_layout;
     }
 }
 

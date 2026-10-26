@@ -117,6 +117,72 @@ TilePlacementList TileEngine::placements(PageId page,
         appendGroup(output, page, tiles, 0U, TileGroup::DashLeft, left);
         appendGroup(output, page, tiles, 3U, TileGroup::DashCenterWide, center);
         appendGroup(output, page, tiles, 5U, TileGroup::DashRight, right);
+    } else if (layout == DashboardLayout::OemSport) {
+        const std::array<TileGeometry, 1> left{{{8, 58, 210, 176, TileSize::Large}}};
+        const std::array<TileGeometry, 1> center{{{226, 58, 348, 176, TileSize::Hero}}};
+        const std::array<TileGeometry, 1> right{{{582, 58, 210, 176, TileSize::Large}}};
+        const std::array<TileGeometry, 4> row{{
+            {8, 242, 210, 82, TileSize::Small}, {226, 242, 170, 82, TileSize::Small},
+            {404, 242, 170, 82, TileSize::Small}, {582, 242, 210, 82, TileSize::Small}}};
+        // Right part of the status band (band itself is drawn by StatusBandView).
+        std::array<TileGeometry, 3> band{};
+        for (int i = 0; i < 3; ++i)
+            band[i] = {604, static_cast<int16_t>(338 + 28 * i), 180, 26, TileSize::Inline};
+        appendGroup(output, page, tiles, 0U, TileGroup::DashLeft, left);
+        appendGroup(output, page, tiles, 1U, TileGroup::DashCenterWide, center);
+        appendGroup(output, page, tiles, 2U, TileGroup::DashRight, right);
+        appendGroup(output, page, tiles, 3U, TileGroup::DashCenterSmall, row);
+        appendGroup(output, page, tiles, 7U, TileGroup::DashRight, band);
+    } else if (layout == DashboardLayout::TrackFocus) {
+        std::array<TileGeometry, 3> left{}, right{};
+        for (int i = 0; i < 3; ++i) {
+            left[i] = {8, static_cast<int16_t>(58 + 124 * i), 180, 116, TileSize::Wide};
+            right[i] = {612, static_cast<int16_t>(58 + 124 * i), 180, 116, TileSize::Wide};
+        }
+        const std::array<TileGeometry, 1> hero{{{196, 58, 408, 222, TileSize::GearHero}}};
+        const std::array<TileGeometry, 1> strip{{{196, 286, 408, 56, TileSize::Inline}}};
+        const std::array<TileGeometry, 3> bottom{{
+            {196, 348, 132, 74, TileSize::CenteredSmall},
+            {334, 348, 132, 74, TileSize::CenteredSmall},
+            {472, 348, 132, 74, TileSize::CenteredSmall}}};
+        appendGroup(output, page, tiles, 0U, TileGroup::DashLeft, left);
+        appendGroup(output, page, tiles, 3U, TileGroup::DashRight, right);
+        appendGroup(output, page, tiles, 6U, TileGroup::DashCenterWide, hero);
+        appendGroup(output, page, tiles, 7U, TileGroup::DashCenterWide, strip);
+        appendGroup(output, page, tiles, 8U, TileGroup::DashCenterSmall, bottom);
+    } else if (layout == DashboardLayout::Endurance) {
+        std::array<TileGeometry, 6> rows{};
+        for (int i = 0; i < 6; ++i)
+            rows[i] = {8, static_cast<int16_t>(58 + 48 * i), 488, 44, TileSize::CompactRow};
+        const std::array<TileGeometry, 1> hero{{{504, 58, 288, 118, TileSize::GearHero}}};
+        const std::array<TileGeometry, 2> side{{
+            {504, 182, 288, 76, TileSize::CenteredSmall},
+            {504, 266, 288, 76, TileSize::CenteredSmall}}};
+        appendGroup(output, page, tiles, 0U, TileGroup::DashLeft, rows);
+        appendGroup(output, page, tiles, 6U, TileGroup::DashRight, hero);
+        appendGroup(output, page, tiles, 7U, TileGroup::DashRight, side);
+    } else if (layout == DashboardLayout::AnalogClassic) {
+        std::array<TileGeometry, 3> left{}, right{};
+        for (int i = 0; i < 3; ++i) {
+            left[i] = {8, static_cast<int16_t>(16 + 136 * i), 176, 128, TileSize::Large, 1U};
+            right[i] = {616, static_cast<int16_t>(16 + 136 * i), 176, 128, TileSize::Large, 2U};
+        }
+        // Speed in the dial centre, gear in the hexagon below it.
+        const std::array<TileGeometry, 1> center{{{300, 180, 200, 110, TileSize::DialCenter}}};
+        const std::array<TileGeometry, 1> gear{{{358, 343, 84, 70, TileSize::DialBadge}}};
+        appendGroup(output, page, tiles, 0U, TileGroup::DashLeft, left);
+        appendGroup(output, page, tiles, 3U, TileGroup::DashRight, right);
+        appendGroup(output, page, tiles, 6U, TileGroup::DashCenterWide, center);
+        appendGroup(output, page, tiles, 7U, TileGroup::DashCenterSmall, gear);
+    } else if (layout == DashboardLayout::AnalogTwin) {
+        const std::array<TileGeometry, 1> center{{{140, 180, 160, 100, TileSize::DialCenter}}};
+        const std::array<TileGeometry, 2> gauges{{
+            {448, 16, 344, 160, TileSize::Gauge, 2U}, {448, 184, 344, 160, TileSize::Gauge, 2U}}};
+        const std::array<TileGeometry, 2> bottom{{
+            {448, 352, 168, 70, TileSize::Inline, 2U}, {624, 352, 168, 70, TileSize::Inline, 2U}}};
+        appendGroup(output, page, tiles, 0U, TileGroup::DashCenterWide, center);
+        appendGroup(output, page, tiles, 1U, TileGroup::DashRight, gauges);
+        appendGroup(output, page, tiles, 3U, TileGroup::DashCenterSmall, bottom);
     } else if (layout == DashboardLayout::ClassicDash) {
         appendGroup(output, page, tiles, 0U,
                     TileGroup::DashLeft, kLeftGeometry);

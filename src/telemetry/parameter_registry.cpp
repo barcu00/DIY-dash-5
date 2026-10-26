@@ -8,7 +8,7 @@ constexpr std::array<ParameterDescriptor, parameterCount()> kDescriptors{{
     {ParameterId::Map, "Manifold pressure", "MAP", NativeUnit::Bar, 2U},
     {ParameterId::Lambda, "Lambda", "LAMBDA", NativeUnit::Lambda, 2U},
     {ParameterId::Tps, "Throttle position", "TPS", NativeUnit::Percent, 0U},
-    {ParameterId::Clt, "Coolant temperature", "CLT", NativeUnit::Celsius, 0U},
+    {ParameterId::Clt, "Coolant temperature", "COOLANT", NativeUnit::Celsius, 0U},
     {ParameterId::Iat, "Intake air temperature", "IAT", NativeUnit::Celsius, 0U},
     {ParameterId::OilPressure, "Oil pressure", "OIL PRESS", NativeUnit::Bar, 1U},
     {ParameterId::OilTemperature, "Oil temperature", "OIL TEMP", NativeUnit::Celsius, 0U},

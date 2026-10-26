@@ -39,7 +39,7 @@ bool SettingsCommitModel::queueFactoryReset() {
     dirty_ = true;
     reconfigure_runtime_ = true;
     pending_request_.kind = ConfigCommitKind::FactoryReset;
-    pending_request_.candidate = AppConfig::defaults();
+    AppConfig::setDefaults(pending_request_.candidate);
     pending_request_.reconfigure_runtime = true;
     pending_request_.revision = revision_;
     pending_ = true;
@@ -82,6 +82,9 @@ bool SettingsCommitModel::discardChanges() {
     if (busy()) return false;
     dirty_ = false;
     reconfigure_runtime_ = false;
-    pending_request_ = ConfigCommitRequest{};
+    // Field-wise: a ConfigCommitRequest{} temporary is ~12 KB of stack.
+    pending_request_.kind = ConfigCommitKind::Save;
+    pending_request_.reconfigure_runtime = false;
+    pending_request_.revision = 0U;
     return true;
 }
