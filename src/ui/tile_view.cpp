@@ -625,10 +625,11 @@ void TileView::arrangeRow(bool is_flag) {
     const int border=lv_obj_get_style_border_width(root_,0);
     last_row_border_=border;
     const int center=geometry_.height/2-border;
+    // Labels share one left edge after the stripe.
     lv_obj_set_width(title_,120);
-    lv_obj_set_style_text_align(title_,LV_TEXT_ALIGN_CENTER,0);
+    lv_obj_set_style_text_align(title_,LV_TEXT_ALIGN_LEFT,0);
     lv_obj_set_style_text_color(title_,UiTheme::muted(),0);
-    lv_obj_align(title_,LV_ALIGN_TOP_LEFT,12-border,opticalTextY(lv_label_get_text(title_),&lv_font_montserrat_16,center));
+    lv_obj_align(title_,LV_ALIGN_TOP_LEFT,22-border,opticalTextY(lv_label_get_text(title_),&lv_font_montserrat_16,center));
     const auto* font=lv_obj_get_style_text_font(value_,0);
     lv_point_t v,u;
     lv_txt_get_size(&v,lv_label_get_text(value_),font,0,0,LV_COORD_MAX,LV_TEXT_FLAG_NONE);
