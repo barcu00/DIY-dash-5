@@ -52,16 +52,22 @@ jobs:
           printf 'source: %s @ %s\nbuilt: %s\n' "$branch" "$sha" "$(date -u +%FT%TZ)" > "$out/BUILD.txt"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git ls-remote --exit-code origin firmware-builds >/dev/null; then
-            git fetch origin firmware-builds
-            git checkout -f -B firmware-builds origin/firmware-builds
-          else
-            git checkout --orphan firmware-builds
-            git rm -rf --quiet .
-          fi
-          git clean -fdx -e .pio >/dev/null
-          rm -rf 5-inch 7-inch BUILD.txt
-          cp -r "$out"/* .
-          git add 5-inch 7-inch BUILD.txt
-          git commit -m "firmware: $branch @ $sha"
-          git push origin firmware-builds
+          # The preview workflow also pushes to firmware-builds: retry on a
+          # rejected push, starting again from the latest branch head.
+          for attempt in 1 2 3 4 5; do
+            if git ls-remote --exit-code origin firmware-builds >/dev/null; then
+              git fetch origin firmware-builds
+              git checkout -f -B firmware-builds origin/firmware-builds
+            else
+              git checkout --orphan firmware-builds
+              git rm -rf --quiet .
+            fi
+            git clean -fdx -e .pio >/dev/null
+            rm -rf 5-inch 7-inch BUILD.txt
+            cp -r "$out"/* .
+            git add 5-inch 7-inch BUILD.txt
+            git commit -m "firmware: $branch @ $sha"
+            git push origin firmware-builds && exit 0
+            sleep $((attempt * 5))
+          done
+          exit 1
