@@ -106,6 +106,9 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
     const bool is_flag = parameterDescriptor(config.parameter).kind ==
                          ParameterKind::Flag;
     const bool inline_tile = geometry.size == TileSize::Inline;
+    // Tall inline tiles (LAP TIMER strip) are framed rows; short ones
+    // (status band) stay borderless.
+    const bool inline_row = inline_tile && geometry.height >= 50;
     const bool gauge = geometry.size == TileSize::Gauge;
     const bool large = geometry.size == TileSize::Large;
     size_ = geometry.size;
@@ -113,7 +116,7 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
     chamfer_ = geometry.chamfer;
     styled_ = chamfer_ != 0U || geometry.size == TileSize::DialCenter ||
               geometry.size == TileSize::DialBadge;
-    base_border_ = geometry.size != TileSize::Hero && !inline_tile && !styled_;
+    base_border_ = geometry.size != TileSize::Hero && (!inline_tile || inline_row) && !styled_;
     lv_obj_set_style_text_letter_space(title_, 0, 0);
     lv_obj_set_style_text_letter_space(unit_, 0, 0);
     lv_obj_clear_flag(root_, LV_OBJ_FLAG_HIDDEN);
@@ -127,7 +130,7 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
     lv_obj_set_size(stripe_, 4, geometry.height - (row ? 14 : 10));
     lv_obj_set_style_radius(stripe_, 2, 0);
     lv_obj_set_style_bg_color(stripe_, UiTheme::border(), 0);
-    if (hero || inline_tile || styled_) lv_obj_add_flag(stripe_, LV_OBJ_FLAG_HIDDEN);
+    if (hero || (inline_tile && !inline_row) || styled_) lv_obj_add_flag(stripe_, LV_OBJ_FLAG_HIDDEN);
     else lv_obj_clear_flag(stripe_, LV_OBJ_FLAG_HIDDEN);
     const lv_font_t* value_font = &race_digits_48;
     if (geometry.size == TileSize::Wide) value_font = &race_digits_64;
@@ -254,19 +257,17 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
     }
     if (inline_tile && !is_flag) {
         // Short: one line, label left and value right (status band rows).
-        // Tall: label on top, value below right-aligned (strips).
-        const bool stacked = geometry.height >= 50;
-        lv_obj_set_style_text_font(title_, &lv_font_montserrat_12, 0);
+        // Tall: framed row, label left after the stripe, value right.
+        lv_obj_set_style_text_font(title_, inline_row ? &lv_font_montserrat_16
+                                                      : &lv_font_montserrat_12, 0);
         lv_obj_set_style_text_color(title_, UiTheme::muted(), 0);
-        lv_obj_set_width(title_, stacked ? geometry.width - 8 : geometry.width * 2 / 5);
+        lv_obj_set_width(title_, inline_row ? 140 : geometry.width * 2 / 5);
         lv_obj_set_style_text_align(title_, LV_TEXT_ALIGN_LEFT, 0);
-        if (stacked) lv_obj_align(title_, LV_ALIGN_TOP_LEFT, 4, 2);
-        else lv_obj_align(title_, LV_ALIGN_LEFT_MID, 4, 0);
-        lv_obj_set_width(value_, stacked ? geometry.width - 52
-                                         : geometry.width * 3 / 5 - 48);
+        lv_obj_align(title_, LV_ALIGN_LEFT_MID, inline_row ? 16 : 4, 0);
+        lv_obj_set_width(value_, inline_row ? geometry.width - 204
+                                            : geometry.width * 3 / 5 - 48);
         lv_obj_set_style_text_align(value_, LV_TEXT_ALIGN_RIGHT, 0);
-        lv_obj_align(value_, stacked ? LV_ALIGN_BOTTOM_RIGHT : LV_ALIGN_RIGHT_MID,
-                     -44, stacked ? 2 : 0);
+        lv_obj_align(value_, LV_ALIGN_RIGHT_MID, -44, 0);
         lv_obj_set_style_text_font(unit_, &lv_font_montserrat_12, 0);
         lv_obj_set_width(unit_, 40);
         lv_obj_set_style_text_align(unit_, LV_TEXT_ALIGN_LEFT, 0);
@@ -335,11 +336,10 @@ void TileView::arrangeUnit(const char* text, bool is_flag) {
         if (size_ == TileSize::Inline) {
             lv_obj_align(unit_, LV_ALIGN_RIGHT_MID, 0, 2);
             // Times carry no unit: give the value the unit's room too.
-            const bool stacked = geometry_.height >= 50;
-            const int reserve = text[0] ? 44 : 4;
-            lv_obj_set_width(value_, (stacked ? geometry_.width - 8 : geometry_.width * 3 / 5 - 4) - reserve);
-            lv_obj_align(value_, stacked ? LV_ALIGN_BOTTOM_RIGHT : LV_ALIGN_RIGHT_MID,
-                         -reserve, stacked ? 2 : 0);
+            const bool framed = geometry_.height >= 50;
+            const int reserve = text[0] ? 44 : framed ? 12 : 4;
+            lv_obj_set_width(value_, (framed ? geometry_.width - 160 : geometry_.width * 3 / 5 - 4) - reserve);
+            lv_obj_align(value_, LV_ALIGN_RIGHT_MID, -reserve, 0);
         } else {
             lv_obj_align(unit_, LV_ALIGN_TOP_RIGHT, -12, status ? 126 : 96);
         }

@@ -116,7 +116,7 @@ constexpr std::array<ParameterDescriptor, parameterCount()> kDescriptors{{
     {ParameterId::RcComparisonLapTime, "Theoretical / reference lap time", "THEORETICAL / REFERENCE", NativeUnit::Seconds, 3U},
     {ParameterId::RcDeltaLapTime, "Lap time delta", "DELTA", NativeUnit::Seconds, 3U},
     {ParameterId::RcLapTimeGain, "Lap time gain", "GAIN", NativeUnit::Seconds, 3U},
-    {ParameterId::RcSectorTime, "Current sector time", "SECTOR TIME", NativeUnit::Seconds, 3U},
+    {ParameterId::RcSectorTime, "Current sector time", "SECTOR", NativeUnit::Seconds, 3U},
     {ParameterId::RcSectorDistance, "Current sector distance", "SECTOR DIST", NativeUnit::Meters, 1U},
     {ParameterId::RcTotalRaceTime, "Total race time", "RACE TIME", NativeUnit::Seconds, 3U},
     {ParameterId::RcTotalRaceDistance, "Total race distance", "RACE DIST", NativeUnit::Meters, 1U},
