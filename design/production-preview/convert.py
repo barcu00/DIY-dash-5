@@ -4,7 +4,7 @@ from pathlib import Path
 from PIL import Image
 output = Path(sys.argv[1])
 paths = list(output.glob('firmware-*.ppm'))
-assert len(paths) == 25
+assert len(paths) == 16
 paths.extend(output.glob('analog-ring-*.ppm'))
 for path in paths:
     with Image.open(path) as image:

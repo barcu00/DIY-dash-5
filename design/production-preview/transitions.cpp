@@ -81,6 +81,12 @@ static void screenshot(const char* name,const char* prefix="editor-") {
     for(auto pixel:captured) {lv_color32_t p;p.full=lv_color_to32(pixel);const unsigned char rgb[]={p.ch.red,p.ch.green,p.ch.blue};std::fwrite(rgb,1,3,f);}
     std::fclose(f);
 }
+// Ui hands out a pointer to its pending commit; tests keep a copy.
+static bool takeCommit(Ui& ui,ConfigCommitRequest& request) {
+    const ConfigCommitRequest* pending=ui.takeConfigCommit();
+    if(!pending)return false;
+    request=*pending;return true;
+}
 int main(int argc,char** argv) {
     if(argc>2)capture_folder=argv[2];
     lv_init();lv_disp_draw_buf_t buffer;lv_disp_draw_buf_init(&buffer,buffers[0],buffers[1],800*480);
@@ -161,7 +167,7 @@ int main(int argc,char** argv) {
         clickOn(lv_layer_top(),"CONFIRM");
         assert(lv_scr_act()==system_page && button(lv_layer_top(),"CONFIRM"));
         assert(lv_obj_has_state(confirm,LV_STATE_DISABLED));
-        ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
+        ConfigCommitRequest request;assert(takeCommit(ui,request));
         assert(request.kind==ConfigCommitKind::Save);
         assert(request.candidate.dash_tiles[0].visible);
         assert(!request.candidate.track_tiles[0].visible);
@@ -170,19 +176,19 @@ int main(int argc,char** argv) {
         confirm=button(lv_layer_top(),"CONFIRM");assert(confirm);
         assert(!lv_obj_has_state(confirm,LV_STATE_DISABLED));
 
-        clickOn(lv_layer_top(),"CONFIRM");assert(ui.takeConfigCommit(request));
+        clickOn(lv_layer_top(),"CONFIRM");assert(takeCommit(ui,request));
         config=request.candidate;ui.completeConfigCommit(request.revision,true);
         assert(!button(lv_layer_top(),"CONFIRM"));
         assert(lv_scr_act()==system_page && config.dash_tiles[0].visible);
 
         click("RESET TRACK");clickOn(lv_layer_top(),"CONFIRM");
-        assert(ui.takeConfigCommit(request));
+        assert(takeCommit(ui,request));
         assert(request.candidate.track_tiles[0].visible);
         config=request.candidate;ui.completeConfigCommit(request.revision,true);
         assert(!button(lv_layer_top(),"CONFIRM"));
 
         click("FACTORY RESET");clickOn(lv_layer_top(),"CONFIRM");
-        assert(ui.takeConfigCommit(request));
+        assert(takeCommit(ui,request));
         assert(request.kind==ConfigCommitKind::FactoryReset);
         config=AppConfig::defaults();ui.completeConfigCommit(request.revision,true);
         assert(!button(lv_layer_top(),"CONFIRM"));
@@ -204,7 +210,7 @@ int main(int argc,char** argv) {
 
         stageBrightness(ui,config,board);
         auto* settings_page=lv_scr_act();click("< BACK");
-        assert(ui.takeConfigCommit(request));
+        assert(takeCommit(ui,request));
         ui.completeConfigCommit(request.revision,false);
         assert(lv_scr_act()==settings_page);
         assert(board.brightness_percent==100U);
@@ -215,7 +221,7 @@ int main(int argc,char** argv) {
         click("DASH");assert(lv_scr_act()==dash);
         stageBrightness(ui,config,board);
         settings_page=lv_scr_act();click("DASH");
-        assert(ui.takeConfigCommit(request));
+        assert(takeCommit(ui,request));
         ui.completeConfigCommit(request.revision,false);
         assert(lv_scr_act()==settings_page);
         assert(button(lv_layer_top(),"EXIT WITHOUT SAVE"));
@@ -224,7 +230,7 @@ int main(int argc,char** argv) {
 
         stageBrightness(ui,config,board);
         settings_page=lv_scr_act();click("TRACK");
-        assert(ui.takeConfigCommit(request));
+        assert(takeCommit(ui,request));
         ui.completeConfigCommit(request.revision,false);
         assert(lv_scr_act()==settings_page);
         assert(button(lv_layer_top(),"EXIT WITHOUT SAVE"));
@@ -247,13 +253,13 @@ int main(int argc,char** argv) {
                "BACK rebuilt the Settings screen before persistence completed");
         auto* back=button(settings_page,"< BACK");assert(back);
         assert(lv_obj_has_state(back,LV_STATE_DISABLED));
-        ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
+        ConfigCommitRequest request;assert(takeCommit(ui,request));
         assert(request.candidate.rpm_scale_max==9000);
         ui.completeConfigCommit(request.revision,false);
         assert(lv_scr_act()==settings_page && config.rpm_scale_max==10000);
         assert(!lv_obj_has_state(back,LV_STATE_DISABLED));
 
-        click("< BACK");assert(ui.takeConfigCommit(request));
+        click("< BACK");assert(takeCommit(ui,request));
         config=request.candidate;ui.completeConfigCommit(request.revision,true);
         assert(lv_scr_act()!=settings_page);
         assert(find(lv_scr_act(),&lv_label_class,"SETTINGS"));
@@ -341,7 +347,7 @@ int main(int argc,char** argv) {
         click("< BACK");
         assert(find(lv_scr_act(),&lv_label_class,"RACECHRONO") &&
                "RaceChrono BACK changed screens before persistence");
-        ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
+        ConfigCommitRequest request;assert(takeCommit(ui,request));
         assert(request.candidate.racechrono.enabled);
         config=request.candidate;ui.completeConfigCommit(request.revision,true);
         assert(find(lv_scr_act(),&lv_label_class,"DATA & CAN"));
@@ -356,7 +362,7 @@ int main(int argc,char** argv) {
         assert(lv_obj_check_type(channel_row,&lv_btn_class));
         lv_event_send(channel_row,LV_EVENT_CLICKED,nullptr);
         click("SELECT");click("BACK");
-        assert(ui.takeConfigCommit(request));
+        assert(takeCommit(ui,request));
         assert(request.candidate.dash_tiles[0].parameter==
                ParameterId::RcLapNumber &&
                "RaceChrono parameter was not assigned to the tile");
@@ -367,7 +373,7 @@ int main(int argc,char** argv) {
         click("SELECT PARAMETER");
         choosePickerRow("FLAGS","Check engine");
         click("SELECT");click("BACK");
-        ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
+        ConfigCommitRequest request;assert(takeCommit(ui,request));
         assert(request.candidate.dash_tiles[0].parameter==
                ParameterId::CheckEngine);
         config=request.candidate;ui.completeConfigCommit(request.revision,true);
@@ -375,7 +381,7 @@ int main(int argc,char** argv) {
         std::puts("BMW MS43 CAN parameter picker and BACK persistence passed");
     } else if(units) {
         lv_event_send(lv_obj_get_child(dash,2),LV_EVENT_LONG_PRESSED,nullptr);
-        click("BACK");ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
+        click("BACK");ConfigCommitRequest request;assert(takeCommit(ui,request));
         if(tempunits) {
             assert(request.candidate.dash_tiles[0].warning.delay_ms==250 && "Unchanged delay rounded during save");
             assert(std::fabs(request.candidate.dash_tiles[0].temperature_bar.ready_native-75.15f)<.00001f && "Unchanged temperature limit rounded during save");
@@ -428,7 +434,7 @@ int main(int argc,char** argv) {
         lv_obj_add_state(find(oil_parent,&lv_checkbox_class),LV_STATE_CHECKED);
         click("DATA");click("WARNING");screenshot("warning");
         click("CANCEL");assert(lv_scr_act()==dash);
-        ConfigCommitRequest request;assert(!ui.takeConfigCommit(request));
+        ConfigCommitRequest request;assert(!takeCommit(ui,request));
         click("SETTINGS");click("RPM & SHIFT LIGHT");
         assert(find(lv_scr_act(),&lv_label_class,"RPM SCALE MAX"));
         ui.update(telemetry,diagnostics,status,config,warnings);
@@ -443,7 +449,7 @@ int main(int argc,char** argv) {
         assert(config.shift.max_rpm==8000);
         click("10000 RPM");click("8");click("0");click("0");click("0");click("APPLY");
         assert(config.rpm_scale_max==10000 && config.shift.flash_rpm==7500);
-        click("TRACK");assert(lv_scr_act()!=dash);assert(ui.takeConfigCommit(request));
+        click("TRACK");assert(lv_scr_act()!=dash);assert(takeCommit(ui,request));
         assert(request.candidate.rpm_scale_max==8000 && request.candidate.shift.max_rpm==9000);
         config=request.candidate;ui.completeConfigCommit(request.revision,true);
         assert(lv_scr_act()!=dash && find(lv_scr_act(),&lv_label_class,"TRACK"));
@@ -461,7 +467,7 @@ int main(int argc,char** argv) {
         }
         lv_dropdown_set_selected(dropdown,4);lv_event_send(dropdown,LV_EVENT_VALUE_CHANGED,nullptr);
         click(track ? "TRACK":"DASH");assert(lv_scr_act()!=dash);
-        ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
+        ConfigCommitRequest request;assert(takeCommit(ui,request));
         config=request.candidate;ui.completeConfigCommit(request.revision,true);
         assert(lv_scr_act()==dash);
         // Assert before any scheduled Ui::update: the first visible screen must be Strip.
@@ -471,7 +477,7 @@ int main(int argc,char** argv) {
     } else if(argc>1 && !std::strcmp(argv[1],"--retry")) {
         auto* tile=lv_obj_get_child(dash,2);lv_event_send(tile,LV_EVENT_LONG_PRESSED,nullptr);
         auto* editor=lv_scr_act();auto* visible=find(editor,&lv_checkbox_class);lv_obj_clear_state(visible,LV_STATE_CHECKED);
-        click("BACK");ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
+        click("BACK");ConfigCommitRequest request;assert(takeCommit(ui,request));
         ui.completeConfigCommit(request.revision,false);
         assert(lv_scr_act()==editor && config.dash_tiles[0].visible);
         assert(!lv_obj_has_state(button(editor,"BACK"),LV_STATE_DISABLED));
@@ -481,7 +487,7 @@ int main(int argc,char** argv) {
         lv_event_send(tile,LV_EVENT_LONG_PRESSED,nullptr);
         editor=lv_scr_act();visible=find(editor,&lv_checkbox_class);
         lv_obj_clear_state(visible,LV_STATE_CHECKED);
-        click("BACK");assert(ui.takeConfigCommit(request));config=request.candidate;ui.completeConfigCommit(request.revision,true);
+        click("BACK");assert(takeCommit(ui,request));config=request.candidate;ui.completeConfigCommit(request.revision,true);
         assert(lv_scr_act()==dash && !config.dash_tiles[0].visible);
         std::puts("Failed tile save can be discarded or retried transactionally");
     } else if(center) {
@@ -491,7 +497,7 @@ int main(int argc,char** argv) {
         click("SELECT PARAMETER");
         choosePickerRow("ENGINE","Vehicle speed");
         click("SELECT");click("BACK");
-        ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
+        ConfigCommitRequest request;assert(takeCommit(ui,request));
         config=request.candidate;ui.completeConfigCommit(request.revision,true);
         assert(activeTiles(config,PageId::Dash)[6].parameter==ParameterId::Speed);
         assert(find(tile,&lv_label_class,"137") && "Analog center shows old RPM after saving SPEED");
@@ -503,7 +509,7 @@ int main(int argc,char** argv) {
         assert(find(lv_scr_act(),&lv_label_class,"TILE SETTINGS"));
         auto* visible=find(lv_scr_act(),&lv_checkbox_class);assert(visible);
         lv_obj_clear_state(visible,LV_STATE_CHECKED);
-        click("BACK");ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
+        click("BACK");ConfigCommitRequest request;assert(takeCommit(ui,request));
         config=request.candidate;ui.completeConfigCommit(request.revision,true);
         assert(lv_scr_act()==dash);
         assert(lv_obj_has_flag(tile,LV_OBJ_FLAG_HIDDEN) && "Saved tile visibility applied after screen return");
