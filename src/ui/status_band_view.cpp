@@ -33,10 +33,12 @@ void StatusBandView::create(lv_obj_t* parent) {
     title_ = lv_label_create(root_);
     lv_obj_set_style_text_font(title_, &lv_font_montserrat_20, 0);
     lv_label_set_long_mode(title_, LV_LABEL_LONG_DOT);
+    lv_label_set_text(title_, "");  // never show LVGL's "Text" placeholder
     detail_ = lv_label_create(root_);
     lv_obj_set_style_text_font(detail_, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(detail_, UiTheme::muted(), 0);
     lv_label_set_long_mode(detail_, LV_LABEL_LONG_DOT);
+    lv_label_set_text(detail_, "");
     lv_obj_add_flag(root_, LV_OBJ_FLAG_HIDDEN);
 }
 

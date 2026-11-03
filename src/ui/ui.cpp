@@ -121,6 +121,8 @@ void Ui::applyLayout(Page page, const AppConfig& config) {
     (page == Page::Dash ? dash_shift_ : track_shift_).apply(layout, config.rpm_scale_max);
     (page == Page::Dash ? dash_rpm_ : track_rpm_).apply(layout, config.rpm_scale_max);
     (page == Page::Dash ? dash_band_ : track_band_).apply(layout);
+    // Fill the band on the next update instead of up to 250 ms later.
+    band_refresh_ms_ = latest_state_ms_ - 250U;
     TileView::setTrendWindowSeconds(config.trend_window_s);
     const TilePlacementList placements = TileEngine::placements(id, config);
     if (page == Page::Dash) {
