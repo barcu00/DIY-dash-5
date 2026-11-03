@@ -35,8 +35,8 @@ void test_analog_center_is_an_independent_editable_tile_and_can_be_hidden() {
 // dormant presets incorrectly raising warnings.
 void test_each_page_can_assign_any_preset_and_keep_its_tile_bank() {
     AppConfig config = AppConfig::defaults();
-    const std::size_t counts[] = {14, 12, 7, 8, 8};
-    for (std::size_t i = 0; i < 5; ++i) {
+    const std::size_t counts[] = {14, 12, 7, 8, 8, 10, 11, 9, 8, 5};
+    for (std::size_t i = 0; i < kDashboardLayoutCount; ++i) {
         auto layout = static_cast<DashboardLayout>(i);
         config.dash_layout = layout;
         config.track_layout = layout;
@@ -58,7 +58,7 @@ void test_each_page_can_assign_any_preset_and_keep_its_tile_bank() {
 
 void test_all_five_presets_fit_both_pages_without_overlapping_navigation() {
     AppConfig config = AppConfig::defaults();
-    for (std::size_t i = 0; i < 5; ++i) {
+    for (std::size_t i = 0; i < kDashboardLayoutCount; ++i) {
         config.dash_layout = config.track_layout = static_cast<DashboardLayout>(i);
         for (auto page : {PageId::Dash, PageId::Track}) {
             auto placements = TileEngine::placements(page, config);
@@ -181,40 +181,53 @@ void test_approved_style_placements_preserve_touch_targets_and_frame_spacing() {
     }
 }
 
-void test_sixth_layout_has_independent_editable_rows_and_packs_hidden_tiles_down() {
-    const auto layout=static_cast<DashboardLayout>(5);
-    TEST_ASSERT_TRUE(validDashboardLayout(layout));
-    AppConfig config=AppConfig::defaults();
-    config.dash_layout=config.track_layout=layout;
-    auto dash=activeTiles(config,PageId::Dash),track=activeTiles(config,PageId::Track);
-    TEST_ASSERT_EQUAL_UINT32(6,dash.size());
-    TEST_ASSERT_EQUAL_UINT32(6,track.size());
-    TEST_ASSERT_NOT_EQUAL(dash.data,track.data);
-    TEST_ASSERT_NOT_EQUAL(dash.data,layoutTiles(config,PageId::Dash,DashboardLayout::AnalogStyle).data);
-    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(ParameterId::OilPressure),static_cast<uint8_t>(dash[1].parameter));
-    dash[0].visible=false;
-    TEST_ASSERT_TRUE(track[0].visible);
-    auto placements=TileEngine::placements(PageId::Dash,config);
-    TEST_ASSERT_EQUAL_UINT32(5,placements.count);
-    TEST_ASSERT_EQUAL_INT16(464,placements.items[0].geometry.x);
-    TEST_ASSERT_EQUAL_INT16(84,placements.items[0].geometry.y);
-    TEST_ASSERT_EQUAL_INT16(356,placements.items[4].geometry.y);
-    TileEditorModel editor;
-    TEST_ASSERT_TRUE(editor.open({PageId::Dash,1},config));
-    editor.setWarning({true,WarningDirection::Below,2.5f,.2f,0});
-    TEST_ASSERT_TRUE(editor.applyTo(config));
-    VehicleState state;state.set(ParameterId::OilPressure,1.f,100);
-    TileWarningEngine warnings;warnings.evaluate(config,state,100);
-    TEST_ASSERT_TRUE(warnings.nextModal().has_value());
-    config.dash_layout=DashboardLayout::AnalogStyle;
-    warnings.evaluate(config,state,120);
-    TEST_ASSERT_FALSE(warnings.nextModal().has_value());
+// Catches new layouts sharing banks with each other or with the original six,
+// and defaults that put lap data on DASH or nothing on TRACK.
+void test_new_layouts_have_independent_banks_and_page_defaults() {
+    AppConfig config = AppConfig::defaults();
+    for (std::size_t i = static_cast<std::size_t>(DashboardLayout::OemSport);
+         i < kDashboardLayoutCount; ++i) {
+        const auto layout = static_cast<DashboardLayout>(i);
+        auto dash = layoutTiles(config, PageId::Dash, layout);
+        auto track = layoutTiles(config, PageId::Track, layout);
+        TEST_ASSERT_NOT_NULL(dash.data);
+        TEST_ASSERT_TRUE(dash.size() <= AppConfig::kExtraTileCapacity);
+        TEST_ASSERT_NOT_EQUAL(dash.data, track.data);
+        for (std::size_t j = 0; j < kDashboardLayoutCount; ++j) {
+            if (j == i) continue;
+            TEST_ASSERT_NOT_EQUAL(dash.data, layoutTiles(config, PageId::Dash,
+                static_cast<DashboardLayout>(j)).data);
+        }
+    }
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(ParameterId::Speed), static_cast<uint8_t>(
+        layoutTiles(config, PageId::Dash, DashboardLayout::OemSport)[1].parameter));
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(ParameterId::RcLapTime), static_cast<uint8_t>(
+        layoutTiles(config, PageId::Track, DashboardLayout::OemSport)[1].parameter));
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(ParameterId::Odometer), static_cast<uint8_t>(
+        layoutTiles(config, PageId::Dash, DashboardLayout::OemSport)[7].parameter));
+    TEST_ASSERT_TRUE(layoutHasTachBar(DashboardLayout::ClassicDash));
+    TEST_ASSERT_TRUE(layoutHasTachBar(DashboardLayout::Endurance));
+    TEST_ASSERT_FALSE(layoutHasTachBar(DashboardLayout::SideGear));
+    TEST_ASSERT_TRUE(layoutIsDial(DashboardLayout::AnalogTwin));
+    TEST_ASSERT_EQUAL_STRING("TWIN DIALS", dashboardLayoutName(DashboardLayout::AnalogTwin));
+}
+
+void test_reset_page_restores_new_layout_banks() {
+    AppConfig config = AppConfig::defaults();
+    config.dash_layout = DashboardLayout::TrackFocus;
+    layoutTiles(config, PageId::Dash, DashboardLayout::TrackFocus)[0].visible = false;
+    layoutTiles(config, PageId::Track, DashboardLayout::TrackFocus)[0].visible = false;
+    resetPageLayouts(config, PageId::Dash);
+    TEST_ASSERT_TRUE(layoutTiles(config, PageId::Dash, DashboardLayout::TrackFocus)[0].visible);
+    TEST_ASSERT_FALSE(layoutTiles(config, PageId::Track, DashboardLayout::TrackFocus)[0].visible);
+    TEST_ASSERT_EQUAL_UINT8(0, static_cast<uint8_t>(config.dash_layout));
 }
 
 int main(int, char**) {
     UNITY_BEGIN();
+    RUN_TEST(test_new_layouts_have_independent_banks_and_page_defaults);
+    RUN_TEST(test_reset_page_restores_new_layout_banks);
     RUN_TEST(test_analog_center_is_an_independent_editable_tile_and_can_be_hidden);
-    RUN_TEST(test_sixth_layout_has_independent_editable_rows_and_packs_hidden_tiles_down);
     RUN_TEST(test_each_page_can_assign_any_preset_and_keep_its_tile_bank);
     RUN_TEST(test_all_five_presets_fit_both_pages_without_overlapping_navigation);
     RUN_TEST(test_shared_scale_clamps_snaps_and_never_changes_shift_thresholds);

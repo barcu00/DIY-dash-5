@@ -11,7 +11,7 @@ enum class ConfigCommitKind : uint8_t {
 
 struct ConfigCommitRequest {
     ConfigCommitKind kind = ConfigCommitKind::Save;
-    AppConfig candidate = AppConfig::defaults();
+    AppConfig candidate{};
     bool reconfigure_runtime = false;
     uint32_t revision = 0U;
 };

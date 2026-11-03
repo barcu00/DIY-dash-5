@@ -4,7 +4,7 @@ from pathlib import Path
 from PIL import Image
 output = Path(sys.argv[1])
 paths = list(output.glob('firmware-*.ppm'))
-assert len(paths) == 25
+assert len(paths) == 16
 paths.extend(output.glob('analog-ring-*.ppm'))
 for path in paths:
     with Image.open(path) as image:
@@ -33,7 +33,7 @@ for path in paths:
             for tick in ticks:
                 width=max(x for x,y in tick)-min(x for x,y in tick)+1
                 assert width<=3, ('Strip tick is tilted instead of vertical',width,tick)
-        if path.stem in {'firmware-analog-style','firmware-modern-motorsport'}:
+        if path.stem == 'firmware-analog-style':
             pixels=image.convert('RGB')
             for row in range(6):
                 top=16+row*68

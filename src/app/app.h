@@ -40,7 +40,7 @@ private:
     RaceChronoRuntime racechrono_runtime_{racechrono_transport_};
     NvsConfigBackend config_backend_{};
     ConfigRepository config_repository_{config_backend_};
-    AppConfig config_ = AppConfig::defaults();
+    AppConfig config_{};  // filled by ConfigRepository::load() in begin()
     TileWarningEngine warnings_{};
     BuzzerModel buzzer_{};
     BuzzerTestPulse buzzer_test_{};

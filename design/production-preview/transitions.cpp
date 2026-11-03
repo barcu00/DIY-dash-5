@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <cmath>
 #include <lvgl.h>
@@ -43,6 +44,11 @@ static lv_obj_t* button(lv_obj_t* root,const char* text) {
     }
     return nullptr;
 }
+// Ui::createDataPage adds the shift light, the RPM scale and the status
+// band before one object per tile slot.
+static lv_obj_t* tileObject(lv_obj_t* page,uint32_t slot) {
+    return lv_obj_get_child(page,3U+slot);
+}
 static void click(const char* text) {
     auto* target=button(lv_scr_act(),text);assert(target);
     lv_event_send(target,LV_EVENT_CLICKED,nullptr);
@@ -72,13 +78,19 @@ static void flush(lv_disp_drv_t* driver,const lv_area_t* area,lv_color_t* pixels
     else for(int y=area->y1;y<=area->y2;y++)for(int x=area->x1;x<=area->x2;x++)captured[y*800+x]=*pixels++;
     lv_disp_flush_ready(driver);
 }
-static void screenshot(const char* name) {
+static void screenshot(const char* name,const char* prefix="editor-") {
     if(!capture_folder)return;
     lv_obj_invalidate(lv_scr_act());lv_refr_now(nullptr);
-    char path[512];std::snprintf(path,sizeof(path),"%s/editor-%s.ppm",capture_folder,name);
+    char path[512];std::snprintf(path,sizeof(path),"%s/%s%s.ppm",capture_folder,prefix,name);
     auto* f=std::fopen(path,"wb");assert(f);std::fprintf(f,"P6\n800 480\n255\n");
     for(auto pixel:captured) {lv_color32_t p;p.full=lv_color_to32(pixel);const unsigned char rgb[]={p.ch.red,p.ch.green,p.ch.blue};std::fwrite(rgb,1,3,f);}
     std::fclose(f);
+}
+// Ui hands out a pointer to its pending commit; tests keep a copy.
+static bool takeCommit(Ui& ui,ConfigCommitRequest& request) {
+    const ConfigCommitRequest* pending=ui.takeConfigCommit();
+    if(!pending)return false;
+    request=*pending;return true;
 }
 int main(int argc,char** argv) {
     if(argc>2)capture_folder=argv[2];
@@ -96,6 +108,14 @@ int main(int argc,char** argv) {
     const bool reset_mode=argc>1 && !std::strcmp(argv[1],"--reset");
     const bool can_tile=argc>1 && !std::strcmp(argv[1],"--can-tile");
     const bool units=argc>1 && (!std::strcmp(argv[1],"--units") || psi || tempunits);
+    // --layouts <folder> <index>: capture DASH and TRACK of one layout with
+    // its default tiles, for visual review of every layout.
+    const bool layouts_mode=argc>3 && !std::strcmp(argv[1],"--layouts");
+    const int layout_index=layouts_mode ? std::atoi(argv[3]):0;
+    if(layouts_mode) {
+        assert(layout_index>=0 && static_cast<std::size_t>(layout_index)<kDashboardLayoutCount);
+        config.dash_layout=config.track_layout=static_cast<DashboardLayout>(layout_index);
+    }
     if(units) {
         config.units.pressure=psi ? PressureUnit::Psi:PressureUnit::Kpa;
         config.dash_tiles[0].parameter=ParameterId::OilPressure;
@@ -124,6 +144,26 @@ int main(int argc,char** argv) {
     RuntimeDiagnostics diagnostics{};UiRuntimeStatus status{};TileWarningEngine warnings;
     ui.update(telemetry,diagnostics,status,config,warnings);ui.updateShiftLight(state,0,config.shift);
     auto* dash=lv_scr_act();
+    if(layouts_mode) {
+        state.set(ParameterId::Gear,3,0);state.set(ParameterId::OilPressure,4.8,0);
+        state.set(ParameterId::Clt,91,0);state.set(ParameterId::Iat,32,0);
+        state.set(ParameterId::Map,1.18,0);state.set(ParameterId::Lambda,.86,0);
+        state.set(ParameterId::FuelPressure,4.1,0);state.set(ParameterId::BatteryVoltage,14.2,0);
+        state.set(ParameterId::Tps,78,0);
+        ui.update(telemetry,diagnostics,status,config,warnings);ui.updateShiftLight(state,0,config.shift);
+        char name[64];
+        const char* label=dashboardLayoutName(config.dash_layout);
+        std::snprintf(name,sizeof(name),"%d-%s-dash",layout_index,label);
+        for(char* c=name;*c;++c)if(*c==' ' || *c=='+')*c='_';
+        screenshot(name,"layout-");
+        click("TRACK");
+        ui.update(telemetry,diagnostics,status,config,warnings);ui.updateShiftLight(state,0,config.shift);
+        std::snprintf(name,sizeof(name),"%d-%s-track",layout_index,label);
+        for(char* c=name;*c;++c)if(*c==' ' || *c=='+')*c='_';
+        screenshot(name,"layout-");
+        std::printf("Captured layout %d (%s)\n",layout_index,label);
+        return 0;
+    }
     if(reset_mode) {
         click("SETTINGS");click("SYSTEM");
         auto* system_page=lv_scr_act();
@@ -132,7 +172,7 @@ int main(int argc,char** argv) {
         clickOn(lv_layer_top(),"CONFIRM");
         assert(lv_scr_act()==system_page && button(lv_layer_top(),"CONFIRM"));
         assert(lv_obj_has_state(confirm,LV_STATE_DISABLED));
-        ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
+        ConfigCommitRequest request;assert(takeCommit(ui,request));
         assert(request.kind==ConfigCommitKind::Save);
         assert(request.candidate.dash_tiles[0].visible);
         assert(!request.candidate.track_tiles[0].visible);
@@ -141,19 +181,19 @@ int main(int argc,char** argv) {
         confirm=button(lv_layer_top(),"CONFIRM");assert(confirm);
         assert(!lv_obj_has_state(confirm,LV_STATE_DISABLED));
 
-        clickOn(lv_layer_top(),"CONFIRM");assert(ui.takeConfigCommit(request));
+        clickOn(lv_layer_top(),"CONFIRM");assert(takeCommit(ui,request));
         config=request.candidate;ui.completeConfigCommit(request.revision,true);
         assert(!button(lv_layer_top(),"CONFIRM"));
         assert(lv_scr_act()==system_page && config.dash_tiles[0].visible);
 
         click("RESET TRACK");clickOn(lv_layer_top(),"CONFIRM");
-        assert(ui.takeConfigCommit(request));
+        assert(takeCommit(ui,request));
         assert(request.candidate.track_tiles[0].visible);
         config=request.candidate;ui.completeConfigCommit(request.revision,true);
         assert(!button(lv_layer_top(),"CONFIRM"));
 
         click("FACTORY RESET");clickOn(lv_layer_top(),"CONFIRM");
-        assert(ui.takeConfigCommit(request));
+        assert(takeCommit(ui,request));
         assert(request.kind==ConfigCommitKind::FactoryReset);
         config=AppConfig::defaults();ui.completeConfigCommit(request.revision,true);
         assert(!button(lv_layer_top(),"CONFIRM"));
@@ -175,7 +215,7 @@ int main(int argc,char** argv) {
 
         stageBrightness(ui,config,board);
         auto* settings_page=lv_scr_act();click("< BACK");
-        assert(ui.takeConfigCommit(request));
+        assert(takeCommit(ui,request));
         ui.completeConfigCommit(request.revision,false);
         assert(lv_scr_act()==settings_page);
         assert(board.brightness_percent==100U);
@@ -186,7 +226,7 @@ int main(int argc,char** argv) {
         click("DASH");assert(lv_scr_act()==dash);
         stageBrightness(ui,config,board);
         settings_page=lv_scr_act();click("DASH");
-        assert(ui.takeConfigCommit(request));
+        assert(takeCommit(ui,request));
         ui.completeConfigCommit(request.revision,false);
         assert(lv_scr_act()==settings_page);
         assert(button(lv_layer_top(),"EXIT WITHOUT SAVE"));
@@ -195,7 +235,7 @@ int main(int argc,char** argv) {
 
         stageBrightness(ui,config,board);
         settings_page=lv_scr_act();click("TRACK");
-        assert(ui.takeConfigCommit(request));
+        assert(takeCommit(ui,request));
         ui.completeConfigCommit(request.revision,false);
         assert(lv_scr_act()==settings_page);
         assert(button(lv_layer_top(),"EXIT WITHOUT SAVE"));
@@ -218,13 +258,13 @@ int main(int argc,char** argv) {
                "BACK rebuilt the Settings screen before persistence completed");
         auto* back=button(settings_page,"< BACK");assert(back);
         assert(lv_obj_has_state(back,LV_STATE_DISABLED));
-        ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
+        ConfigCommitRequest request;assert(takeCommit(ui,request));
         assert(request.candidate.rpm_scale_max==9000);
         ui.completeConfigCommit(request.revision,false);
         assert(lv_scr_act()==settings_page && config.rpm_scale_max==10000);
         assert(!lv_obj_has_state(back,LV_STATE_DISABLED));
 
-        click("< BACK");assert(ui.takeConfigCommit(request));
+        click("< BACK");assert(takeCommit(ui,request));
         config=request.candidate;ui.completeConfigCommit(request.revision,true);
         assert(lv_scr_act()!=settings_page);
         assert(find(lv_scr_act(),&lv_label_class,"SETTINGS"));
@@ -312,13 +352,13 @@ int main(int argc,char** argv) {
         click("< BACK");
         assert(find(lv_scr_act(),&lv_label_class,"RACECHRONO") &&
                "RaceChrono BACK changed screens before persistence");
-        ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
+        ConfigCommitRequest request;assert(takeCommit(ui,request));
         assert(request.candidate.racechrono.enabled);
         config=request.candidate;ui.completeConfigCommit(request.revision,true);
         assert(find(lv_scr_act(),&lv_label_class,"DATA & CAN"));
 
         click("DASH");dash=lv_scr_act();
-        auto* tile=lv_obj_get_child(dash,2);
+        auto* tile=tileObject(dash,0);
         lv_event_send(tile,LV_EVENT_LONG_PRESSED,nullptr);
         click("SELECT PARAMETER");click("RACECHRONO");
         auto* channel=findContaining(lv_scr_act(),"Current lap number");
@@ -327,26 +367,26 @@ int main(int argc,char** argv) {
         assert(lv_obj_check_type(channel_row,&lv_btn_class));
         lv_event_send(channel_row,LV_EVENT_CLICKED,nullptr);
         click("SELECT");click("BACK");
-        assert(ui.takeConfigCommit(request));
+        assert(takeCommit(ui,request));
         assert(request.candidate.dash_tiles[0].parameter==
                ParameterId::RcLapNumber &&
                "RaceChrono parameter was not assigned to the tile");
         std::puts("RaceChrono settings navigation, paging and staged save passed");
     } else if(can_tile) {
-        auto* tile=lv_obj_get_child(dash,2);
+        auto* tile=tileObject(dash,0);
         lv_event_send(tile,LV_EVENT_LONG_PRESSED,nullptr);
         click("SELECT PARAMETER");
         choosePickerRow("FLAGS","Check engine");
         click("SELECT");click("BACK");
-        ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
+        ConfigCommitRequest request;assert(takeCommit(ui,request));
         assert(request.candidate.dash_tiles[0].parameter==
                ParameterId::CheckEngine);
         config=request.candidate;ui.completeConfigCommit(request.revision,true);
         assert(lv_scr_act()==dash);
         std::puts("BMW MS43 CAN parameter picker and BACK persistence passed");
     } else if(units) {
-        lv_event_send(lv_obj_get_child(dash,2),LV_EVENT_LONG_PRESSED,nullptr);
-        click("BACK");ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
+        lv_event_send(tileObject(dash,0),LV_EVENT_LONG_PRESSED,nullptr);
+        click("BACK");ConfigCommitRequest request;assert(takeCommit(ui,request));
         if(tempunits) {
             assert(request.candidate.dash_tiles[0].warning.delay_ms==250 && "Unchanged delay rounded during save");
             assert(std::fabs(request.candidate.dash_tiles[0].temperature_bar.ready_native-75.15f)<.00001f && "Unchanged temperature limit rounded during save");
@@ -357,7 +397,7 @@ int main(int argc,char** argv) {
         }
         std::puts("Unit-aware pressure warning roundtrip passed");
     } else if(argc>1 && !std::strcmp(argv[1],"--editor")) {
-        lv_event_send(lv_obj_get_child(dash,2),LV_EVENT_LONG_PRESSED,nullptr);
+        lv_event_send(tileObject(dash,0),LV_EVENT_LONG_PRESSED,nullptr);
         assert(button(lv_scr_act(),"DATA") && "Missing full-screen editor tabs");
         screenshot("data");
         assert(lv_obj_has_flag(button(lv_scr_act(),"TEMPERATURE BAR"),LV_OBJ_FLAG_HIDDEN));
@@ -399,23 +439,24 @@ int main(int argc,char** argv) {
         lv_obj_add_state(find(oil_parent,&lv_checkbox_class),LV_STATE_CHECKED);
         click("DATA");click("WARNING");screenshot("warning");
         click("CANCEL");assert(lv_scr_act()==dash);
-        ConfigCommitRequest request;assert(!ui.takeConfigCommit(request));
+        ConfigCommitRequest request;assert(!takeCommit(ui,request));
         click("SETTINGS");click("RPM & SHIFT LIGHT");
         assert(find(lv_scr_act(),&lv_label_class,"RPM SCALE MAX"));
         ui.update(telemetry,diagnostics,status,config,warnings);
         assert(find(lv_scr_act(),&lv_label_class,"FLASH ENABLED") && "Flash enable switch is missing");
-        assert(find(lv_scr_act(),&lv_label_class,"12-LED FILL MAX") && "12-LED fill maximum slider is missing");
-        assert(countType(lv_scr_act(),&lv_slider_class)==5 && "RPM settings must expose five sliders");
-        assert(!find(lv_scr_act(),&lv_label_class,"ADVANCED: 12-LED FILL MAX") && "Duplicate lower-right RPM field remains");
+        // The tachometer bar is the shift light: the 12-LED fill maximum has
+        // no control any more, the bar uses four RPM sliders.
+        assert(!find(lv_scr_act(),&lv_label_class,"12-LED FILL MAX") && "Obsolete 12-LED fill maximum is back");
+        assert(countType(lv_scr_act(),&lv_slider_class)==4 && "RPM settings must expose four sliders");
         assert(!findContaining(lv_scr_act(),"UI updates:") && "Runtime diagnostics overwrite RPM status");
-        assert(find(lv_scr_act(),&lv_label_class,"Colors follow YELLOW / RED thresholds; 12 LEDs retain 4/4/4 zones"));
+        assert(find(lv_scr_act(),&lv_label_class,"Tachometer bar: white, yellow from YELLOW FROM, red from RED FROM"));
         screenshot("rpm");
-        click("8000 RPM");click("9");click("0");click("0");click("0");click("APPLY");
-        assert(config.shift.max_rpm==8000);
+        click("7000 RPM");click("6");click("8");click("0");click("0");click("APPLY");
+        assert(config.shift.red_rpm==7000 && "RED FROM edit leaked before saving");
         click("10000 RPM");click("8");click("0");click("0");click("0");click("APPLY");
         assert(config.rpm_scale_max==10000 && config.shift.flash_rpm==7500);
-        click("TRACK");assert(lv_scr_act()!=dash);assert(ui.takeConfigCommit(request));
-        assert(request.candidate.rpm_scale_max==8000 && request.candidate.shift.max_rpm==9000);
+        click("TRACK");assert(lv_scr_act()!=dash);assert(takeCommit(ui,request));
+        assert(request.candidate.rpm_scale_max==8000 && request.candidate.shift.red_rpm==6800);
         config=request.candidate;ui.completeConfigCommit(request.revision,true);
         assert(lv_scr_act()!=dash && find(lv_scr_act(),&lv_label_class,"TRACK"));
         std::puts("Tabbed editor cancel and unified RPM navigation passed");
@@ -432,7 +473,7 @@ int main(int argc,char** argv) {
         }
         lv_dropdown_set_selected(dropdown,4);lv_event_send(dropdown,LV_EVENT_VALUE_CHANGED,nullptr);
         click(track ? "TRACK":"DASH");assert(lv_scr_act()!=dash);
-        ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
+        ConfigCommitRequest request;assert(takeCommit(ui,request));
         config=request.candidate;ui.completeConfigCommit(request.revision,true);
         assert(lv_scr_act()==dash);
         // Assert before any scheduled Ui::update: the first visible screen must be Strip.
@@ -440,9 +481,9 @@ int main(int argc,char** argv) {
         assert(find(dash,&lv_label_class,"6840") && "RPM missing from first frame");
         std::puts("Layout return first-frame test passed");
     } else if(argc>1 && !std::strcmp(argv[1],"--retry")) {
-        auto* tile=lv_obj_get_child(dash,2);lv_event_send(tile,LV_EVENT_LONG_PRESSED,nullptr);
+        auto* tile=tileObject(dash,0);lv_event_send(tile,LV_EVENT_LONG_PRESSED,nullptr);
         auto* editor=lv_scr_act();auto* visible=find(editor,&lv_checkbox_class);lv_obj_clear_state(visible,LV_STATE_CHECKED);
-        click("BACK");ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
+        click("BACK");ConfigCommitRequest request;assert(takeCommit(ui,request));
         ui.completeConfigCommit(request.revision,false);
         assert(lv_scr_act()==editor && config.dash_tiles[0].visible);
         assert(!lv_obj_has_state(button(editor,"BACK"),LV_STATE_DISABLED));
@@ -452,29 +493,29 @@ int main(int argc,char** argv) {
         lv_event_send(tile,LV_EVENT_LONG_PRESSED,nullptr);
         editor=lv_scr_act();visible=find(editor,&lv_checkbox_class);
         lv_obj_clear_state(visible,LV_STATE_CHECKED);
-        click("BACK");assert(ui.takeConfigCommit(request));config=request.candidate;ui.completeConfigCommit(request.revision,true);
+        click("BACK");assert(takeCommit(ui,request));config=request.candidate;ui.completeConfigCommit(request.revision,true);
         assert(lv_scr_act()==dash && !config.dash_tiles[0].visible);
         std::puts("Failed tile save can be discarded or retried transactionally");
     } else if(center) {
-        auto* tile=lv_obj_get_child(dash,8); // configurable Analog slot 6
+        auto* tile=tileObject(dash,6); // configurable Analog slot 6
         lv_event_send(tile,LV_EVENT_LONG_PRESSED,nullptr);
         assert(find(lv_scr_act(),&lv_label_class,"TILE SETTINGS"));
         click("SELECT PARAMETER");
         choosePickerRow("ENGINE","Vehicle speed");
         click("SELECT");click("BACK");
-        ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
+        ConfigCommitRequest request;assert(takeCommit(ui,request));
         config=request.candidate;ui.completeConfigCommit(request.revision,true);
         assert(activeTiles(config,PageId::Dash)[6].parameter==ParameterId::Speed);
         assert(find(tile,&lv_label_class,"137") && "Analog center shows old RPM after saving SPEED");
         std::puts("Analog center long-press, parameter choice and first-frame save test passed");
     } else {
         // Open the real first tile through its registered long-press event.
-        auto* tile=lv_obj_get_child(dash,2);
+        auto* tile=tileObject(dash,0);
         lv_event_send(tile,LV_EVENT_LONG_PRESSED,nullptr);
         assert(find(lv_scr_act(),&lv_label_class,"TILE SETTINGS"));
         auto* visible=find(lv_scr_act(),&lv_checkbox_class);assert(visible);
         lv_obj_clear_state(visible,LV_STATE_CHECKED);
-        click("BACK");ConfigCommitRequest request;assert(ui.takeConfigCommit(request));
+        click("BACK");ConfigCommitRequest request;assert(takeCommit(ui,request));
         config=request.candidate;ui.completeConfigCommit(request.revision,true);
         assert(lv_scr_act()==dash);
         assert(lv_obj_has_flag(tile,LV_OBJ_FLAG_HIDDEN) && "Saved tile visibility applied after screen return");

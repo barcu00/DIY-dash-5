@@ -1,11 +1,11 @@
 name: Production LVGL view previews
 on:
   push:
-    branches: [dashboard-dev, feature/racechrono-ble-monitor]
+    branches: [dashboard-dev, feature/racechrono-ble-monitor, feature/tach-bar-layouts]
     paths: ['src/**', 'design/production-preview/**', '.github/workflows/production-view-previews.yml']
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   render:
     runs-on: ubuntu-latest
@@ -24,8 +24,8 @@ jobs:
             if [[ "$(basename "$source")" == "lv_mem.c" ]]; then memory_flag="-DARDUINO"; fi
             gcc -O2 $memory_flag -DLV_CONF_INCLUDE_SIMPLE -DLV_LVGL_H_INCLUDE_SIMPLE -Idesign/production-preview -Isrc -I/tmp/lvgl-8.4.0 -c "$source" -o "/tmp/lvgl-objects/$(basename "$source").o"
           done
-          g++ -std=c++17 -O2 -DLV_CONF_INCLUDE_SIMPLE -DLV_LVGL_H_INCLUDE_SIMPLE -Idesign/production-preview/host -Idesign/production-preview -Isrc -I/tmp/lvgl-8.4.0 design/production-preview/render.cpp src/settings/app_config.cpp $(find src/telemetry src/ecu src/alarms -name '*.cpp') $(find src/racechrono -name '*.cpp' ! -name 'racechrono_ble_transport.cpp') $(find src/ui -maxdepth 1 -name '*.cpp') /tmp/lvgl-objects/*.o -lm -o /tmp/production-preview
-          g++ -std=c++17 -O2 -DLV_CONF_INCLUDE_SIMPLE -DLV_LVGL_H_INCLUDE_SIMPLE -Idesign/production-preview/host -Idesign/production-preview -Isrc -I/tmp/lvgl-8.4.0 design/production-preview/transitions.cpp src/settings/app_config.cpp $(find src/telemetry src/ecu src/alarms -name '*.cpp') $(find src/racechrono -name '*.cpp' ! -name 'racechrono_ble_transport.cpp') $(find src/ui -maxdepth 1 -name '*.cpp') /tmp/lvgl-objects/*.o -lm -o /tmp/ui-transitions
+          g++ -std=c++17 -O2 -DLV_CONF_INCLUDE_SIMPLE -DLV_LVGL_H_INCLUDE_SIMPLE -Idesign/production-preview/host -Idesign/production-preview -Isrc -I/tmp/lvgl-8.4.0 design/production-preview/render.cpp src/settings/app_config.cpp $(find src/telemetry src/ecu src/alarms src/odometer -name '*.cpp') $(find src/racechrono -name '*.cpp' ! -name 'racechrono_ble_transport.cpp') $(find src/ui -maxdepth 1 -name '*.cpp') /tmp/lvgl-objects/*.o -lm -o /tmp/production-preview
+          g++ -std=c++17 -O2 -DLV_CONF_INCLUDE_SIMPLE -DLV_LVGL_H_INCLUDE_SIMPLE -Idesign/production-preview/host -Idesign/production-preview -Isrc -I/tmp/lvgl-8.4.0 design/production-preview/transitions.cpp src/settings/app_config.cpp $(find src/telemetry src/ecu src/alarms src/odometer -name '*.cpp') $(find src/racechrono -name '*.cpp' ! -name 'racechrono_ble_transport.cpp') $(find src/ui -maxdepth 1 -name '*.cpp') /tmp/lvgl-objects/*.o -lm -o /tmp/ui-transitions
       - name: Check first visible frame after layout selection
         if: success() || failure()
         run: /tmp/ui-transitions
@@ -109,6 +109,47 @@ jobs:
         with:
           name: RaceChrono-LVGL-previews
           path: racechrono-previews/*.png
+          retention-days: 30
+      - name: Capture every layout on DASH and TRACK
+        if: success() || failure()
+        run: |
+          mkdir -p layout-previews
+          for index in 0 1 2 3 4 5 6 7 8 9; do
+            /tmp/ui-transitions --layouts layout-previews "$index"
+          done
+          python -m pip install Pillow==11.3.0
+          python -c "from pathlib import Path; from PIL import Image; [Image.open(p).save(p.with_suffix('.png')) for p in Path('layout-previews').glob('*.ppm')]"
+      - name: Commit layout previews to firmware-builds
+        # Artifacts cannot always be downloaded; previews/layouts on the
+        # firmware-builds branch can be fetched with plain git.
+        if: (success() || failure()) && github.event_name == 'push' && github.ref == 'refs/heads/feature/tach-bar-layouts'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha=$(git rev-parse --short HEAD)
+          out=$(mktemp -d)
+          cp layout-previews/*.png "$out/"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin firmware-builds
+            git checkout -f -B firmware-builds origin/firmware-builds
+            rm -rf previews/layouts
+            mkdir -p previews/layouts
+            cp "$out"/*.png previews/layouts/
+            printf 'source: feature/tach-bar-layouts @ %s\n' "$sha" > previews/layouts/SOURCE.txt
+            git add -A previews/layouts
+            git diff --cached --quiet && exit 0
+            git commit -m "previews: layouts @ $sha"
+            git push origin firmware-builds && exit 0
+            sleep $((attempt * 5))
+          done
+          exit 1
+      - uses: actions/upload-artifact@v4
+        if: success() || failure()
+        with:
+          name: Layout-LVGL-previews
+          path: layout-previews/*.png
           retention-days: 30
       - name: Convert editor captures
         if: success() || failure()

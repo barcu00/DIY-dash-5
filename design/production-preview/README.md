@@ -7,16 +7,15 @@ PNG for viewing. The 512 KiB allocator capacity, RGB565 and font configuration
 match firmware. CI exercises the embedded pool-allocation hook. This does not
 measure embedded RAM or performance.
 
-Scenes cover all six presets, compact and analog flag states, a warning tile,
+Scenes cover the five original presets, compact and analog flag states, a warning tile,
 6000-RPM scale, red flash phases, 10000-RPM digit fitting and unsupported numeric
 captions. Assertions test flash colors, flag-caption separation, digit width and
 unavailable-caption bounds. It does not render the full settings/editor screens,
 simulate CAN hardware, or replace physical touch/smoothness testing.
 
-All 25 layout scenes plus two Analog flash scenes run in partial-buffer and
+All 16 layout scenes plus two Analog flash scenes run in partial-buffer and
 full-frame double-buffer direct modes;
-their PNGs must be pixel-identical. Modern flash-off is checked across the
-entire semicircle, and its actual dirty-pixel budget is limited to 120000 pixels.
+their PNGs must be pixel-identical.
 Strip connected components must be identical upright 18 × 28 pixel rectangles.
 Thin Strip ticks must remain vertical. Analog flash checks the whole segmented
 ring, its permanent white index and a 130000-pixel dirty-redraw budget.

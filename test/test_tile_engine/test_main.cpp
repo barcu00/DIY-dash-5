@@ -48,11 +48,11 @@ void test_dash_left_tiles_compact_to_lowest_rows_without_crossing_groups() {
 
     TEST_ASSERT_EQUAL_UINT32(3U,
         countGroup(placements, TileGroup::DashLeft));
-    TEST_ASSERT_EQUAL_INT16(134,
+    TEST_ASSERT_EQUAL_INT16(150,
         findPlacement(placements, PageId::Dash, 1U)->geometry.y);
-    TEST_ASSERT_EQUAL_INT16(232,
+    TEST_ASSERT_EQUAL_INT16(242,
         findPlacement(placements, PageId::Dash, 2U)->geometry.y);
-    TEST_ASSERT_EQUAL_INT16(332,
+    TEST_ASSERT_EQUAL_INT16(334,
         findPlacement(placements, PageId::Dash, 3U)->geometry.y);
     TEST_ASSERT_EQUAL_UINT32(4U,
         countGroup(placements, TileGroup::DashRight));
@@ -72,9 +72,9 @@ void test_dash_wide_tiles_compact_only_inside_their_two_wide_positions() {
     TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(TileGroup::DashCenterWide),
                             static_cast<uint8_t>(gear->group));
     TEST_ASSERT_EQUAL_INT16(192, gear->geometry.x);
-    TEST_ASSERT_EQUAL_INT16(134, gear->geometry.y);
+    TEST_ASSERT_EQUAL_INT16(150, gear->geometry.y);
     TEST_ASSERT_EQUAL_INT16(416, gear->geometry.width);
-    TEST_ASSERT_EQUAL_INT16(90, gear->geometry.height);
+    TEST_ASSERT_EQUAL_INT16(86, gear->geometry.height);
 }
 
 void test_dash_center_small_tiles_bottom_pack_in_row_major_order() {
@@ -89,9 +89,9 @@ void test_dash_center_small_tiles_bottom_pack_in_row_major_order() {
         findPlacement(placements, PageId::Dash, 9U);
 
     TEST_ASSERT_EQUAL_INT16(404, first_visible->geometry.x);
-    TEST_ASSERT_EQUAL_INT16(232, first_visible->geometry.y);
+    TEST_ASSERT_EQUAL_INT16(242, first_visible->geometry.y);
     TEST_ASSERT_EQUAL_INT16(404, last_visible->geometry.x);
-    TEST_ASSERT_EQUAL_INT16(332, last_visible->geometry.y);
+    TEST_ASSERT_EQUAL_INT16(334, last_visible->geometry.y);
 }
 
 void test_track_center_tiles_compact_to_bottom_and_keep_order() {
@@ -108,8 +108,8 @@ void test_track_center_tiles_compact_to_bottom_and_keep_order() {
 
     TEST_ASSERT_EQUAL_UINT32(2U,
         countGroup(placements, TileGroup::TrackCenter));
-    TEST_ASSERT_EQUAL_INT16(232, first->geometry.y);
-    TEST_ASSERT_EQUAL_INT16(332, second->geometry.y);
+    TEST_ASSERT_EQUAL_INT16(242, first->geometry.y);
+    TEST_ASSERT_EQUAL_INT16(334, second->geometry.y);
     TEST_ASSERT_EQUAL_INT16(416, first->geometry.width);
 }
 

@@ -17,4 +17,5 @@ enum SettingsAction : intptr_t {
     LayoutPresetChanged,
     RpmScaleChanged,
     WarningSoundChanged,
+    TrendWindowChanged,
 };

@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <new>
+#include <type_traits>
 
 #include "telemetry/parameter_registry.h"
 #include "ui/dashboard_layout.h"
@@ -151,6 +153,16 @@ TemperatureBarConfig defaultTemperatureBarConfig(ParameterId parameter) {
 
 AppConfig AppConfig::defaults() {
     AppConfig config;
+    setDefaults(config);
+    return config;
+}
+
+// Fills `config` in place: AppConfig is ~12 KB, so callers on small task
+// stacks must not build a temporary copy.
+void AppConfig::setDefaults(AppConfig& config) {
+    static_assert(std::is_trivially_destructible<AppConfig>::value,
+                  "in-place reset relies on a trivial destructor");
+    new (&config) AppConfig();
     setProfileId(config.can, "none");
 
     config.dash_tiles = {{
@@ -162,8 +174,9 @@ AppConfig AppConfig::defaults() {
         tile(ParameterId::Gear),
         tile(ParameterId::Tps),
         tile(ParameterId::BatteryVoltage),
-        tile(ParameterId::FuelPressure),
-        tile(ParameterId::OilPressure),
+        // Slots 8 and 9 used to repeat FUEL PRESS / OIL PRESS (slots 13, 11).
+        tile(ParameterId::InjectorDuty),
+        tile(ParameterId::IgnitionTiming),
         tile(ParameterId::Iat),
         tile(ParameterId::OilPressure),
         tile(ParameterId::OilTemperature),
@@ -185,7 +198,6 @@ AppConfig AppConfig::defaults() {
         tile(ParameterId::BatteryVoltage),
     }};
     initializeAlternateLayouts(config);
-    return config;
 }
 
 ValidationResult AppConfig::validate() {
@@ -211,9 +223,15 @@ ValidationResult AppConfig::validate() {
     validateTiles(track_tiles);
     for (auto& tiles : dash_alternate_tiles) validateTiles(tiles);
     for (auto& tiles : track_alternate_tiles) validateTiles(tiles);
+    for (auto& tiles : dash_extra_tiles) validateTiles(tiles);
+    for (auto& tiles : track_extra_tiles) validateTiles(tiles);
     if (!validDashboardLayout(dash_layout)) dash_layout = DashboardLayout::ClassicDash;
     if (!validDashboardLayout(track_layout)) track_layout = DashboardLayout::ClassicTrack;
     rpm_scale_max = normalizedRpmScale(rpm_scale_max);
+    if (trend_window_s != 5U && trend_window_s != 10U &&
+        trend_window_s != 15U && trend_window_s != 20U) {
+        trend_window_s = 15U;
+    }
 
     const bool shift_in_range = shift.start_rpm >= kMinimumShiftRpm &&
                                 shift.max_rpm <= kMaximumShiftRpm;

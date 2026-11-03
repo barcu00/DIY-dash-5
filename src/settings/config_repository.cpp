@@ -143,6 +143,31 @@ void migrateTiles(const std::array<LegacyTileConfigV4, Count>& legacy,
 
 bool normalizeLegacyShiftRange(ShiftLightConfig& shift);
 
+// Schema 12 removed MODERN MOTORSPORT (stored value 5); the layouts after it
+// moved down by one. A stored MODERN MOTORSPORT falls back to the page default.
+DashboardLayout layoutFromSchema11(DashboardLayout stored, PageId page) {
+    constexpr uint8_t kRemovedModernMotorsport = 5U;
+    const auto value = static_cast<uint8_t>(stored);
+    if (value == kRemovedModernMotorsport) {
+        return page == PageId::Track ? DashboardLayout::ClassicTrack
+                                     : DashboardLayout::ClassicDash;
+    }
+    return value > kRemovedModernMotorsport
+        ? static_cast<DashboardLayout>(value - 1U) : stored;
+}
+
+// Schemas 8..11 keep five alternate banks; the fifth belonged to MODERN
+// MOTORSPORT on both pages and is dropped.
+template <typename Legacy>
+void copySchema11Layouts(const Legacy& old, AppConfig& migrated) {
+    migrated.dash_layout = layoutFromSchema11(old.dash_layout, PageId::Dash);
+    migrated.track_layout = layoutFromSchema11(old.track_layout, PageId::Track);
+    std::copy_n(old.dash_alternate_tiles.begin(), AppConfig::kAlternateLayoutCount,
+                migrated.dash_alternate_tiles.begin());
+    std::copy_n(old.track_alternate_tiles.begin(), AppConfig::kAlternateLayoutCount,
+                migrated.track_alternate_tiles.begin());
+}
+
 struct LegacyAppConfigV6 {
     uint32_t schema_version = 6U;
     DataSource data_source = DataSource::Demo;
@@ -163,7 +188,10 @@ LoadResult migrateV6(ConfigBackend& backend, AppConfig& config) {
     LegacyAppConfigV6 old{};
     if (!backend.read(&old, sizeof(old)) || old.schema_version != 6U)
         return LoadResult::DefaultsUsed;
-    auto migrated = AppConfig::defaults();
+    std::unique_ptr<AppConfig> migrated_storage(
+        new (std::nothrow) AppConfig(AppConfig::defaults()));
+    if (!migrated_storage) return LoadResult::DefaultsUsed;
+    AppConfig& migrated = *migrated_storage;
     migrated.data_source = old.data_source;
     migrated.brightness_percent = old.brightness_percent;
     migrated.can = old.can;
@@ -217,12 +245,181 @@ struct LegacyAppConfigV8 {
     bool warning_sound_enabled = true;
 };
 
+struct LegacyAppConfigV9 {
+    uint32_t schema_version = 9U;
+    DataSource data_source = DataSource::Demo;
+    uint8_t brightness_percent = 100U;
+    CanSettings can{};
+    ShiftLightConfig shift{};
+    UnitSettings units{};
+    std::array<TileConfig, 14> dash_tiles{};
+    std::array<TileConfig, 12> track_tiles{};
+    DashboardLayout dash_layout = DashboardLayout::ClassicDash;
+    DashboardLayout track_layout = DashboardLayout::ClassicTrack;
+    uint16_t rpm_scale_max = 10000U;
+    std::array<AppConfig::TileBank, 5> dash_alternate_tiles{};
+    std::array<AppConfig::TileBank, 5> track_alternate_tiles{};
+    bool warning_sound_enabled = true;
+    RaceChronoSettings racechrono{};
+};
+
+struct LegacyAppConfigV10 {
+    uint32_t schema_version = 10U;
+    DataSource data_source = DataSource::Demo;
+    uint8_t brightness_percent = 100U;
+    CanSettings can{};
+    ShiftLightConfig shift{};
+    UnitSettings units{};
+    std::array<TileConfig, 14> dash_tiles{};
+    std::array<TileConfig, 12> track_tiles{};
+    DashboardLayout dash_layout = DashboardLayout::ClassicDash;
+    DashboardLayout track_layout = DashboardLayout::ClassicTrack;
+    uint16_t rpm_scale_max = 10000U;
+    std::array<AppConfig::TileBank, 5> dash_alternate_tiles{};
+    std::array<AppConfig::TileBank, 5> track_alternate_tiles{};
+    bool warning_sound_enabled = true;
+    RaceChronoSettings racechrono{};
+    std::array<AppConfig::ExtraTileBank, AppConfig::kExtraLayoutCount> dash_extra_tiles{};
+    std::array<AppConfig::ExtraTileBank, AppConfig::kExtraLayoutCount> track_extra_tiles{};
+};
+
+struct LegacyAppConfigV11 {
+    uint32_t schema_version = 11U;
+    DataSource data_source = DataSource::Demo;
+    uint8_t brightness_percent = 100U;
+    CanSettings can{};
+    ShiftLightConfig shift{};
+    UnitSettings units{};
+    std::array<TileConfig, 14> dash_tiles{};
+    std::array<TileConfig, 12> track_tiles{};
+    DashboardLayout dash_layout = DashboardLayout::ClassicDash;
+    DashboardLayout track_layout = DashboardLayout::ClassicTrack;
+    uint16_t rpm_scale_max = 10000U;
+    std::array<AppConfig::TileBank, 5> dash_alternate_tiles{};
+    std::array<AppConfig::TileBank, 5> track_alternate_tiles{};
+    bool warning_sound_enabled = true;
+    RaceChronoSettings racechrono{};
+    std::array<AppConfig::ExtraTileBank, AppConfig::kExtraLayoutCount> dash_extra_tiles{};
+    std::array<AppConfig::ExtraTileBank, AppConfig::kExtraLayoutCount> track_extra_tiles{};
+    uint16_t trend_window_s = 15U;
+};
+
+static_assert(sizeof(LegacyAppConfigV10) != sizeof(AppConfig) &&
+              sizeof(LegacyAppConfigV11) != sizeof(AppConfig) &&
+              sizeof(LegacyAppConfigV11) != sizeof(LegacyAppConfigV10) &&
+              sizeof(LegacyAppConfigV9) != sizeof(AppConfig) &&
+              sizeof(LegacyAppConfigV8) != sizeof(AppConfig) &&
+              sizeof(LegacyAppConfigV7) != sizeof(AppConfig) &&
+              sizeof(LegacyAppConfigV6) != sizeof(AppConfig),
+              "schemas are told apart by their stored size");
+
+// Schema 12 removes MODERN MOTORSPORT: its layout value and tile banks.
+// Everything else is copied verbatim.
+LoadResult migrateV11(ConfigBackend& backend, AppConfig& config) {
+    std::unique_ptr<LegacyAppConfigV11> old(new (std::nothrow) LegacyAppConfigV11{});
+    std::unique_ptr<AppConfig> migrated(new (std::nothrow) AppConfig{});
+    if (!old || !migrated || !backend.read(old.get(), sizeof(LegacyAppConfigV11)) ||
+        old->schema_version != 11U) {
+        return LoadResult::DefaultsUsed;
+    }
+    AppConfig::setDefaults(*migrated);
+    migrated->data_source = old->data_source;
+    migrated->brightness_percent = old->brightness_percent;
+    migrated->can = old->can;
+    migrated->shift = old->shift;
+    migrated->units = old->units;
+    migrated->dash_tiles = old->dash_tiles;
+    migrated->track_tiles = old->track_tiles;
+    copySchema11Layouts(*old, *migrated);
+    migrated->rpm_scale_max = old->rpm_scale_max;
+    migrated->warning_sound_enabled = old->warning_sound_enabled;
+    migrated->racechrono = old->racechrono;
+    migrated->dash_extra_tiles = old->dash_extra_tiles;
+    migrated->track_extra_tiles = old->track_extra_tiles;
+    migrated->trend_window_s = old->trend_window_s;
+    normalizeLegacyShiftRange(migrated->shift);
+    if (!migrated->validate().valid) {
+        return LoadResult::DefaultsUsed;
+    }
+    config = *migrated;
+    return backend.write(&config, sizeof(config))
+               ? LoadResult::Migrated
+               : LoadResult::MigrationWriteFailed;
+}
+
+// Schema 11 appends the trend window; everything else is copied verbatim.
+LoadResult migrateV10(ConfigBackend& backend, AppConfig& config) {
+    std::unique_ptr<LegacyAppConfigV10> old(new (std::nothrow) LegacyAppConfigV10{});
+    std::unique_ptr<AppConfig> migrated(new (std::nothrow) AppConfig{});
+    if (!old || !migrated || !backend.read(old.get(), sizeof(LegacyAppConfigV10)) ||
+        old->schema_version != 10U) {
+        return LoadResult::DefaultsUsed;
+    }
+    AppConfig::setDefaults(*migrated);
+    migrated->data_source = old->data_source;
+    migrated->brightness_percent = old->brightness_percent;
+    migrated->can = old->can;
+    migrated->shift = old->shift;
+    migrated->units = old->units;
+    migrated->dash_tiles = old->dash_tiles;
+    migrated->track_tiles = old->track_tiles;
+    copySchema11Layouts(*old, *migrated);
+    migrated->rpm_scale_max = old->rpm_scale_max;
+    migrated->warning_sound_enabled = old->warning_sound_enabled;
+    migrated->racechrono = old->racechrono;
+    migrated->dash_extra_tiles = old->dash_extra_tiles;
+    migrated->track_extra_tiles = old->track_extra_tiles;
+    normalizeLegacyShiftRange(migrated->shift);
+    if (!migrated->validate().valid) {
+        return LoadResult::DefaultsUsed;
+    }
+    config = *migrated;
+    return backend.write(&config, sizeof(config))
+               ? LoadResult::Migrated
+               : LoadResult::MigrationWriteFailed;
+}
+
+// Schema 10 only appends the banks of the new layouts: everything stored by
+// schema 9 is copied verbatim and the new banks get their defaults.
+LoadResult migrateV9(ConfigBackend& backend, AppConfig& config) {
+    std::unique_ptr<LegacyAppConfigV9> old(new (std::nothrow) LegacyAppConfigV9{});
+    std::unique_ptr<AppConfig> migrated(new (std::nothrow) AppConfig(AppConfig::defaults()));
+    if (!old || !migrated || !backend.read(old.get(), sizeof(LegacyAppConfigV9)) ||
+        old->schema_version != 9U) {
+        return LoadResult::DefaultsUsed;
+    }
+    migrated->data_source = old->data_source;
+    migrated->brightness_percent = old->brightness_percent;
+    migrated->can = old->can;
+    migrated->shift = old->shift;
+    migrated->units = old->units;
+    migrated->dash_tiles = old->dash_tiles;
+    migrated->track_tiles = old->track_tiles;
+    copySchema11Layouts(*old, *migrated);
+    migrated->rpm_scale_max = old->rpm_scale_max;
+    migrated->warning_sound_enabled = old->warning_sound_enabled;
+    migrated->racechrono = old->racechrono;
+    normalizeLegacyShiftRange(migrated->shift);
+    if (!migrated->validate().valid) {
+        return LoadResult::DefaultsUsed;
+    }
+    config = *migrated;
+    return backend.write(&config, sizeof(config))
+               ? LoadResult::Migrated
+               : LoadResult::MigrationWriteFailed;
+}
+
 LoadResult migrateV8(ConfigBackend& backend, AppConfig& config) {
     LegacyAppConfigV8 old{};
     if (!backend.read(&old, sizeof(old)) || old.schema_version != 8U) {
         return LoadResult::DefaultsUsed;
     }
-    AppConfig migrated = AppConfig::defaults();
+    // Heap working copy: AppConfig is ~12 KB and load() runs on the
+    // loop-task stack at boot.
+    std::unique_ptr<AppConfig> migrated_storage(
+        new (std::nothrow) AppConfig(AppConfig::defaults()));
+    if (!migrated_storage) return LoadResult::DefaultsUsed;
+    AppConfig& migrated = *migrated_storage;
     migrated.data_source = old.data_source;
     migrated.brightness_percent = old.brightness_percent;
     migrated.can = old.can;
@@ -230,11 +427,8 @@ LoadResult migrateV8(ConfigBackend& backend, AppConfig& config) {
     migrated.units = old.units;
     migrated.dash_tiles = old.dash_tiles;
     migrated.track_tiles = old.track_tiles;
-    migrated.dash_layout = old.dash_layout;
-    migrated.track_layout = old.track_layout;
+    copySchema11Layouts(old, migrated);
     migrated.rpm_scale_max = old.rpm_scale_max;
-    migrated.dash_alternate_tiles = old.dash_alternate_tiles;
-    migrated.track_alternate_tiles = old.track_alternate_tiles;
     migrated.warning_sound_enabled = old.warning_sound_enabled;
     migrated.racechrono.enabled = false;
     normalizeLegacyShiftRange(migrated.shift);
@@ -251,7 +445,10 @@ LoadResult migrateV7(ConfigBackend& backend, AppConfig& config) {
     LegacyAppConfigV7 old{};
     if (!backend.read(&old, sizeof(old)) || old.schema_version != 7U)
         return LoadResult::DefaultsUsed;
-    auto migrated = AppConfig::defaults();
+    std::unique_ptr<AppConfig> migrated_storage(
+        new (std::nothrow) AppConfig(AppConfig::defaults()));
+    if (!migrated_storage) return LoadResult::DefaultsUsed;
+    AppConfig& migrated = *migrated_storage;
     migrated.data_source = old.data_source;
     migrated.brightness_percent = old.brightness_percent;
     migrated.can = old.can; migrated.shift = old.shift; migrated.units = old.units;
@@ -282,7 +479,12 @@ LoadResult migrateV5(ConfigBackend& backend, AppConfig& config) {
     LegacyAppConfigV5 legacy{};
     if (!backend.read(&legacy, sizeof(legacy)) || legacy.schema_version != 5U)
         return LoadResult::DefaultsUsed;
-    AppConfig migrated = AppConfig::defaults();
+    // Heap working copy: AppConfig is ~12 KB and load() runs on the
+    // loop-task stack at boot.
+    std::unique_ptr<AppConfig> migrated_storage(
+        new (std::nothrow) AppConfig(AppConfig::defaults()));
+    if (!migrated_storage) return LoadResult::DefaultsUsed;
+    AppConfig& migrated = *migrated_storage;
     migrated.data_source = legacy.data_source;
     migrated.brightness_percent = legacy.brightness_percent;
     migrated.can = legacy.can;
@@ -303,7 +505,12 @@ LoadResult migrateV1(ConfigBackend& backend, AppConfig& config) {
         return LoadResult::DefaultsUsed;
     }
 
-    AppConfig migrated = AppConfig::defaults();
+    // Heap working copy: AppConfig is ~12 KB and load() runs on the
+    // loop-task stack at boot.
+    std::unique_ptr<AppConfig> migrated_storage(
+        new (std::nothrow) AppConfig(AppConfig::defaults()));
+    if (!migrated_storage) return LoadResult::DefaultsUsed;
+    AppConfig& migrated = *migrated_storage;
     migrated.data_source = legacy.data_source;
     migrated.brightness_percent = legacy.brightness_percent;
     migrated.can = legacy.can;
@@ -332,7 +539,12 @@ LoadResult migrateV2(ConfigBackend& backend, AppConfig& config) {
         return LoadResult::DefaultsUsed;
     }
 
-    AppConfig migrated = AppConfig::defaults();
+    // Heap working copy: AppConfig is ~12 KB and load() runs on the
+    // loop-task stack at boot.
+    std::unique_ptr<AppConfig> migrated_storage(
+        new (std::nothrow) AppConfig(AppConfig::defaults()));
+    if (!migrated_storage) return LoadResult::DefaultsUsed;
+    AppConfig& migrated = *migrated_storage;
     migrated.data_source = legacy.data_source;
     migrated.brightness_percent = legacy.brightness_percent;
     migrated.can = legacy.can;
@@ -357,7 +569,12 @@ LoadResult migrateV3(ConfigBackend& backend, AppConfig& config) {
         return LoadResult::DefaultsUsed;
     }
 
-    AppConfig migrated = AppConfig::defaults();
+    // Heap working copy: AppConfig is ~12 KB and load() runs on the
+    // loop-task stack at boot.
+    std::unique_ptr<AppConfig> migrated_storage(
+        new (std::nothrow) AppConfig(AppConfig::defaults()));
+    if (!migrated_storage) return LoadResult::DefaultsUsed;
+    AppConfig& migrated = *migrated_storage;
     migrated.data_source = legacy.data_source;
     migrated.brightness_percent = legacy.brightness_percent;
     migrated.can = legacy.can;
@@ -382,7 +599,12 @@ LoadResult migrateV4(ConfigBackend& backend, AppConfig& config) {
         return LoadResult::DefaultsUsed;
     }
 
-    AppConfig migrated = AppConfig::defaults();
+    // Heap working copy: AppConfig is ~12 KB and load() runs on the
+    // loop-task stack at boot.
+    std::unique_ptr<AppConfig> migrated_storage(
+        new (std::nothrow) AppConfig(AppConfig::defaults()));
+    if (!migrated_storage) return LoadResult::DefaultsUsed;
+    AppConfig& migrated = *migrated_storage;
     migrated.data_source = legacy.data_source;
     migrated.brightness_percent = legacy.brightness_percent;
     migrated.can = legacy.can;
@@ -430,6 +652,18 @@ ConfigRepository::ConfigRepository(ConfigBackend& backend) : backend_(backend) {
 
 LoadResult ConfigRepository::load(AppConfig& config) {
     const std::size_t stored_size = backend_.storedSize();
+    if (stored_size == sizeof(LegacyAppConfigV11)) {
+        const auto migration = migrateV11(backend_, config);
+        if (migration != LoadResult::DefaultsUsed) return migration;
+    }
+    if (stored_size == sizeof(LegacyAppConfigV10)) {
+        const auto migration = migrateV10(backend_, config);
+        if (migration != LoadResult::DefaultsUsed) return migration;
+    }
+    if (stored_size == sizeof(LegacyAppConfigV9)) {
+        const auto migration = migrateV9(backend_, config);
+        if (migration != LoadResult::DefaultsUsed) return migration;
+    }
     if (stored_size == sizeof(LegacyAppConfigV8)) {
         const auto migration = migrateV8(backend_, config);
         if (migration != LoadResult::DefaultsUsed) return migration;
@@ -471,17 +705,18 @@ LoadResult ConfigRepository::load(AppConfig& config) {
         }
     }
 
-    AppConfig candidate{};
-    if (stored_size != sizeof(candidate) ||
-        !backend_.read(&candidate, sizeof(candidate)) ||
-        candidate.schema_version != AppConfig::kSchemaVersion) {
-        config = AppConfig::defaults();
+    std::unique_ptr<AppConfig> candidate_storage(new (std::nothrow) AppConfig{});
+    if (!candidate_storage || stored_size != sizeof(AppConfig) ||
+        !backend_.read(candidate_storage.get(), sizeof(AppConfig)) ||
+        candidate_storage->schema_version != AppConfig::kSchemaVersion) {
+        AppConfig::setDefaults(config);
         return LoadResult::DefaultsUsed;
     }
+    AppConfig& candidate = *candidate_storage;
 
     const bool normalized = normalizeLegacyShiftRange(candidate.shift);
     if (!candidate.validate().valid) {
-        config = AppConfig::defaults();
+        AppConfig::setDefaults(config);
         return LoadResult::DefaultsUsed;
     }
 
@@ -537,6 +772,6 @@ bool ConfigRepository::reset(AppConfig& runtime_config) {
     if (!backend_.erase()) {
         return false;
     }
-    runtime_config = AppConfig::defaults();
+    AppConfig::setDefaults(runtime_config);
     return true;
 }

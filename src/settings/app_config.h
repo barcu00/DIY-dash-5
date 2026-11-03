@@ -20,6 +20,11 @@ enum class TileSize : uint8_t {
     Hero,
     GearHero,
     CenteredSmall,
+    Large,    // bordered, 96 px value, title and temperature bar
+    Inline,   // borderless one-line label/value (status bands)
+    Gauge,    // bordered mini needle gauge with value
+    DialCenter,  // borderless value in a dial centre, unit or label below
+    DialBadge,   // borderless value in the hexagon under a dial
 };
 
 enum class DashboardLayout : uint8_t {
@@ -28,7 +33,13 @@ enum class DashboardLayout : uint8_t {
     AnalogStyle,
     SideGear,
     StripStyle,
-    ModernMotorsport,
+    // Appended in schema 10; stored by value. Schema 12 removed MODERN
+    // MOTORSPORT (old value 5): later layouts moved down by one.
+    OemSport,
+    TrackFocus,
+    Endurance,
+    AnalogClassic,
+    AnalogTwin,
 };
 
 enum class WarningDirection : uint8_t {
@@ -108,11 +119,15 @@ struct RaceChronoSettings {
 };
 
 struct AppConfig {
-    static constexpr uint32_t kSchemaVersion = 9U;
+    static constexpr uint32_t kSchemaVersion = 12U;
     static constexpr std::size_t kDashTileCount = 14U;
     static constexpr std::size_t kTrackTileCount = 12U;
     static constexpr std::size_t kLayoutTileCapacity = 14U;
     using TileBank = std::array<TileConfig, kLayoutTileCapacity>;
+    // Layouts added in schema 10 (OEM SPORT .. ANALOG TWIN) use smaller banks.
+    static constexpr std::size_t kExtraLayoutCount = 5U;
+    static constexpr std::size_t kExtraTileCapacity = 12U;
+    using ExtraTileBank = std::array<TileConfig, kExtraTileCapacity>;
 
     uint32_t schema_version = kSchemaVersion;
     DataSource data_source = DataSource::Demo;
@@ -125,12 +140,18 @@ struct AppConfig {
     DashboardLayout dash_layout = DashboardLayout::ClassicDash;
     DashboardLayout track_layout = DashboardLayout::ClassicTrack;
     uint16_t rpm_scale_max = 10000U;
-    // Original enum/bank indices are stable; E is appended independently.
-    std::array<TileBank, 5> dash_alternate_tiles{};
-    std::array<TileBank, 5> track_alternate_tiles{};
+    // One bank per original layout other than the page default.
+    static constexpr std::size_t kAlternateLayoutCount = 4U;
+    std::array<TileBank, kAlternateLayoutCount> dash_alternate_tiles{};
+    std::array<TileBank, kAlternateLayoutCount> track_alternate_tiles{};
     bool warning_sound_enabled = true;
     RaceChronoSettings racechrono{};
+    std::array<ExtraTileBank, kExtraLayoutCount> dash_extra_tiles{};
+    std::array<ExtraTileBank, kExtraLayoutCount> track_extra_tiles{};
+    // ENDURANCE trend window in seconds: 5, 10, 15 or 20 (schema 11).
+    uint16_t trend_window_s = 15U;
 
     static AppConfig defaults();
+    static void setDefaults(AppConfig& config);
     ValidationResult validate();
 };
