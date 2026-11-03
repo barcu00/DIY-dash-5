@@ -95,18 +95,14 @@ int main(int argc,char** argv) {
         "firmware-side-gear","firmware-strip-style","firmware-analog-flags","firmware-warning-tile",
         "firmware-scale-6000","firmware-flash-on","firmware-flash-off","firmware-compact-flags",
         "firmware-rpm-10000","firmware-analog-unavailable","firmware-strip-unavailable",
-        "firmware-modern-motorsport","firmware-modern-7500","firmware-modern-idle",
-        "firmware-modern-redline","firmware-modern-flash-on","firmware-modern-flash-off",
-        "firmware-modern-unavailable","firmware-modern-flags","firmware-modern-hidden-warning",
         "firmware-analog-7500","firmware-strip-7500"};
     constexpr int scene_count=sizeof(names)/sizeof(names[0]);
     for(int scenario=0;scenario<scene_count;++scenario) {
         AppConfig config=AppConfig::defaults();
         config.dash_layout=scenario<5 ? static_cast<DashboardLayout>(scenario):
-            scenario>=14 && scenario<=22 ? DashboardLayout::ModernMotorsport:
-            scenario==5 || scenario==12 || scenario==23 ? DashboardLayout::AnalogStyle:DashboardLayout::StripStyle;
+            scenario==5 || scenario==12 || scenario==14 ? DashboardLayout::AnalogStyle:DashboardLayout::StripStyle;
         auto bank=activeTiles(config,PageId::Dash);
-        if(scenario==5 || scenario==10 || scenario==21) {
+        if(scenario==5 || scenario==10) {
             for(int i=0;i<3;++i)bank[i].parameter=ParameterId::CheckEngine;
             bank[0].flag_active_color=FlagActiveColor::Red;
             bank[1].parameter=ParameterId::LaunchControlActive;
@@ -115,12 +111,10 @@ int main(int argc,char** argv) {
             state.invalidate(ParameterId::AntiLagActive);
         }
         if(scenario==7)config.rpm_scale_max=6000;
-        if(scenario==15 || scenario==23 || scenario==24)config.rpm_scale_max=7500;
-        if(scenario==17)config.shift.flash_enabled=false;
-        if(scenario==22)bank[0].visible=false;
-        state.set(ParameterId::Rpm,scenario==16 ? 1200:scenario==11 ? 10000:
-            (scenario>=8 && scenario<=9) || (scenario>=17 && scenario<=19) ? 8500:6840,0);
-        const uint32_t now=scenario==9 || scenario==19 ? 125:0;
+        if(scenario==14 || scenario==15)config.rpm_scale_max=7500;
+        state.set(ParameterId::Rpm,scenario==11 ? 10000:
+            scenario>=8 && scenario<=9 ? 8500:6840,0);
+        const uint32_t now=scenario==9 ? 125:0;
         for(auto& tile:tiles)tile.hide();
         rpm.apply(config.dash_layout,config.rpm_scale_max); shift.apply(config.dash_layout);
         while(lv_obj_get_child_cnt(screen)>navigation_index)lv_obj_del(lv_obj_get_child(screen,navigation_index));
@@ -133,13 +127,13 @@ int main(int argc,char** argv) {
         lv_obj_update_layout(screen);
         for(unsigned i=0;i<placements.count;++i) {
             const auto slot=placements.items[i].address.slot;
-            const bool supported=!(scenario==12 && slot==1) && !(scenario==13 && slot==0) && !(scenario==20 && slot==1);
-            tiles[slot].update(bank[slot],config.units,telemetry,supported,(scenario==6 || scenario==22) && slot==1,now);
+            const bool supported=!(scenario==12 && slot==1) && !(scenario==13 && slot==0);
+            tiles[slot].update(bank[slot],config.units,telemetry,supported,scenario==6 && slot==1,now);
         }
         rpm.update(state.get(ParameterId::Rpm),now,config.shift);
         shift.update(static_cast<uint16_t>(state.get(ParameterId::Rpm).value),true,now,config.shift);
         lv_obj_update_layout(screen);
-        if(scenario==5 || scenario==10 || scenario==21) {
+        if(scenario==5 || scenario==10) {
             // Guard against unavailable captions overlapping flag pills/values.
             auto* root=lv_obj_get_child(screen,4); // third tile, first two children are RPM/shift
             auto* value=lv_obj_get_child(root,2);
@@ -154,7 +148,7 @@ int main(int argc,char** argv) {
             lv_txt_get_size(&measured,lv_label_get_text(value),lv_obj_get_style_text_font(value,0),0,0,LV_COORD_MAX,LV_TEXT_FLAG_NONE);
             assert(measured.x<=lv_obj_get_width(value));
         }
-        if(scenario==12 || scenario==13 || scenario==20) {
+        if(scenario==12 || scenario==13) {
             auto* root=lv_obj_get_child(screen,scenario==13 ? 2:3);
             auto* unit=lv_obj_get_child(root,3);
             lv_area_t r,u; lv_obj_get_coords(root,&r); lv_obj_get_coords(unit,&u);
@@ -195,21 +189,8 @@ int main(int argc,char** argv) {
             state.set(ParameterId::Rpm,6840,0);rpm.apply(config.dash_layout,config.rpm_scale_max);
             rpm.update(state.get(ParameterId::Rpm),250,config.shift);
         }
-        if(scenario==18) {
-            flushed_pixels=0;
-            rpm.update(state.get(ParameterId::Rpm),125,config.shift);
-            lv_refr_now(nullptr);
-            assert(flushed_pixels<=120000 && "Modern flash repaints too much of the screen");
-            for(int angle=185;angle<355;angle+=5) {
-                const float radians=angle*3.14159265358979323846f/180;
-                const int x=std::lround(228+203*std::cos(radians));
-                const int y=std::lround(280+203*std::sin(radians));
-                // Avoid the white progress cap at 8500 RPM.
-                if(angle<330 || angle>336)assert(pixelMatches(x,y,lv_color_hex(0x151D22)));
-            }
-        }
-        if(scenario==2 || scenario==3 || scenario==4 || scenario==14) {
-            if(scenario==2 || scenario==14)
+        if(scenario==2 || scenario==3 || scenario==4) {
+            if(scenario==2)
                 for(int row=0;row<6;row++)assert(pixelMatches(472,32+68*row,lv_color_hex(0x707780)) && "Tile rails are not neutral grey");
             const float values[]={200,210,220,6860,5500,5499,7000,10000,0,1200,8500,8500,6840};
             for(unsigned i=0;i<sizeof(values)/sizeof(values[0]);i++) {

@@ -64,14 +64,13 @@ bool layoutHasTachBar(DashboardLayout layout) {
 
 bool layoutIsDial(DashboardLayout layout) {
     return layout == DashboardLayout::AnalogStyle ||
-           layout == DashboardLayout::ModernMotorsport ||
            layout == DashboardLayout::AnalogClassic ||
            layout == DashboardLayout::AnalogTwin;
 }
 
 const char* dashboardLayoutName(DashboardLayout layout) {
     constexpr const char* names[] = {"CLASSIC DASH", "CLASSIC TRACK",
-        "ANALOG STYLE", "SIDE GEAR", "STRIP STYLE", "MODERN MOTORSPORT",
+        "ANALOG STYLE", "SIDE GEAR", "STRIP STYLE",
         "OEM SPORT", "TRACK FOCUS", "ENDURANCE", "ANALOG CLASSIC",
         "ANALOG TWIN"};
     static_assert(sizeof(names) / sizeof(names[0]) == kDashboardLayoutCount,
@@ -81,7 +80,7 @@ const char* dashboardLayoutName(DashboardLayout layout) {
 }
 
 std::size_t dashboardLayoutSlotCount(DashboardLayout layout) {
-    constexpr std::size_t counts[] = {14U, 12U, 7U, 8U, 8U, 6U,
+    constexpr std::size_t counts[] = {14U, 12U, 7U, 8U, 8U,
                                       10U, 11U, 9U, 8U, 5U};
     static_assert(sizeof(counts) / sizeof(counts[0]) == kDashboardLayoutCount,
                   "every layout needs a slot count");
@@ -130,7 +129,7 @@ void initializeAlternateLayouts(AppConfig& config) {
                     ParameterId::OilTemperature, ParameterId::FuelPressure,
                     ParameterId::Rpm, ParameterId::Speed, ParameterId::Clt,
                     ParameterId::Iat, ParameterId::Lambda};
-                const ParameterId* parameters = (layout == DashboardLayout::AnalogStyle || layout == DashboardLayout::ModernMotorsport)
+                const ParameterId* parameters = layout == DashboardLayout::AnalogStyle
                     ? analog : layout == DashboardLayout::SideGear ? side : strip;
                 for (std::size_t slot = 0; slot < tiles.size(); ++slot)
                     tiles[slot] = makeTile(parameters[slot]);

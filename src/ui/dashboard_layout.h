@@ -14,7 +14,7 @@ struct TileBankView {
     Tile* end() const { return data ? data + count : nullptr; }
 };
 
-constexpr std::size_t kDashboardLayoutCount = 11U;
+constexpr std::size_t kDashboardLayoutCount = 10U;
 // Layouts with a top tachometer bar (shift light colours on the bar).
 bool layoutHasTachBar(DashboardLayout layout);
 // Needle dial layouts drawn by RpmScaleView.

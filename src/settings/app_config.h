@@ -33,8 +33,8 @@ enum class DashboardLayout : uint8_t {
     AnalogStyle,
     SideGear,
     StripStyle,
-    ModernMotorsport,
-    // Appended in schema 10; stored by value.
+    // Appended in schema 10; stored by value. Schema 12 removed MODERN
+    // MOTORSPORT (old value 5): later layouts moved down by one.
     OemSport,
     TrackFocus,
     Endurance,
@@ -119,7 +119,7 @@ struct RaceChronoSettings {
 };
 
 struct AppConfig {
-    static constexpr uint32_t kSchemaVersion = 11U;
+    static constexpr uint32_t kSchemaVersion = 12U;
     static constexpr std::size_t kDashTileCount = 14U;
     static constexpr std::size_t kTrackTileCount = 12U;
     static constexpr std::size_t kLayoutTileCapacity = 14U;
@@ -140,9 +140,10 @@ struct AppConfig {
     DashboardLayout dash_layout = DashboardLayout::ClassicDash;
     DashboardLayout track_layout = DashboardLayout::ClassicTrack;
     uint16_t rpm_scale_max = 10000U;
-    // Original enum/bank indices are stable; E is appended independently.
-    std::array<TileBank, 5> dash_alternate_tiles{};
-    std::array<TileBank, 5> track_alternate_tiles{};
+    // One bank per original layout other than the page default.
+    static constexpr std::size_t kAlternateLayoutCount = 4U;
+    std::array<TileBank, kAlternateLayoutCount> dash_alternate_tiles{};
+    std::array<TileBank, kAlternateLayoutCount> track_alternate_tiles{};
     bool warning_sound_enabled = true;
     RaceChronoSettings racechrono{};
     std::array<ExtraTileBank, kExtraLayoutCount> dash_extra_tiles{};

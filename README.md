@@ -56,10 +56,12 @@ RaceChrono now uses a 64 × 32 switch and separate status lines, including
 
 ## Interface preview
 
-### Development: six selectable layouts
+### Development: original selectable layouts
 
 The `dashboard-dev` branch adds **Classic DASH, Classic TRACK, Analog Style,
-Side Gear, Strip Style, and Modern Motorsport**. This is newer than the published v0.2.1 BIN above;
+Side Gear, and Strip Style**; newer builds add OEM Sport, Track Focus,
+Endurance, Analog Classic, and Analog Twin (Modern Motorsport was removed in
+configuration schema 12). This is newer than the published v0.2.1 BIN above;
 it is not yet a released firmware.
 
 In `SETTINGS > LAYOUTS`, assign any preset independently to DASH and TRACK.
@@ -69,7 +71,7 @@ steps and does not change shift-light thresholds. Changes save on screen exit.
 Hidden tiles compact within their group; holding a tile opens the existing
 full-screen editor. Navigation includes gauge, checkered flag, and gear icons.
 
-The six development layouts below are **real production-view LVGL 8.4
+The development layouts below are **real production-view LVGL 8.4
 framebuffer captures**, rendered on GitHub with the firmware's TileView,
 RpmScaleView, ShiftLightView and navigation code. No UI reconstruction is used.
 Black panels, condensed white digits, fine blue-grey frames and cyan navigation
@@ -78,8 +80,7 @@ white rectangular index and a configurable center tile (RPM by default).
 Hold the center tile to choose a parameter, visibility and warning settings;
 the ring and index always remain RPM-driven. At the flash threshold, the entire
 segmented ring flashes red/dim at 4 Hz while the index remains white.
-Modern Motorsport E adds a continuous
-upper semicircle with dim future zones and a white progress cap. Side Gear
+Side Gear
 shares one RPM/speed frame; Strip uses identical upright rectangular blocks without a logo.
 Tile rails and frames are neutral grey, compact-row labels and values are optically centered, and
 scale labels always use whole thousands. Physical performance still needs board testing.
@@ -88,21 +89,19 @@ scale labels always use whole thousands. Physical performance still needs board 
 | --- | --- | --- |
 | ![Analog Style](docs/ui/screenshots/firmware-analog-style.png) | ![Side Gear](docs/ui/screenshots/firmware-side-gear.png) | ![Strip Style](docs/ui/screenshots/firmware-strip-style.png) |
 
-![Modern Motorsport E](docs/ui/screenshots/firmware-modern-motorsport.png)
-
 | DASH | TRACK |
 | --- | --- |
 | ![DIY Dash dashboard](docs/ui/screenshots/firmware-classic-dash.png) | ![DIY Dash track screen](docs/ui/screenshots/firmware-classic-track.png) |
 
 The [production preview workflow](.github/workflows/production-view-previews.yml)
-checks 27 scenes, including flags, warning borders, 6000/7500/10000 RPM, red flash
+checks 18 scenes, including flags, warning borders, 6000/7500/10000 RPM, red flash
 phases and unavailable captions. It compares incremental redraws against full
-framebuffers for Analog, Side Gear, Strip and Modern Motorsport, including small
+framebuffers for Analog, Side Gear and Strip, including small
 RPM changes and validity transitions. Its artifacts provide all captured scenes.
 Configuration schema v8 migrates v6/v7 settings while retaining the original
 layout banks and warning-sound preference; the new layout starts with its own defaults.
 The display now uses two complete RGB framebuffers with VSYNC-controlled swaps,
-a 512 KiB LVGL pool in PSRAM, and bounded Modern Motorsport flash redraws.
+and a 512 KiB LVGL pool in PSRAM.
 Returning from settings or a successful tile save prepares the destination
 layout and current values before displaying it, avoiding a stale first frame.
 See [UI transition and Analog validation](docs/ui/ui-transition-validation.md)

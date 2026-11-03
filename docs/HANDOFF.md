@@ -38,8 +38,11 @@ screen, occasional bright bands). Fixed in `59cab33` / `57619df`:
 
 ## Current state
 
-- 11 dashboard layouts incl. OEM SPORT, TRACK FOCUS, ENDURANCE,
-  ANALOG CLASSIC, ANALOG TWIN; tach-bar shift light.
+- 10 dashboard layouts (enum value = SETTINGS > LAYOUTS index):
+  0 CLASSIC DASH, 1 CLASSIC TRACK, 2 ANALOG STYLE, 3 SIDE GEAR,
+  4 STRIP STYLE, 5 OEM SPORT, 6 TRACK FOCUS, 7 ENDURANCE, 8 ANALOG CLASSIC,
+  9 ANALOG TWIN; tach-bar shift light. MODERN MOTORSPORT was removed in
+  schema 12 (it was value 5).
 - Round dials: `src/ui/round_geometry.*`; 7" pixel aspect correction
   `HardwareProfile::round_scale_x ≈ 0.9286` (5" = 1.0).
 - Analog/chamfered tiles (`TileView::arrangeStyled`) use a fixed value box
@@ -49,8 +52,12 @@ screen, occasional bright bands). Fixed in `59cab33` / `57619df`:
   90 samples). Window 5/10/15/20 s (default 15 s) in
   SETTINGS > DISPLAY > ENDURANCE TREND. Buffer allocated in PSRAM on first
   sample, released when the page leaves the screen, on layout change or hide.
-- Config schema 11 (`trend_window_s`), migrations by stored size in
-  `src/settings/config_repository.cpp` (v10 → v11 copies everything).
+- Config schema 12, migrations by stored size in
+  `src/settings/config_repository.cpp`. v11 → v12 drops MODERN MOTORSPORT:
+  stored layout 5 → page default (CLASSIC DASH / CLASSIC TRACK), 6..10 → −1,
+  its fifth alternate tile bank is dropped (4 banks remain), everything else
+  is copied. v8..v10 use the same mapping (`copySchema11Layouts`).
+  Schema 11 added `trend_window_s`.
 - Fonts: `dash_italic_*` (Barlow Condensed italic), `dash_label_*` (Barlow),
   generated with lv_font_conv 1.5.3.
 
