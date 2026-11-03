@@ -50,29 +50,10 @@ void test_range_includes_threshold_and_has_minimum_span() {
     TEST_ASSERT_TRUE(high > 125.0f);
 }
 
-void test_direction_categories() {
-    TrendHistory rising;
-    TrendHistory steady;
-    TrendHistory falling;
-    for (int i = 0; i < 40; ++i) {
-        const uint32_t t = i * 1000U;
-        rising.sample(100.0f + i * 0.7f, true, t);
-        steady.sample(3.9f + ((i % 2) ? 0.01f : 0.0f), true, t);
-        falling.sample(40.0f - i * 0.12f, true, t);
-    }
-    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(TrendDirection::RisingFast),
-                            static_cast<uint8_t>(rising.direction(130.0f)));
-    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(TrendDirection::Steady),
-                            static_cast<uint8_t>(steady.direction(10.0f)));
-    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(TrendDirection::Falling),
-                            static_cast<uint8_t>(falling.direction(60.0f)));
-}
-
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_release_frees_buffer_until_next_sample);
     RUN_TEST(test_samples_once_per_interval_and_keeps_order_when_full);
     RUN_TEST(test_range_includes_threshold_and_has_minimum_span);
-    RUN_TEST(test_direction_categories);
     return UNITY_END();
 }

@@ -45,7 +45,7 @@ private:
     static void drawGauge(lv_event_t* event);
     // Analog-style (chamfered / dial) presentation.
     static void drawChamfer(lv_event_t* event);
-    // ENDURANCE rows: value history sparkline with a direction arrow.
+    // ENDURANCE rows: value history sparkline.
     static void drawTrend(lv_event_t* event);
     void arrangeTrendRow();
     lv_obj_t* trend_view_ = nullptr;
@@ -54,7 +54,6 @@ private:
     bool trend_mode_ = false;
     float trend_marker_ = 0.0f;
     bool trend_has_marker_ = false;
-    float trend_span_ = 1.0f;
     void setupStyled(const TileConfig& config);
     void arrangeStyled();
     uint8_t chamfer_ = 0U;

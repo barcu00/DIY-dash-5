@@ -51,7 +51,7 @@ screen, occasional bright bands). Fixed in `59cab33` / `57619df`:
 - Analog/chamfered tiles (`TileView::arrangeStyled`) use a fixed value box
   sized for the widest text of the same shape; re-layout only on shape/unit
   change.
-- ENDURANCE rows: trend arrow + sparkline (`src/ui/trend_model.*`,
+- ENDURANCE rows: sparkline only, arrows removed (`src/ui/trend_model.*`,
   90 samples). Window 5/10/15/20 s (default 15 s) in
   SETTINGS > DISPLAY > ENDURANCE TREND. Buffer allocated in PSRAM on first
   sample, released when the page leaves the screen, on layout change or hide.

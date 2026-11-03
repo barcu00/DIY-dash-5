@@ -90,17 +90,3 @@ void TrendHistory::range(float marker, float& low, float& high) const {
     low -= pad;
     high += pad;
 }
-
-TrendDirection TrendHistory::direction(float span) const {
-    if (count_ < 3U || !(span > 0.0f)) return TrendDirection::Steady;
-    constexpr std::size_t kBack = kCapacity / 4U;  // a quarter of the window
-    const std::size_t newest = count_ - 1U;
-    const std::size_t older = newest >= kBack ? newest - kBack : 0U;
-    const float delta = at(newest) - at(older);
-    const float relative = delta / span;
-    if (relative > 0.08f) return TrendDirection::RisingFast;
-    if (relative > 0.02f) return TrendDirection::Rising;
-    if (relative < -0.08f) return TrendDirection::FallingFast;
-    if (relative < -0.02f) return TrendDirection::Falling;
-    return TrendDirection::Steady;
-}

@@ -4,17 +4,8 @@
 #include <cstddef>
 #include <cstdint>
 
-enum class TrendDirection : uint8_t {
-    Steady,
-    Rising,
-    RisingFast,
-    Falling,
-    FallingFast,
-};
-
 // Short value history for the ENDURANCE rows: a fixed number of samples
-// spread over the configured window (5 .. 20 s), drawn as a sparkline
-// with a direction arrow next to the value.
+// spread over the configured window (5 .. 20 s), drawn as a sparkline.
 class TrendHistory {
 public:
     static constexpr std::size_t kCapacity = 90U;
@@ -38,9 +29,6 @@ public:
     float at(std::size_t index) const;  // 0 = oldest
     // Vertical range for drawing, padded; includes `marker` when finite.
     void range(float marker, float& low, float& high) const;
-    // Compares the latest samples with those a quarter window earlier, relative to the
-    // given full-scale span (e.g. warning threshold or value magnitude).
-    TrendDirection direction(float span) const;
 
 private:
     // Allocated on the first sample (PSRAM on the device): only the

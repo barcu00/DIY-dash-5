@@ -302,8 +302,6 @@ void TileView::apply(const TileConfig& config, const TileGeometry& geometry) {
         lv_obj_add_flag(temperature_bar_, LV_OBJ_FLAG_HIDDEN);
         trend_has_marker_ = config.warning.enabled;
         trend_marker_ = config.warning.threshold_native;
-        const GaugeRange scale = gaugeRange(config);
-        trend_span_ = std::max(1e-3f, scale.maximum - scale.minimum);
     } else {
         lv_obj_add_flag(trend_view_, LV_OBJ_FLAG_HIDDEN);
     }
@@ -929,7 +927,7 @@ void TileView::drawChamfer(lv_event_t* event) {
 }
 
 // ENDURANCE row: label left, value right-aligned at a fixed column, unit
-// next to it, trend arrow and sparkline in the right part of the row.
+// next to it, sparkline in the right part of the row.
 void TileView::arrangeTrendRow() {
     const int border = lv_obj_get_style_border_width(root_, 0);
     last_row_border_ = border;
@@ -967,39 +965,11 @@ void TileView::drawTrend(lv_event_t* event) {
     lv_obj_get_coords(self->trend_view_, &a);
     const TrendHistory& history = self->trend_;
     const bool warning = self->last_warning_active_;
-    // Direction arrow.
-    const TrendDirection direction = history.direction(self->trend_span_);
-    float angle = 0.0f;
-    lv_color_t arrow_color = lv_color_hex(0x8E9AA6);
-    switch (direction) {
-        case TrendDirection::RisingFast: angle = -90.0f; arrow_color = UiTheme::red(); break;
-        case TrendDirection::Rising: angle = -45.0f; arrow_color = UiTheme::yellow(); break;
-        case TrendDirection::FallingFast: angle = 90.0f; break;
-        case TrendDirection::Falling: angle = 45.0f; break;
-        case TrendDirection::Steady: break;
-    }
-    const float rad = angle * 3.14159265f / 180.0f;
-    const float dx = std::cos(rad), dy = std::sin(rad);
-    const lv_point_t mid{static_cast<lv_coord_t>(a.x1 + 12), static_cast<lv_coord_t>((a.y1 + a.y2) / 2)};
-    const lv_point_t tail{static_cast<lv_coord_t>(std::lround(mid.x - dx * 7)), static_cast<lv_coord_t>(std::lround(mid.y - dy * 7))};
-    const lv_point_t tip{static_cast<lv_coord_t>(std::lround(mid.x + dx * 7)), static_cast<lv_coord_t>(std::lround(mid.y + dy * 7))};
-    lv_draw_line_dsc_t arrow;
-    lv_draw_line_dsc_init(&arrow);
-    arrow.color = arrow_color;
-    arrow.width = 2;
-    arrow.round_start = arrow.round_end = 1;
-    lv_draw_line(ctx, &arrow, &tail, &tip);
-    for (float side : {135.0f, -135.0f}) {
-        const float r2 = rad + side * 3.14159265f / 180.0f;
-        const lv_point_t wing{static_cast<lv_coord_t>(std::lround(tip.x + std::cos(r2) * 6)),
-                              static_cast<lv_coord_t>(std::lround(tip.y + std::sin(r2) * 6))};
-        lv_draw_line(ctx, &arrow, &tip, &wing);
-    }
     // Sparkline.
     if (history.size() < 2U) return;
     float low = 0.0f, high = 1.0f;
     history.range(self->trend_has_marker_ ? self->trend_marker_ : NAN, low, high);
-    const int x0 = a.x1 + 34, x1 = a.x2 - 2;
+    const int x0 = a.x1 + 2, x1 = a.x2 - 2;
     const int y0 = a.y1 + 3, y1 = a.y2 - 3;
     const auto yFor = [&](float v) {
         return static_cast<lv_coord_t>(std::lround(y1 - (v - low) / (high - low) * (y1 - y0)));
