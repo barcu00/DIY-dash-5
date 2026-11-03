@@ -5,10 +5,12 @@ The bottom navigation contains DASH, TRACK, and SETTINGS; DIAG is not present.
 
 ## Tiles and layout
 
-The development firmware offers ten presets: Classic DASH (14 slots),
-Classic TRACK (12), Analog Style (7), Side Gear (8), Strip Style (8),
-OEM Sport (10), Track Focus (11), Endurance (9), Analog Classic (8) and
-Analog Twin (5). Both selectors in `SETTINGS > LAYOUTS` offer all ten. DASH and TRACK
+The development firmware offers ten presets: FULL GRID (14 slots),
+TRACK GRID (12), DIAL + ROWS (7), GEAR LEFT (8), ARC STRIP (8),
+ROAD SPORT (10), LAP TIMER (11), ENDURANCE (9), GAUGES (8) and
+TWIN DIALS (5). Older documents use the previous names: Classic DASH,
+Classic TRACK, Analog Style, Side Gear, Strip Style, OEM Sport, Track Focus,
+Endurance, Analog Classic and Analog Twin, in the same order. Both selectors in `SETTINGS > LAYOUTS` offer all ten. DASH and TRACK
 can use the same preset and retain separate configuration banks when switching.
 Use DASH TILES / TRACK TILES to edit the selected page's visible and hidden slots.
 

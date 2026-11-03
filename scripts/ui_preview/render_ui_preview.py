@@ -459,7 +459,7 @@ def settings_units_page():
 
 def settings_layouts_page():
     image, draw = settings_shell("LAYOUTS")
-    for x, label, preset in ((28, "DASH", "Analog Style"), (408, "TRACK", "Strip Style")):
+    for x, label, preset in ((28, "DASH", "DIAL + ROWS"), (408, "TRACK", "ARC STRIP")):
         draw.text((x, 85), label, fill=C["text"], font=F12, anchor="lm")
         draw.rounded_rectangle((x + 60, 66, x + 358, 104), 5, fill=C["panel"], outline=C["border"])
         draw.text((x + 74, 85), preset + "  ▾", fill=C["text"], font=F14, anchor="lm")

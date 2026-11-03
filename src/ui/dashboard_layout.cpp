@@ -69,10 +69,11 @@ bool layoutIsDial(DashboardLayout layout) {
 }
 
 const char* dashboardLayoutName(DashboardLayout layout) {
-    constexpr const char* names[] = {"CLASSIC DASH", "CLASSIC TRACK",
-        "ANALOG STYLE", "SIDE GEAR", "STRIP STYLE",
-        "OEM SPORT", "TRACK FOCUS", "ENDURANCE", "ANALOG CLASSIC",
-        "ANALOG TWIN"};
+    // Display names only; layouts are stored by enum value.
+    constexpr const char* names[] = {"FULL GRID", "TRACK GRID",
+        "DIAL + ROWS", "GEAR LEFT", "ARC STRIP",
+        "ROAD SPORT", "LAP TIMER", "ENDURANCE", "GAUGES",
+        "TWIN DIALS"};
     static_assert(sizeof(names) / sizeof(names[0]) == kDashboardLayoutCount,
                   "every layout needs a name");
     return validDashboardLayout(layout) ? names[static_cast<std::size_t>(layout)]

@@ -38,10 +38,13 @@ screen, occasional bright bands). Fixed in `59cab33` / `57619df`:
 
 ## Current state
 
-- 10 dashboard layouts (enum value = SETTINGS > LAYOUTS index):
-  0 CLASSIC DASH, 1 CLASSIC TRACK, 2 ANALOG STYLE, 3 SIDE GEAR,
-  4 STRIP STYLE, 5 OEM SPORT, 6 TRACK FOCUS, 7 ENDURANCE, 8 ANALOG CLASSIC,
-  9 ANALOG TWIN; tach-bar shift light. MODERN MOTORSPORT was removed in
+- 10 dashboard layouts (enum value = SETTINGS > LAYOUTS index), shown name
+  (enum): 0 FULL GRID (ClassicDash), 1 TRACK GRID (ClassicTrack),
+  2 DIAL + ROWS (AnalogStyle), 3 GEAR LEFT (SideGear), 4 ARC STRIP
+  (StripStyle), 5 ROAD SPORT (OemSport), 6 LAP TIMER (TrackFocus),
+  7 ENDURANCE (Endurance), 8 GAUGES (AnalogClassic), 9 TWIN DIALS
+  (AnalogTwin); tach-bar shift light. Names are display-only (no schema
+  change); older docs use the previous names. MODERN MOTORSPORT was removed in
   schema 12 (it was value 5).
 - Round dials: `src/ui/round_geometry.*`; 7" pixel aspect correction
   `HardwareProfile::round_scale_x ≈ 0.9286` (5" = 1.0).

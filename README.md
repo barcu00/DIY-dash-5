@@ -61,7 +61,9 @@ RaceChrono now uses a 64 × 32 switch and separate status lines, including
 The `dashboard-dev` branch adds **Classic DASH, Classic TRACK, Analog Style,
 Side Gear, and Strip Style**; newer builds add OEM Sport, Track Focus,
 Endurance, Analog Classic, and Analog Twin (Modern Motorsport was removed in
-configuration schema 12). This is newer than the published v0.2.1 BIN above;
+configuration schema 12). In SETTINGS the layouts are now named FULL GRID,
+TRACK GRID, DIAL + ROWS, GEAR LEFT, ARC STRIP, ROAD SPORT, LAP TIMER,
+ENDURANCE, GAUGES and TWIN DIALS (same order as the names above). This is newer than the published v0.2.1 BIN above;
 it is not yet a released firmware.
 
 In `SETTINGS > LAYOUTS`, assign any preset independently to DASH and TRACK.

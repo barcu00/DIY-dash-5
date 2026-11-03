@@ -209,7 +209,7 @@ void test_new_layouts_have_independent_banks_and_page_defaults() {
     TEST_ASSERT_TRUE(layoutHasTachBar(DashboardLayout::Endurance));
     TEST_ASSERT_FALSE(layoutHasTachBar(DashboardLayout::SideGear));
     TEST_ASSERT_TRUE(layoutIsDial(DashboardLayout::AnalogTwin));
-    TEST_ASSERT_EQUAL_STRING("ANALOG TWIN", dashboardLayoutName(DashboardLayout::AnalogTwin));
+    TEST_ASSERT_EQUAL_STRING("TWIN DIALS", dashboardLayoutName(DashboardLayout::AnalogTwin));
 }
 
 void test_reset_page_restores_new_layout_banks() {
