@@ -444,18 +444,19 @@ int main(int argc,char** argv) {
         assert(find(lv_scr_act(),&lv_label_class,"RPM SCALE MAX"));
         ui.update(telemetry,diagnostics,status,config,warnings);
         assert(find(lv_scr_act(),&lv_label_class,"FLASH ENABLED") && "Flash enable switch is missing");
-        assert(find(lv_scr_act(),&lv_label_class,"12-LED FILL MAX") && "12-LED fill maximum slider is missing");
-        assert(countType(lv_scr_act(),&lv_slider_class)==5 && "RPM settings must expose five sliders");
-        assert(!find(lv_scr_act(),&lv_label_class,"ADVANCED: 12-LED FILL MAX") && "Duplicate lower-right RPM field remains");
+        // The tachometer bar is the shift light: the 12-LED fill maximum has
+        // no control any more, the bar uses four RPM sliders.
+        assert(!find(lv_scr_act(),&lv_label_class,"12-LED FILL MAX") && "Obsolete 12-LED fill maximum is back");
+        assert(countType(lv_scr_act(),&lv_slider_class)==4 && "RPM settings must expose four sliders");
         assert(!findContaining(lv_scr_act(),"UI updates:") && "Runtime diagnostics overwrite RPM status");
-        assert(find(lv_scr_act(),&lv_label_class,"Colors follow YELLOW / RED thresholds; 12 LEDs retain 4/4/4 zones"));
+        assert(find(lv_scr_act(),&lv_label_class,"Tachometer bar: white, yellow from YELLOW FROM, red from RED FROM"));
         screenshot("rpm");
-        click("8000 RPM");click("9");click("0");click("0");click("0");click("APPLY");
-        assert(config.shift.max_rpm==8000);
+        click("7000 RPM");click("6");click("8");click("0");click("0");click("APPLY");
+        assert(config.shift.red_rpm==7000 && "RED FROM edit leaked before saving");
         click("10000 RPM");click("8");click("0");click("0");click("0");click("APPLY");
         assert(config.rpm_scale_max==10000 && config.shift.flash_rpm==7500);
         click("TRACK");assert(lv_scr_act()!=dash);assert(takeCommit(ui,request));
-        assert(request.candidate.rpm_scale_max==8000 && request.candidate.shift.max_rpm==9000);
+        assert(request.candidate.rpm_scale_max==8000 && request.candidate.shift.red_rpm==6800);
         config=request.candidate;ui.completeConfigCommit(request.revision,true);
         assert(lv_scr_act()!=dash && find(lv_scr_act(),&lv_label_class,"TRACK"));
         std::puts("Tabbed editor cancel and unified RPM navigation passed");
