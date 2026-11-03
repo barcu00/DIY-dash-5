@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <cmath>
 #include <lvgl.h>
@@ -72,10 +73,10 @@ static void flush(lv_disp_drv_t* driver,const lv_area_t* area,lv_color_t* pixels
     else for(int y=area->y1;y<=area->y2;y++)for(int x=area->x1;x<=area->x2;x++)captured[y*800+x]=*pixels++;
     lv_disp_flush_ready(driver);
 }
-static void screenshot(const char* name) {
+static void screenshot(const char* name,const char* prefix="editor-") {
     if(!capture_folder)return;
     lv_obj_invalidate(lv_scr_act());lv_refr_now(nullptr);
-    char path[512];std::snprintf(path,sizeof(path),"%s/editor-%s.ppm",capture_folder,name);
+    char path[512];std::snprintf(path,sizeof(path),"%s/%s%s.ppm",capture_folder,prefix,name);
     auto* f=std::fopen(path,"wb");assert(f);std::fprintf(f,"P6\n800 480\n255\n");
     for(auto pixel:captured) {lv_color32_t p;p.full=lv_color_to32(pixel);const unsigned char rgb[]={p.ch.red,p.ch.green,p.ch.blue};std::fwrite(rgb,1,3,f);}
     std::fclose(f);
@@ -96,6 +97,14 @@ int main(int argc,char** argv) {
     const bool reset_mode=argc>1 && !std::strcmp(argv[1],"--reset");
     const bool can_tile=argc>1 && !std::strcmp(argv[1],"--can-tile");
     const bool units=argc>1 && (!std::strcmp(argv[1],"--units") || psi || tempunits);
+    // --layouts <folder> <index>: capture DASH and TRACK of one layout with
+    // its default tiles, for visual review of every layout.
+    const bool layouts_mode=argc>3 && !std::strcmp(argv[1],"--layouts");
+    const int layout_index=layouts_mode ? std::atoi(argv[3]):0;
+    if(layouts_mode) {
+        assert(layout_index>=0 && static_cast<std::size_t>(layout_index)<kDashboardLayoutCount);
+        config.dash_layout=config.track_layout=static_cast<DashboardLayout>(layout_index);
+    }
     if(units) {
         config.units.pressure=psi ? PressureUnit::Psi:PressureUnit::Kpa;
         config.dash_tiles[0].parameter=ParameterId::OilPressure;
@@ -124,6 +133,26 @@ int main(int argc,char** argv) {
     RuntimeDiagnostics diagnostics{};UiRuntimeStatus status{};TileWarningEngine warnings;
     ui.update(telemetry,diagnostics,status,config,warnings);ui.updateShiftLight(state,0,config.shift);
     auto* dash=lv_scr_act();
+    if(layouts_mode) {
+        state.set(ParameterId::Gear,3,0);state.set(ParameterId::OilPressure,4.8,0);
+        state.set(ParameterId::Clt,91,0);state.set(ParameterId::Iat,32,0);
+        state.set(ParameterId::Map,1.18,0);state.set(ParameterId::Lambda,.86,0);
+        state.set(ParameterId::FuelPressure,4.1,0);state.set(ParameterId::BatteryVoltage,14.2,0);
+        state.set(ParameterId::Tps,78,0);
+        ui.update(telemetry,diagnostics,status,config,warnings);ui.updateShiftLight(state,0,config.shift);
+        char name[64];
+        const char* label=dashboardLayoutName(config.dash_layout);
+        std::snprintf(name,sizeof(name),"%d-%s-dash",layout_index,label);
+        for(char* c=name;*c;++c)if(*c==' ' || *c=='+')*c='_';
+        screenshot(name,"layout-");
+        click("TRACK");
+        ui.update(telemetry,diagnostics,status,config,warnings);ui.updateShiftLight(state,0,config.shift);
+        std::snprintf(name,sizeof(name),"%d-%s-track",layout_index,label);
+        for(char* c=name;*c;++c)if(*c==' ' || *c=='+')*c='_';
+        screenshot(name,"layout-");
+        std::printf("Captured layout %d (%s)\n",layout_index,label);
+        return 0;
+    }
     if(reset_mode) {
         click("SETTINGS");click("SYSTEM");
         auto* system_page=lv_scr_act();

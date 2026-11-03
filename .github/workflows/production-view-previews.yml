@@ -1,7 +1,7 @@
 name: Production LVGL view previews
 on:
   push:
-    branches: [dashboard-dev, feature/racechrono-ble-monitor]
+    branches: [dashboard-dev, feature/racechrono-ble-monitor, feature/tach-bar-layouts]
     paths: ['src/**', 'design/production-preview/**', '.github/workflows/production-view-previews.yml']
   workflow_dispatch:
 permissions:
@@ -109,6 +109,21 @@ jobs:
         with:
           name: RaceChrono-LVGL-previews
           path: racechrono-previews/*.png
+          retention-days: 30
+      - name: Capture every layout on DASH and TRACK
+        if: success() || failure()
+        run: |
+          mkdir -p layout-previews
+          for index in 0 1 2 3 4 5 6 7 8 9; do
+            /tmp/ui-transitions --layouts layout-previews "$index"
+          done
+          python -m pip install Pillow==11.3.0
+          python -c "from pathlib import Path; from PIL import Image; [Image.open(p).save(p.with_suffix('.png')) for p in Path('layout-previews').glob('*.ppm')]"
+      - uses: actions/upload-artifact@v4
+        if: success() || failure()
+        with:
+          name: Layout-LVGL-previews
+          path: layout-previews/*.png
           retention-days: 30
       - name: Convert editor captures
         if: success() || failure()
