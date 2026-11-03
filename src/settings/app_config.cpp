@@ -174,8 +174,9 @@ void AppConfig::setDefaults(AppConfig& config) {
         tile(ParameterId::Gear),
         tile(ParameterId::Tps),
         tile(ParameterId::BatteryVoltage),
-        tile(ParameterId::FuelPressure),
-        tile(ParameterId::OilPressure),
+        // Slots 8 and 9 used to repeat FUEL PRESS / OIL PRESS (slots 13, 11).
+        tile(ParameterId::InjectorDuty),
+        tile(ParameterId::IgnitionTiming),
         tile(ParameterId::Iat),
         tile(ParameterId::OilPressure),
         tile(ParameterId::OilTemperature),
