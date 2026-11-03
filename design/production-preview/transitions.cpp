@@ -44,6 +44,11 @@ static lv_obj_t* button(lv_obj_t* root,const char* text) {
     }
     return nullptr;
 }
+// Ui::createDataPage adds the shift light, the RPM scale and the status
+// band before one object per tile slot.
+static lv_obj_t* tileObject(lv_obj_t* page,uint32_t slot) {
+    return lv_obj_get_child(page,3U+slot);
+}
 static void click(const char* text) {
     auto* target=button(lv_scr_act(),text);assert(target);
     lv_event_send(target,LV_EVENT_CLICKED,nullptr);
@@ -353,7 +358,7 @@ int main(int argc,char** argv) {
         assert(find(lv_scr_act(),&lv_label_class,"DATA & CAN"));
 
         click("DASH");dash=lv_scr_act();
-        auto* tile=lv_obj_get_child(dash,2);
+        auto* tile=tileObject(dash,0);
         lv_event_send(tile,LV_EVENT_LONG_PRESSED,nullptr);
         click("SELECT PARAMETER");click("RACECHRONO");
         auto* channel=findContaining(lv_scr_act(),"Current lap number");
@@ -368,7 +373,7 @@ int main(int argc,char** argv) {
                "RaceChrono parameter was not assigned to the tile");
         std::puts("RaceChrono settings navigation, paging and staged save passed");
     } else if(can_tile) {
-        auto* tile=lv_obj_get_child(dash,2);
+        auto* tile=tileObject(dash,0);
         lv_event_send(tile,LV_EVENT_LONG_PRESSED,nullptr);
         click("SELECT PARAMETER");
         choosePickerRow("FLAGS","Check engine");
@@ -380,7 +385,7 @@ int main(int argc,char** argv) {
         assert(lv_scr_act()==dash);
         std::puts("BMW MS43 CAN parameter picker and BACK persistence passed");
     } else if(units) {
-        lv_event_send(lv_obj_get_child(dash,2),LV_EVENT_LONG_PRESSED,nullptr);
+        lv_event_send(tileObject(dash,0),LV_EVENT_LONG_PRESSED,nullptr);
         click("BACK");ConfigCommitRequest request;assert(takeCommit(ui,request));
         if(tempunits) {
             assert(request.candidate.dash_tiles[0].warning.delay_ms==250 && "Unchanged delay rounded during save");
@@ -392,7 +397,7 @@ int main(int argc,char** argv) {
         }
         std::puts("Unit-aware pressure warning roundtrip passed");
     } else if(argc>1 && !std::strcmp(argv[1],"--editor")) {
-        lv_event_send(lv_obj_get_child(dash,2),LV_EVENT_LONG_PRESSED,nullptr);
+        lv_event_send(tileObject(dash,0),LV_EVENT_LONG_PRESSED,nullptr);
         assert(button(lv_scr_act(),"DATA") && "Missing full-screen editor tabs");
         screenshot("data");
         assert(lv_obj_has_flag(button(lv_scr_act(),"TEMPERATURE BAR"),LV_OBJ_FLAG_HIDDEN));
@@ -475,7 +480,7 @@ int main(int argc,char** argv) {
         assert(find(dash,&lv_label_class,"6840") && "RPM missing from first frame");
         std::puts("Layout return first-frame test passed");
     } else if(argc>1 && !std::strcmp(argv[1],"--retry")) {
-        auto* tile=lv_obj_get_child(dash,2);lv_event_send(tile,LV_EVENT_LONG_PRESSED,nullptr);
+        auto* tile=tileObject(dash,0);lv_event_send(tile,LV_EVENT_LONG_PRESSED,nullptr);
         auto* editor=lv_scr_act();auto* visible=find(editor,&lv_checkbox_class);lv_obj_clear_state(visible,LV_STATE_CHECKED);
         click("BACK");ConfigCommitRequest request;assert(takeCommit(ui,request));
         ui.completeConfigCommit(request.revision,false);
@@ -491,7 +496,7 @@ int main(int argc,char** argv) {
         assert(lv_scr_act()==dash && !config.dash_tiles[0].visible);
         std::puts("Failed tile save can be discarded or retried transactionally");
     } else if(center) {
-        auto* tile=lv_obj_get_child(dash,8); // configurable Analog slot 6
+        auto* tile=tileObject(dash,6); // configurable Analog slot 6
         lv_event_send(tile,LV_EVENT_LONG_PRESSED,nullptr);
         assert(find(lv_scr_act(),&lv_label_class,"TILE SETTINGS"));
         click("SELECT PARAMETER");
@@ -504,7 +509,7 @@ int main(int argc,char** argv) {
         std::puts("Analog center long-press, parameter choice and first-frame save test passed");
     } else {
         // Open the real first tile through its registered long-press event.
-        auto* tile=lv_obj_get_child(dash,2);
+        auto* tile=tileObject(dash,0);
         lv_event_send(tile,LV_EVENT_LONG_PRESSED,nullptr);
         assert(find(lv_scr_act(),&lv_label_class,"TILE SETTINGS"));
         auto* visible=find(lv_scr_act(),&lv_checkbox_class);assert(visible);
