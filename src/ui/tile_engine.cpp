@@ -117,7 +117,8 @@ TilePlacementList TileEngine::placements(PageId page,
         appendGroup(output, page, tiles, 5U, TileGroup::DashRight, right);
     } else if (layout == DashboardLayout::OemSport) {
         const std::array<TileGeometry, 1> left{{{8, 58, 210, 176, TileSize::Large}}};
-        const std::array<TileGeometry, 1> center{{{226, 58, 348, 176, TileSize::Hero}}};
+        // Framed like the side tiles: label on top, value, unit below.
+        const std::array<TileGeometry, 1> center{{{226, 58, 348, 176, TileSize::Large}}};
         const std::array<TileGeometry, 1> right{{{582, 58, 210, 176, TileSize::Large}}};
         const std::array<TileGeometry, 4> row{{
             {8, 242, 210, 82, TileSize::Small}, {226, 242, 170, 82, TileSize::Small},
