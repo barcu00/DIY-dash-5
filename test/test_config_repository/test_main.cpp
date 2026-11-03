@@ -220,7 +220,8 @@ public:
         return true;
     }
 
-    std::array<uint8_t, sizeof(AppConfig)> bytes{};
+    // Room for legacy records: schema 11 is larger than the current AppConfig.
+    std::array<uint8_t, sizeof(AppConfig) + 4096U> bytes{};
     std::size_t stored_size = 0U;
     bool has_value = false;
     bool fail_reads = false;
